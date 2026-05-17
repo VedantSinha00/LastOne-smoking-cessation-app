@@ -1,6 +1,7 @@
 {
   "name": "lastone-monorepo",
   "private": true,
+  "packageManager": "yarn@1.22.22",
   "workspaces": [
     "apps/*",
     "packages/*"
@@ -12,6 +13,7 @@
     "test": "turbo run test"
   },
   "devDependencies": {
-    "turbo": "latest"
+    "turbo": "latest",
+    "typescript": "^5.4.5"
   }
 }
