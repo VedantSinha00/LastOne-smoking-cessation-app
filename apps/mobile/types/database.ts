@@ -19,6 +19,7 @@ export interface Database {
           current_stage: number
           daily_baseline_cigarettes: number
           cost_per_pack: number
+          onboarding_complete: boolean
         }
         Insert: {
           id: string
@@ -29,6 +30,7 @@ export interface Database {
           current_stage?: number
           daily_baseline_cigarettes?: number
           cost_per_pack?: number
+          onboarding_complete?: boolean
         }
         Update: {
           id?: string
@@ -39,6 +41,7 @@ export interface Database {
           current_stage?: number
           daily_baseline_cigarettes?: number
           cost_per_pack?: number
+          onboarding_complete?: boolean
         }
         Relationships: []
       }

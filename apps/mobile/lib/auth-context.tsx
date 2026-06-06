@@ -1,17 +1,19 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { Session, User } from "@supabase/supabase-js";
+import * as WebBrowser from "expo-web-browser";
+import * as Linking from "expo-linking";
 import { supabase } from "./supabase";
-import { Database } from "../types/database";
+import { queryClient } from "./queryClient";
 
-type Profile = Database["public"]["Tables"]["profiles"]["Row"];
+// Required for the OAuth redirect to close the browser tab on iOS/Android
+WebBrowser.maybeCompleteAuthSession();
 
 interface AuthContextType {
   session: Session | null;
   user: User | null;
-  profile: Profile | null;
   loading: boolean;
+  signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
-  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -19,90 +21,53 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchProfile = async (userId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", userId)
-        .single();
-
-      if (error) {
-        if (error.code === "PGRST116") {
-          // Profile doesn't exist yet, we will auto-create one
-          const { data: newProfile, error: createError } = await supabase
-            .from("profiles")
-            .insert([{ id: userId, current_stage: 1, daily_baseline_cigarettes: 10, cost_per_pack: 15 }])
-            .select()
-            .single();
-
-          if (!createError && newProfile) {
-            setProfile(newProfile);
-          } else {
-            console.error("Error creating profile:", createError);
-          }
-        } else {
-          console.error("Error fetching profile:", error);
-        }
-      } else {
-        setProfile(data);
-      }
-    } catch (err) {
-      console.error("Unexpected error fetching profile:", err);
-    }
-  };
-
-  const refreshProfile = async () => {
-    if (user) {
-      await fetchProfile(user.id);
-    }
-  };
-
   useEffect(() => {
-    // Check active session immediately
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    // INITIAL_SESSION fires from SecureStore (no network call) and replaces getSession().
+    // Using onAuthStateChange as the single source of truth avoids a double state-update
+    // that occurs when both getSession() and INITIAL_SESSION update the same state fields.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchProfile(session.user.id).finally(() => setLoading(false));
-      } else {
+      if (event === 'INITIAL_SESSION') {
         setLoading(false);
       }
     });
 
-    // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        setLoading(true);
-        await fetchProfile(session.user.id);
-        setLoading(false);
-      } else {
-        setProfile(null);
-        setLoading(false);
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
+    return () => subscription.unsubscribe();
   }, []);
 
+  const signInWithGoogle = async () => {
+    // createURL('/') resolves to lastone:// in production and exp:// in Expo Go
+    const redirectTo = Linking.createURL('/');
+
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo,
+        // skipBrowserRedirect: let expo-web-browser open the URL instead of supabase-js
+        skipBrowserRedirect: true,
+      },
+    });
+
+    if (error || !data.url) return;
+
+    const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+
+    // PKCE flow: exchange the auth code for a session token
+    if (result.type === 'success' && result.url) {
+      await supabase.auth.exchangeCodeForSession(result.url);
+    }
+  };
+
   const signOut = async () => {
-    setLoading(true);
     await supabase.auth.signOut();
-    setSession(null);
-    setUser(null);
-    setProfile(null);
-    setLoading(false);
+    queryClient.clear();
   };
 
   return (
-    <AuthContext.Provider value={{ session, user, profile, loading, signOut, refreshProfile }}>
+    <AuthContext.Provider value={{ session, user, loading, signInWithGoogle, signOut }}>
       {children}
     </AuthContext.Provider>
   );

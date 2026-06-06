@@ -5,14 +5,14 @@ import { supabase } from "../../lib/supabase";
 import { Button } from "../../components/ui/button";
 
 export default function Profile() {
-  const { profile, signOut, refreshProfile } = useAuth();
-  const [username, setUsername] = useState(profile?.username || "");
-  const [baseline, setBaseline] = useState(profile?.daily_baseline_cigarettes?.toString() || "10");
-  const [cost, setCost] = useState(profile?.cost_per_pack?.toString() || "15");
+  const { user, signOut } = useAuth();
+  const [username, setUsername] = useState("");
+  const [baseline, setBaseline] = useState("10");
+  const [cost, setCost] = useState("15");
   const [saving, setSaving] = useState(false);
 
   const handleSaveProfile = async () => {
-    if (!profile) return;
+    if (!user) return;
     setSaving(true);
     const { error } = await supabase
       .from("profiles")
@@ -22,13 +22,12 @@ export default function Profile() {
         cost_per_pack: parseFloat(cost) || 15,
         updated_at: new Date().toISOString(),
       })
-      .eq("id", profile.id);
+      .eq("id", user.id);
 
     if (error) {
       Alert.alert("Error saving", error.message);
     } else {
       Alert.alert("Success", "Profile updated successfully.");
-      await refreshProfile();
     }
     setSaving(false);
   };

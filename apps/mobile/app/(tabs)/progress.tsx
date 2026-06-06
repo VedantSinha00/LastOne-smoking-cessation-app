@@ -1,12 +1,9 @@
 import React from "react";
 import { View, Text, ScrollView } from "react-native";
-import { useAuth } from "../../hooks/useAuth";
 
 export default function Progress() {
-  const { profile } = useAuth();
-
-  const baseline = profile?.daily_baseline_cigarettes || 10;
-  const costPerPack = profile?.cost_per_pack || 15;
+  const baseline = 10;
+  const costPerPack = 15;
   const cigCost = costPerPack / 20;
 
   const daysQuit = 5;

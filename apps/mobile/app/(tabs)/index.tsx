@@ -5,7 +5,7 @@ import { StreakCard } from "../../components/streak/streak-card";
 import { supabase } from "../../lib/supabase";
 
 export default function Home() {
-  const { profile, user } = useAuth();
+  const { user } = useAuth();
   const [connectionStatus, setConnectionStatus] = useState<"checking" | "connected" | "error">("checking");
 
   useEffect(() => {
@@ -28,7 +28,7 @@ export default function Home() {
     "Stage 4: Maintenance",
     "Stage 5: Integration"
   ];
-  const currentStageName = profile ? stageNames[profile.current_stage - 1] || stageNames[0] : stageNames[0];
+  const currentStageName = stageNames[0];
 
   return (
     <ScrollView className="flex-1 bg-zinc-950 p-6">

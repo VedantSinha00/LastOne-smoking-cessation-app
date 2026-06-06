@@ -1,33 +1,56 @@
 import { Slot, useRouter, useSegments } from "expo-router";
 import { useEffect } from "react";
+import { View, ActivityIndicator } from "react-native";
+import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { AuthProvider } from "../lib/auth-context";
 import { useAuth } from "../hooks/useAuth";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { View, ActivityIndicator } from "react-native";
+import { queryClient } from "../lib/queryClient";
+import { queryKeys } from "../lib/queryKeys";
+import { supabase } from "../lib/supabase";
 import "../global.css";
 
-const queryClient = new QueryClient();
-
 function RootLayoutNav() {
-  const { session, loading } = useAuth();
-  const segments = useSegments();
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
+  const segments = useSegments();
+
+  const { data: profile, isLoading: profileLoading } = useQuery({
+    queryKey: queryKeys.profile(user?.id ?? ''),
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('onboarding_complete')
+        .eq('id', user!.id)
+        .single();
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  const isReady = !authLoading && (!user || !profileLoading);
 
   useEffect(() => {
-    if (loading) return;
+    if (!isReady) return;
 
-    const inAuthGroup = segments[0] === "(auth)";
+    const inOnboarding = segments[0] === 'onboarding';
 
-    if (!session && !inAuthGroup) {
-      // Redirect to login if not authenticated
-      router.replace("/(auth)/login");
-    } else if (session && inAuthGroup) {
-      // Redirect to index tab if already authenticated
-      router.replace("/(tabs)");
+    if (!user) {
+      // Not logged in — send to onboarding (guard prevents loop if already there)
+      if (!inOnboarding) router.replace('/onboarding');
+      return;
     }
-  }, [session, loading, segments]);
 
-  if (loading) {
+    if (!profile?.onboarding_complete) {
+      // Logged in but onboarding incomplete — send to onboarding
+      if (!inOnboarding) router.replace('/onboarding');
+      return;
+    }
+
+    // Fully set up — if they somehow landed on onboarding, send to tabs
+    if (inOnboarding) router.replace('/(tabs)');
+  }, [isReady, user, profile?.onboarding_complete, segments[0]]);
+
+  if (!isReady) {
     return (
       <View className="flex-1 bg-zinc-950 items-center justify-center">
         <ActivityIndicator size="large" color="#d97706" />
