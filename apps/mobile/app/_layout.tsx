@@ -7,6 +7,7 @@ import { useAuth } from "../hooks/useAuth";
 import { queryClient } from "../lib/queryClient";
 import { queryKeys } from "../lib/queryKeys";
 import { supabase } from "../lib/supabase";
+import { syncPushTokenIfGranted } from "../lib/notifications";
 import "../global.css";
 
 function RootLayoutNav() {
@@ -26,6 +27,13 @@ function RootLayoutNav() {
     },
     enabled: !!user,
   });
+
+  // Backfill the Expo push token on launch when permission is already granted
+  // (idempotent, best-effort, never prompts). Covers users who onboarded before
+  // profiles.push_token existed or before a token could be fetched.
+  useEffect(() => {
+    if (user?.id) syncPushTokenIfGranted(user.id);
+  }, [user?.id]);
 
   const isReady = !authLoading && (!user || !profileLoading);
 
