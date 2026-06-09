@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { View, Text, ScrollView, Pressable, ActivityIndicator } from "react-native";
 import { useRouter } from "expo-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../../hooks/useAuth";
 import { useCopingTools, type RankedTool } from "../../hooks/useCopingTools";
 import { useCreateLog } from "../../hooks/useCreateLog";
@@ -8,6 +9,7 @@ import { useUpdateLog } from "../../hooks/useUpdateLog";
 import { useDailyCheckIn } from "../../hooks/useDailyCheckIn";
 import { ChipMultiSelect } from "../../components/logging/chip-multi-select";
 import { Button } from "../../components/ui/button";
+import { queryKeys } from "../../lib/queryKeys";
 import { WHAT_HELPED_TOKENS } from "../../lib/logOptions";
 import { updateToolScore, checkSosEscalation } from "../../lib/sos";
 import { confirmSmokeFreeDay } from "../../lib/streak";
@@ -30,6 +32,7 @@ export default function SosModal() {
   const createLog = useCreateLog();
   const updateLog = useUpdateLog();
   const { markSatisfied } = useDailyCheckIn();
+  const qc = useQueryClient();
 
   const [screen, setScreen] = useState<Screen>("SOS1");
   const [tool, setTool] = useState<RankedTool | null>(null);
@@ -78,6 +81,7 @@ export default function SosModal() {
     if (tool) await updateToolScore(user.id, tool.tool_id, +1, "better");
     await confirmSmokeFreeDay(user.id, "sos");
     await markSatisfied();
+    qc.invalidateQueries({ queryKey: queryKeys.streakRecord(user.id) });
     router.back();
   };
 

@@ -1,12 +1,14 @@
 import React, { useEffect, useRef, useState } from "react";
 import { View, Text, ScrollView, Pressable } from "react-native";
 import { useRouter } from "expo-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../../hooks/useAuth";
 import { useCreateLog } from "../../hooks/useCreateLog";
 import { useUpdateLog } from "../../hooks/useUpdateLog";
 import { useDailyCheckIn } from "../../hooks/useDailyCheckIn";
 import { ChipMultiSelect } from "../../components/logging/chip-multi-select";
 import { Button } from "../../components/ui/button";
+import { queryKeys } from "../../lib/queryKeys";
 import { WHAT_HELPED_TOKENS } from "../../lib/logOptions";
 import { confirmSmokeFreeDay } from "../../lib/streak";
 
@@ -22,6 +24,7 @@ export default function LogB() {
   const createLog = useCreateLog();
   const updateLog = useUpdateLog();
   const { markSatisfied } = useDailyCheckIn();
+  const qc = useQueryClient();
 
   const logIdRef = useRef<string | null>(null);
   const committedRef = useRef(false);
@@ -39,6 +42,7 @@ export default function LogB() {
         logIdRef.current = row.log_id;
         await confirmSmokeFreeDay(user.id, "log");
         await markSatisfied();
+        qc.invalidateQueries({ queryKey: queryKeys.streakRecord(user.id) });
         setCommitted(true);
       } catch {
         // Even on failure we let the user out; nothing destructive committed.

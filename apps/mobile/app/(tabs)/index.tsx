@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { View, Text, ScrollView, Pressable, ActivityIndicator } from "react-native";
 import { useRouter } from "expo-router";
 import { useAuth } from "../../hooks/useAuth";
@@ -9,6 +9,8 @@ import { useReturnModal } from "../../hooks/useReturnModal";
 import { supabase } from "../../lib/supabase";
 import { queryClient } from "../../lib/queryClient";
 import { queryKeys } from "../../lib/queryKeys";
+import { resolveStk2, resolveStk3 } from "../../lib/returnModal";
+import { checkFreezePeriodAdvance } from "../../lib/streak";
 import { Greeting } from "../../components/home/Greeting";
 import { StreakBar } from "../../components/home/StreakBar";
 import { HealthMilestonesCard } from "../../components/home/HealthMilestonesCard";
@@ -32,17 +34,38 @@ export default function Home() {
   const returnModal = useReturnModal();
   const { satisfied: checkInSatisfied } = useDailyCheckIn();
 
-  // Step 8 gates home on a return modal but the per-option WRITE logic arrives in
-  // Step 10 (lib/streak.ts). Until then, resolving locally lets the modal be
-  // exercised on-device without trapping the user behind an unwritten mutation.
+  // Return-modal gate. The option handlers apply the real streak writes
+  // (lib/returnModal) then clear the gate so home renders with fresh values.
   const [returnResolved, setReturnResolved] = useState(false);
 
-  const handleResolveReturn = (_choice: Stk2Choice | Stk3Choice) => {
-    // Step 10: route _choice through lib/streak.ts (add days / consume freeze /
-    // break streak), then invalidate the streak query. For now, just clear the gate.
-    setReturnResolved(true);
-    queryClient.invalidateQueries({ queryKey: queryKeys.streakRecord(user?.id ?? "") });
+  const refreshStreak = () => {
+    if (!user) return;
+    queryClient.invalidateQueries({ queryKey: queryKeys.streakRecord(user.id) });
+    queryClient.invalidateQueries({ queryKey: queryKeys.currentAttempt(user.id) });
   };
+
+  const handleResolveStk2 = async (choice: Stk2Choice) => {
+    if (user) await resolveStk2(user.id, choice, returnModal.daysMissed);
+    refreshStreak();
+    setReturnResolved(true);
+  };
+
+  const handleResolveStk3 = async (choice: Stk3Choice) => {
+    if (user) await resolveStk3(user.id, choice, returnModal.daysMissed);
+    refreshStreak();
+    setReturnResolved(true);
+  };
+
+  // Freeze-period advance runs once on app open when a quit date is set
+  // (Streak Spec §B2 — Day 15/29/91 boundaries). Idempotent; no-op if not crossed.
+  useEffect(() => {
+    if (user && quitDate) {
+      checkFreezePeriodAdvance(user.id, quitDate).then((advanced) => {
+        if (advanced) refreshStreak();
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, quitDate]);
 
   // DEV ONLY: re-walk onboarding without re-authenticating. Flips
   // onboarding_complete=false and routes back to OB-01 (stays signed in, so OB-05
@@ -67,12 +90,12 @@ export default function Home() {
   // Fires before home renders. No dismiss, no skip.
   if (!returnResolved && returnModal.type === "stk2") {
     return (
-      <ReturnModalShort daysMissed={returnModal.daysMissed} onResolve={handleResolveReturn} />
+      <ReturnModalShort daysMissed={returnModal.daysMissed} onResolve={handleResolveStk2} />
     );
   }
   if (!returnResolved && returnModal.type === "stk3") {
     return (
-      <ReturnModalLong daysMissed={returnModal.daysMissed} onResolve={handleResolveReturn} />
+      <ReturnModalLong daysMissed={returnModal.daysMissed} onResolve={handleResolveStk3} />
     );
   }
 

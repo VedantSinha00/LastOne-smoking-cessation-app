@@ -1,16 +1,17 @@
 import React, { useRef, useState } from "react";
 import { View, Text, ScrollView, Pressable, Alert } from "react-native";
 import { useRouter } from "expo-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../../hooks/useAuth";
 import { useStage } from "../../hooks/useStage";
 import { useCreateLog } from "../../hooks/useCreateLog";
-import { useUpdateLog } from "../../hooks/useUpdateLog";
 import { useDailyCheckIn } from "../../hooks/useDailyCheckIn";
 import { ChipMultiSelect } from "../../components/logging/chip-multi-select";
 import { Button } from "../../components/ui/button";
+import { queryKeys } from "../../lib/queryKeys";
 import { TRIGGER_TOKENS, CIGARETTE_COUNT_SENTINEL } from "../../lib/logOptions";
-import { routeAfterSlip, type SlipType } from "../../lib/slipThreshold";
-import { fullRelapse } from "../../lib/streak";
+import { routeAfterSlip, type SlipType, type SlipRoute } from "../../lib/slipThreshold";
+import { fullRelapse, pauseStreak, restartAttempt } from "../../lib/streak";
 
 type Screen = "C1" | "C2" | "C3";
 
@@ -39,16 +40,24 @@ export default function LogC() {
   const { user } = useAuth();
   const { isPreQuit } = useStage();
   const createLog = useCreateLog();
-  const updateLog = useUpdateLog();
   const { markSatisfied } = useDailyCheckIn();
+  const qc = useQueryClient();
 
   const [screen, setScreen] = useState<Screen>("C1");
   const [slipType, setSlipType] = useState<SlipType | null>(null);
   const [count, setCount] = useState<number | null>(null);
   const [triggers, setTriggers] = useState<string[]>([]);
   const [otherText, setOtherText] = useState("");
+  const [route, setRoute] = useState<SlipRoute>("warm");
   const logIdRef = useRef<string | null>(null);
   const [committing, setCommitting] = useState(false);
+
+  const invalidateStreak = () => {
+    if (!user) return;
+    qc.invalidateQueries({ queryKey: queryKeys.streakRecord(user.id) });
+    qc.invalidateQueries({ queryKey: queryKeys.slipState(user.id) });
+    qc.invalidateQueries({ queryKey: queryKeys.currentAttempt(user.id) });
+  };
 
   // C2 commit — requires slip_type. Pre-quit: slip_type stays null (Logging §B4).
   const commitC2 = async (chosen: SlipType) => {
@@ -67,10 +76,16 @@ export default function LogC() {
       logIdRef.current = row.log_id;
       await markSatisfied();
 
-      // Streak/threshold side effects (stubs until Steps 10/11). Skipped pre-quit.
+      // Streak/threshold side effects. Skipped entirely pre-quit (Logging §B4).
       if (!isPreQuit) {
-        if (chosen === "return_to_smoking") await fullRelapse(user.id);
-        await routeAfterSlip(user.id, chosen);
+        if (chosen === "return_to_smoking") {
+          // Full relapse closes the attempt; routing is via GU (next app open),
+          // not the slip-threshold one_off/few_days logic.
+          await fullRelapse(user.id);
+        } else {
+          setRoute(await routeAfterSlip(user.id, chosen));
+        }
+        invalidateStreak();
       }
       setScreen("C3");
     } catch (e: any) {
@@ -156,7 +171,41 @@ export default function LogC() {
     );
   }
 
-  // ── C3 — Support response (varies by slip_type) ─────────────────────────────
+  // ── C3 Restart Nudge — pattern confirmed (Slip Threshold §4) ────────────────
+  // Three genuine choices; Continue is de-emphasised (Decision 3).
+  if (route === "restart_nudge") {
+    const handleRestart = async () => {
+      if (user) await restartAttempt(user.id);
+      invalidateStreak();
+      router.back();
+    };
+    const handleBreak = async () => {
+      if (user) await pauseStreak(user.id);
+      invalidateStreak();
+      router.back();
+    };
+    return (
+      <View className="flex-1 bg-zinc-950 px-6 justify-center">
+        <Text className="text-white text-2xl font-extrabold mb-3">
+          A few slips close together.
+        </Text>
+        <Text className="text-zinc-400 text-base leading-relaxed mb-10">
+          That&apos;s a pattern worth paying attention to — not a failure. No pressure here, just
+          three paths. Whichever feels right.
+        </Text>
+
+        <View className="gap-3">
+          <Button title="Restart — fresh quit date" onPress={handleRestart} />
+          <Button title="Take a break" onPress={handleBreak} variant="secondary" />
+          <Pressable onPress={() => router.back()} className="py-3 items-center">
+            <Text className="text-zinc-500 text-sm">Continue as I am</Text>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
+
+  // ── C3 Warm — support response (varies by slip_type) ────────────────────────
   const c3 = supportCopy(slipType);
   return (
     <View className="flex-1 bg-zinc-950 px-6 justify-center">

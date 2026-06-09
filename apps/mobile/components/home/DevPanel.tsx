@@ -78,6 +78,40 @@ export const DevPanel: React.FC<DevPanelProps> = ({ onUnlockReturnGate }) => {
     }
   };
 
+  /** Set freeze_stock on the streak record (to exercise slip freeze/break paths). */
+  const setFreezeStock = async (label: string, value: number) => {
+    if (!user) return;
+    setBusy(label);
+    try {
+      await supabase.from("streak_record").update({ freeze_stock: value }).eq("user_id", user.id).throwOnError();
+      await refreshAll();
+      setLastResult(`freeze_stock → ${value} (${label})`);
+    } catch (e: any) {
+      setLastResult(`ERROR: ${e.message}`);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  /** Set slip_state.red_flag_count + clear last_slip_date (to reach the C3 restart nudge). */
+  const setRedFlag = async (label: string, value: number) => {
+    if (!user) return;
+    setBusy(label);
+    try {
+      await supabase
+        .from("slip_state")
+        .update({ red_flag_count: value, last_slip_date: daysAgoISO(1) })
+        .eq("user_id", user.id)
+        .throwOnError();
+      await refreshAll();
+      setLastResult(`red_flag_count → ${value}, last_slip = yesterday (${label})`);
+    } catch (e: any) {
+      setLastResult(`ERROR: ${e.message}`);
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const Btn = ({ label, onPress }: { label: string; onPress: () => void }) => (
     <Pressable
       onPress={onPress}
@@ -94,7 +128,7 @@ export const DevPanel: React.FC<DevPanelProps> = ({ onUnlockReturnGate }) => {
     <View className="border border-purple-800/60 rounded-2xl p-4 mt-2">
       <View className="flex-row items-center justify-between mb-3">
         <Text className="text-purple-400 text-xs font-bold uppercase tracking-wider">
-          DEV · Step 8 verify
+          DEV · Phase 3 verify
         </Text>
         {busy && <ActivityIndicator size="small" color="#a855f7" />}
       </View>
@@ -107,10 +141,22 @@ export const DevPanel: React.FC<DevPanelProps> = ({ onUnlockReturnGate }) => {
       </View>
 
       <Text className="text-zinc-500 text-[11px] mb-1.5">Return modal (last_confirmed_date)</Text>
-      <View className="flex-row gap-2">
+      <View className="flex-row gap-2 mb-3">
         <View className="flex-1"><Btn label="None (today)" onPress={() => setLastConfirmed("None (today)", todayISO())} /></View>
         <View className="flex-1"><Btn label="STK-2 (2d ago)" onPress={() => setLastConfirmed("STK-2 (2d ago)", daysAgoISO(2))} /></View>
         <View className="flex-1"><Btn label="STK-3 (6d ago)" onPress={() => setLastConfirmed("STK-3 (6d ago)", daysAgoISO(6))} /></View>
+      </View>
+
+      <Text className="text-zinc-500 text-[11px] mb-1.5">Freezes (slip freeze vs break)</Text>
+      <View className="flex-row gap-2 mb-3">
+        <View className="flex-1"><Btn label="freeze = 2" onPress={() => setFreezeStock("freeze = 2", 2)} /></View>
+        <View className="flex-1"><Btn label="freeze = 0" onPress={() => setFreezeStock("freeze = 0", 0)} /></View>
+      </View>
+
+      <Text className="text-zinc-500 text-[11px] mb-1.5">Slip pattern (red_flag → C3 nudge)</Text>
+      <View className="flex-row gap-2">
+        <View className="flex-1"><Btn label="red_flag = 0" onPress={() => setRedFlag("red_flag = 0", 0)} /></View>
+        <View className="flex-1"><Btn label="red_flag = 2" onPress={() => setRedFlag("red_flag = 2", 2)} /></View>
       </View>
 
       {lastResult && (
