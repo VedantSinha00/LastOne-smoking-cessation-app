@@ -22,7 +22,7 @@ function RootLayoutNav() {
         .from('profiles')
         .select('onboarding_complete')
         .eq('id', user!.id)
-        .single();
+        .maybeSingle();
       return data;
     },
     enabled: !!user,
@@ -35,10 +35,8 @@ function RootLayoutNav() {
     if (user?.id) syncPushTokenIfGranted(user.id);
   }, [user?.id]);
 
-  const isReady = !authLoading && (!user || !profileLoading);
-
   useEffect(() => {
-    if (!isReady) return;
+    if (authLoading) return;
 
     const inOnboarding = segments[0] === 'onboarding';
 
@@ -48,17 +46,23 @@ function RootLayoutNav() {
       return;
     }
 
+    // Logged in: wait until the profile has loaded before choosing onboarding vs
+    // tabs, so we don't bounce a user whose onboarding_complete isn't known yet.
+    if (profileLoading) return;
+
     if (!profile?.onboarding_complete) {
-      // Logged in but onboarding incomplete — send to onboarding
       if (!inOnboarding) router.replace('/onboarding');
       return;
     }
 
     // Fully set up — if they somehow landed on onboarding, send to tabs
     if (inOnboarding) router.replace('/(tabs)');
-  }, [isReady, user, profile?.onboarding_complete, segments[0]]);
+  }, [authLoading, user, profileLoading, profile?.onboarding_complete, segments[0]]);
 
-  if (!isReady) {
+  // Only the INITIAL auth restore blocks rendering. Do NOT gate on profileLoading:
+  // unmounting <Slot/> while a user signs in mid-onboarding destroys the in-memory
+  // OnboardingContext and resets the flow to OB-01 (caused a sign-in loop).
+  if (authLoading) {
     return (
       <View className="flex-1 bg-zinc-950 items-center justify-center">
         <ActivityIndicator size="large" color="#d97706" />

@@ -8,6 +8,24 @@ import { queryClient } from "./queryClient";
 // Required for the OAuth redirect to close the browser tab on iOS/Android
 WebBrowser.maybeCompleteAuthSession();
 
+// Parse `a=1&b=2` (query or fragment) into a plain object. Manual parse — RN does
+// not reliably ship URLSearchParams / URL fragment parsing.
+function parseUrlParams(str: string): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const pair of str.split('&')) {
+    if (!pair) continue;
+    const idx = pair.indexOf('=');
+    const key = idx >= 0 ? pair.slice(0, idx) : pair;
+    const val = idx >= 0 ? pair.slice(idx + 1) : '';
+    try {
+      out[decodeURIComponent(key)] = decodeURIComponent(val);
+    } catch {
+      out[key] = val;
+    }
+  }
+  return out;
+}
+
 interface AuthContextType {
   session: Session | null;
   user: User | null;
@@ -39,8 +57,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const signInWithGoogle = async () => {
-    // createURL('/') resolves to lastone:// in production and exp:// in Expo Go
-    const redirectTo = Linking.createURL('/');
+    // Redirect to the /onboarding route (where sign-in is initiated) rather than
+    // '/'. The OS also delivers this redirect to expo-router as a deep link; if it
+    // pointed at '/', the router would navigate to (tabs) and bounce back, which
+    // remounts the onboarding tree and resets the flow to OB-01. Targeting the
+    // current route makes that deep link a no-op.
+    const redirectTo = Linking.createURL('/onboarding');
 
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
@@ -55,9 +77,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
 
-    // PKCE flow: exchange the auth code for a session token
-    if (result.type === 'success' && result.url) {
-      await supabase.auth.exchangeCodeForSession(result.url);
+    if (result.type !== 'success' || !result.url) return;
+
+    // Supabase returns EITHER a PKCE auth code (`?code=...`) OR an implicit-flow
+    // token bundle in the URL fragment (`#access_token=...&refresh_token=...`).
+    // Handle whichever we get so the session actually gets created.
+    const url = result.url;
+    const fragment = url.includes('#') ? url.slice(url.indexOf('#') + 1) : '';
+    const queryStr = url.includes('?') ? url.slice(url.indexOf('?') + 1).split('#')[0] : '';
+    const q = parseUrlParams(queryStr);
+    const f = parseUrlParams(fragment);
+
+    if (q.code) {
+      await supabase.auth.exchangeCodeForSession(q.code);
+    } else if (f.access_token && f.refresh_token) {
+      await supabase.auth.setSession({
+        access_token: f.access_token,
+        refresh_token: f.refresh_token,
+      });
     }
   };
 

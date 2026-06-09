@@ -20,6 +20,10 @@ export type StepKey = (typeof STEP_ORDER)[number]
  * Everything else is always visible.
  */
 function isStepVisible(key: StepKey, state: OnboardingState): boolean {
+  // OB-05 (create account) is skipped once a session exists, so it never flashes
+  // for an already-signed-in user. (OB05CreateAccount also advances itself when
+  // sign-in completes while the screen is showing.)
+  if (key === 'OB05') return state.userId == null
   if (key === 'OB17') return state.previousQuitAttempts !== 'never'
   if (key === 'OB22') return state.quitDate !== null
   return true
