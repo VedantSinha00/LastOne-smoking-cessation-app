@@ -34,6 +34,19 @@ export type StreakStatus = 'active' | 'paused' | 'reset'
 export type ConfirmationSource = 'sos' | 'log'
 export type NotificationTier = 'app_decides' | 'few_daily' | 'on_demand'
 
+// log enums (Data Schema §3 / Logging Spec §B1).
+export type LogType = 'craving' | 'overcome' | 'slip' | 'note' | 'sos'
+export type EntryMethod = 'daily_card' | 'fab' | 'sos' | 'notification'
+export type SlipType = 'one_off' | 'few_days' | 'return_to_smoking'
+export type SlipSource = 'flow_c' | 'return_modal'
+export type PostToolState = 'better' | 'same' | 'smoked'
+
+// coping_tools enums (Data Schema §6).
+export type ToolFamily = 'breathing' | 'physical' | 'mini_games'
+export type ToolCategory =
+  | 'physical_reset' | 'cognitive_reframe' | 'distraction'
+  | 'social_coping' | 'reflective' | 'breathing'
+
 export interface Database {
   public: {
     Tables: {
@@ -69,6 +82,7 @@ export interface Database {
           relatable_category: RelatableCategory | null
           voice_style: VoiceStyle | null
           push_token: string | null
+          timezone: string
         }
         Insert: {
           id: string
@@ -99,6 +113,7 @@ export interface Database {
           relatable_category?: RelatableCategory | null
           voice_style?: VoiceStyle | null
           push_token?: string | null
+          timezone?: string
         }
         Update: {
           id?: string
@@ -129,105 +144,177 @@ export interface Database {
           relatable_category?: RelatableCategory | null
           voice_style?: VoiceStyle | null
           push_token?: string | null
+          timezone?: string
         }
         Relationships: []
       }
-      craving_logs: {
+      // log — every user-initiated log entry (Data Schema §3 / Logging Spec §B1).
+      // cigarette_count: 1–4 exact, 99 = sentinel for '5+' (never shown as 99).
+      log: {
         Row: {
-          id: string
+          log_id: string
           user_id: string
-          created_at: string
-          intensity: number
-          context: string
+          attempt_id: number | null
+          log_type: LogType
+          timestamp: string
+          quit_day_number: number
+          current_stage: number
+          entry_method: EntryMethod
+          routed_to_sos: boolean
+          other_text: string | null
+          intensity: number | null
           triggers: string[] | null
-          notes: string | null
+          location: string[] | null
+          social_context: string[] | null
+          mood: number | null
+          what_helped: string[] | null
+          slip_type: SlipType | null
+          cigarette_count: number | null
+          slip_triggers: string[] | null
+          source: SlipSource | null
+          tool_selected: string | null
+          tool_duration_seconds: number | null
+          tool_helpful: boolean | null
+          post_tool_state: PostToolState | null
+          note_text: string | null
+          has_photo: boolean | null
+          created_at: string
         }
         Insert: {
-          id?: string
+          log_id?: string
           user_id: string
-          created_at?: string
-          intensity: number
-          context: string
+          attempt_id?: number | null
+          log_type: LogType
+          timestamp?: string
+          quit_day_number: number
+          current_stage: number
+          entry_method: EntryMethod
+          routed_to_sos?: boolean
+          other_text?: string | null
+          intensity?: number | null
           triggers?: string[] | null
-          notes?: string | null
+          location?: string[] | null
+          social_context?: string[] | null
+          mood?: number | null
+          what_helped?: string[] | null
+          slip_type?: SlipType | null
+          cigarette_count?: number | null
+          slip_triggers?: string[] | null
+          source?: SlipSource | null
+          tool_selected?: string | null
+          tool_duration_seconds?: number | null
+          tool_helpful?: boolean | null
+          post_tool_state?: PostToolState | null
+          note_text?: string | null
+          has_photo?: boolean | null
+          created_at?: string
         }
         Update: {
-          id?: string
+          log_id?: string
           user_id?: string
-          created_at?: string
-          intensity?: number
-          context?: string
+          attempt_id?: number | null
+          log_type?: LogType
+          timestamp?: string
+          quit_day_number?: number
+          current_stage?: number
+          entry_method?: EntryMethod
+          routed_to_sos?: boolean
+          other_text?: string | null
+          intensity?: number | null
           triggers?: string[] | null
-          notes?: string | null
+          location?: string[] | null
+          social_context?: string[] | null
+          mood?: number | null
+          what_helped?: string[] | null
+          slip_type?: SlipType | null
+          cigarette_count?: number | null
+          slip_triggers?: string[] | null
+          source?: SlipSource | null
+          tool_selected?: string | null
+          tool_duration_seconds?: number | null
+          tool_helpful?: boolean | null
+          post_tool_state?: PostToolState | null
+          note_text?: string | null
+          has_photo?: boolean | null
+          created_at?: string
         }
         Relationships: []
       }
-      slips: {
+      // coping_tools — read-only catalog (Data Schema §6).
+      coping_tools: {
         Row: {
-          id: string
-          user_id: string
-          created_at: string
-          intensity: number
-          context: string
-          cigarettes_smoked: number
-          notes: string | null
+          tool_id: string
+          data_model_id: string
+          family: ToolFamily
+          name: string
+          category: ToolCategory
+          intensity_min: number
+          intensity_max: number
+          context: string[] | null
+          duration_seconds: number
+          sos_eligible: boolean
+          library_only: boolean
+          requires_buddy: boolean
+          stage_min: number | null
+          emotional_tags: string[] | null
         }
-        Insert: {
-          id?: string
-          user_id: string
-          created_at?: string
-          intensity: number
-          context: string
-          cigarettes_smoked: number
-          notes?: string | null
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          created_at?: string
-          intensity?: number
-          context?: string
-          cigarettes_smoked?: number
-          notes?: string | null
-        }
+        Insert: never
+        Update: never
         Relationships: []
       }
-      coping_usages: {
+      // user_tool_scores — per-user tool rating (Data Schema §7).
+      user_tool_scores: {
         Row: {
-          id: string
           user_id: string
           tool_id: string
-          created_at: string
-          craving_intensity: number | null
-          craving_context: string | null
-          user_stage: number | null
-          tool_surface: string
-          post_tool_state: string
-          time_since_last_use: number | null
+          tool_score: number
+          total_uses: number
+          is_weighted: boolean
+          last_used_at: string | null
+          post_tool_state: PostToolState | null
+          removed_from_sos: boolean
         }
         Insert: {
-          id?: string
           user_id: string
           tool_id: string
-          created_at?: string
-          craving_intensity?: number | null
-          craving_context?: string | null
-          user_stage?: number | null
-          tool_surface: string
-          post_tool_state: string
-          time_since_last_use?: number | null
+          tool_score?: number
+          total_uses?: number
+          is_weighted?: boolean
+          last_used_at?: string | null
+          post_tool_state?: PostToolState | null
+          removed_from_sos?: boolean
         }
         Update: {
-          id?: string
           user_id?: string
           tool_id?: string
-          created_at?: string
-          craving_intensity?: number | null
-          craving_context?: string | null
-          user_stage?: number | null
-          tool_surface?: string
-          post_tool_state?: string
-          time_since_last_use?: number | null
+          tool_score?: number
+          total_uses?: number
+          is_weighted?: boolean
+          last_used_at?: string | null
+          post_tool_state?: PostToolState | null
+          removed_from_sos?: boolean
+        }
+        Relationships: []
+      }
+      // user_sos_state — SOS escalation counters (Data Schema §8).
+      user_sos_state: {
+        Row: {
+          user_id: string
+          failed_sos_count: number
+          consecutive_sos_successes: number
+          window_started_at: string | null
+        }
+        Insert: {
+          user_id: string
+          failed_sos_count?: number
+          consecutive_sos_successes?: number
+          window_started_at?: string | null
+        }
+        Update: {
+          user_id?: string
+          failed_sos_count?: number
+          consecutive_sos_successes?: number
+          window_started_at?: string | null
         }
         Relationships: []
       }
@@ -372,7 +459,17 @@ export interface Database {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      // Atomic upsert of a tool score (+1 / -1) on user_tool_scores. Deployed
+      // separately as a Postgres function — see supabase/migrations (Step 9 DB).
+      increment_tool_score: {
+        Args: {
+          p_user_id: string
+          p_tool_id: string
+          p_delta: number
+          p_post_tool_state: PostToolState | null
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

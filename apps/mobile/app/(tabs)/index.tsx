@@ -14,10 +14,11 @@ import { StreakBar } from "../../components/home/StreakBar";
 import { HealthMilestonesCard } from "../../components/home/HealthMilestonesCard";
 import {
   ProgressDashboardPlaceholder,
-  DailyCheckInPlaceholder,
   ContentCarouselPlaceholder,
   InsightsPreviewPlaceholder,
 } from "../../components/home/placeholders";
+import { DailyCheckInCard } from "../../components/home/DailyCheckInCard";
+import { useDailyCheckIn } from "../../hooks/useDailyCheckIn";
 import { ReturnModalShort, type Stk2Choice } from "../../components/home/ReturnModalShort";
 import { ReturnModalLong, type Stk3Choice } from "../../components/home/ReturnModalLong";
 import { DevPanel } from "../../components/home/DevPanel";
@@ -29,6 +30,7 @@ export default function Home() {
   const { stage, quitDate, isLoading: stageLoading } = useStage();
   const { data: streak, isLoading: streakLoading } = useStreakRecord();
   const returnModal = useReturnModal();
+  const { satisfied: checkInSatisfied } = useDailyCheckIn();
 
   // Step 8 gates home on a return modal but the per-option WRITE logic arrives in
   // Step 10 (lib/streak.ts). Until then, resolving locally lets the modal be
@@ -75,7 +77,8 @@ export default function Home() {
   }
 
   // ── Home (HOME-1) — scroll order per Home Spec §P6 ─────────────────────────
-  const showDailyCheckIn = stage !== 0; // Not shown in Stage 0 (Home Spec §E)
+  // Daily check-in: Stage 1+ only (Home Spec §E), hidden once satisfied for the day.
+  const showDailyCheckIn = stage !== 0 && !checkInSatisfied;
 
   return (
     <ScrollView className="flex-1 bg-zinc-950 p-6" contentContainerClassName="gap-5 pb-12">
@@ -90,8 +93,8 @@ export default function Home() {
       {/* 4 — Progress Dashboard */}
       <ProgressDashboardPlaceholder />
 
-      {/* 5 — Daily Check-In (hidden in Stage 0) */}
-      {showDailyCheckIn && <DailyCheckInPlaceholder />}
+      {/* 5 — Daily Check-In (Stage 1+, until satisfied) */}
+      {showDailyCheckIn && <DailyCheckInCard />}
 
       {/* 6 — Content Carousel */}
       <ContentCarouselPlaceholder />

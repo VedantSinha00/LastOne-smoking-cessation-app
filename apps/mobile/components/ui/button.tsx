@@ -6,6 +6,7 @@ interface ButtonProps {
   onPress: () => void;
   variant?: "primary" | "secondary" | "danger";
   loading?: boolean;
+  disabled?: boolean;
   className?: string;
 }
 
@@ -14,8 +15,11 @@ export const Button: React.FC<ButtonProps> = ({
   onPress,
   variant = "primary",
   loading = false,
+  disabled = false,
   className = "",
 }) => {
+  const inactive = loading || disabled;
+
   const getVariantStyles = () => {
     switch (variant) {
       case "secondary":
@@ -29,8 +33,10 @@ export const Button: React.FC<ButtonProps> = ({
 
   return (
     <Pressable
-      onPress={loading ? undefined : onPress}
-      className={`py-3 px-6 rounded-xl flex-row justify-center items-center ${getVariantStyles()} ${className}`}
+      onPress={inactive ? undefined : onPress}
+      className={`py-3 px-6 rounded-xl flex-row justify-center items-center ${getVariantStyles()} ${
+        disabled ? "opacity-40" : ""
+      } ${className}`}
     >
       {loading ? (
         <ActivityIndicator color="#fff" size="small" />

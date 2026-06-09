@@ -1,6 +1,5 @@
 import React from 'react'
-import { View, Text, Pressable } from 'react-native'
-import { useRouter } from 'expo-router'
+import { View, Text } from 'react-native'
 
 /**
  * Home-screen sections whose full logic is owned by later build steps. Each
@@ -29,22 +28,6 @@ export const ProgressDashboardPlaceholder: React.FC = () => (
     </View>
   </View>
 )
-
-/** Section E — Daily Check-In card. Real flow: Step 9 (Logging System §8). */
-export const DailyCheckInPlaceholder: React.FC = () => {
-  const router = useRouter()
-  return (
-    <Pressable
-      onPress={() => router.push('/(modals)/log')}
-      className="bg-zinc-900 border border-amber-900/40 rounded-2xl p-6 shadow-md active:bg-zinc-850"
-    >
-      <Text className="text-white text-base font-bold">Daily check-in</Text>
-      <Text className="text-zinc-400 text-sm mt-1 leading-relaxed">
-        Log how today is going before it ends.
-      </Text>
-    </Pressable>
-  )
-}
 
 /** Section D — Content Carousel. Real cards: Step 14 (Content Cards). */
 export const ContentCarouselPlaceholder: React.FC = () => (
