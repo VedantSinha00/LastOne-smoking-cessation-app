@@ -2,6 +2,7 @@ import { Tabs } from "expo-router";
 import { View, Text } from "react-native";
 import { useRouter } from "expo-router";
 import { SosFab } from "../../components/sos/sos-fab";
+import { LogFab } from "../../components/logging/log-fab";
 
 export default function TabsLayout() {
   const router = useRouter();
@@ -74,7 +75,9 @@ export default function TabsLayout() {
         />
       </Tabs>
       
-      {/* Floating Action Button (FAB) overlay for SOS cope tools */}
+      {/* Persistent FABs — both rendered here so they persist across all tabs
+          (Architecture Guide §8.5). Log FAB sits above the SOS FAB. */}
+      <LogFab />
       <SosFab />
     </View>
   );
