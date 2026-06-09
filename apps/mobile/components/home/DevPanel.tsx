@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { View, Text, Pressable, ActivityIndicator } from "react-native";
 import { format, subDays } from "date-fns";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "../../hooks/useAuth";
 import { supabase } from "../../lib/supabase";
 import { queryClient } from "../../lib/queryClient";
@@ -112,6 +113,50 @@ export const DevPanel: React.FC<DevPanelProps> = ({ onUnlockReturnGate }) => {
     }
   };
 
+  /**
+   * Reset streak_record to a clean baseline with last_confirmed_date = yesterday,
+   * so the NEXT Flow B / SOS 'Better' visibly increments (current 0→1, lifetime
+   * +1). Without this, repeat testing hits the "already confirmed today" guard.
+   */
+  const resetStreakBaseline = async (label: string) => {
+    if (!user) return;
+    setBusy(label);
+    try {
+      await supabase
+        .from("streak_record")
+        .update({
+          current_streak_days: 0,
+          streak_status: "active",
+          freeze_stock: 2,
+          last_confirmed_date: daysAgoISO(1),
+          streak_start_date: daysAgoISO(1),
+          paused_at: null,
+        })
+        .eq("user_id", user.id)
+        .throwOnError();
+      await refreshAll();
+      setLastResult(`streak reset: Day 0, freeze 2, last_confirmed = yesterday (${label})`);
+    } catch (e: any) {
+      setLastResult(`ERROR: ${e.message}`);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  /** Clear today's daily-check-in flag so the card reappears (AsyncStorage, not DB). */
+  const resetDailyCheckIn = async (label: string) => {
+    if (!user) return;
+    setBusy(label);
+    try {
+      await AsyncStorage.removeItem(`daily_checkin_satisfied:${user.id}`);
+      setLastResult(`daily check-in flag cleared — reopen Home to see the card (${label})`);
+    } catch (e: any) {
+      setLastResult(`ERROR: ${e.message}`);
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const Btn = ({ label, onPress }: { label: string; onPress: () => void }) => (
     <Pressable
       onPress={onPress}
@@ -154,9 +199,15 @@ export const DevPanel: React.FC<DevPanelProps> = ({ onUnlockReturnGate }) => {
       </View>
 
       <Text className="text-zinc-500 text-[11px] mb-1.5">Slip pattern (red_flag → C3 nudge)</Text>
-      <View className="flex-row gap-2">
+      <View className="flex-row gap-2 mb-3">
         <View className="flex-1"><Btn label="red_flag = 0" onPress={() => setRedFlag("red_flag = 0", 0)} /></View>
         <View className="flex-1"><Btn label="red_flag = 2" onPress={() => setRedFlag("red_flag = 2", 2)} /></View>
+      </View>
+
+      <Text className="text-zinc-500 text-[11px] mb-1.5">Reset (for repeat testing)</Text>
+      <View className="flex-row gap-2">
+        <View className="flex-1"><Btn label="Streak → clean baseline" onPress={() => resetStreakBaseline("Streak baseline")} /></View>
+        <View className="flex-1"><Btn label="Reset check-in flag" onPress={() => resetDailyCheckIn("Reset check-in flag")} /></View>
       </View>
 
       {lastResult && (
