@@ -1,24 +1,32 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, ScrollView } from "react-native";
+import { View, Text, ScrollView, Pressable } from "react-native";
+import { useRouter } from "expo-router";
 import { useAuth } from "../../hooks/useAuth";
 import { StreakCard } from "../../components/streak/streak-card";
 import { supabase } from "../../lib/supabase";
+import { queryClient } from "../../lib/queryClient";
+import { queryKeys } from "../../lib/queryKeys";
 
 export default function Home() {
   const { user } = useAuth();
+  const router = useRouter();
   const [connectionStatus, setConnectionStatus] = useState<"checking" | "connected" | "error">("checking");
 
   useEffect(() => {
     supabase.auth.getSession()
-      .then((sessionData) => {
-        console.log("Current session:", sessionData);
-        setConnectionStatus("connected");
-      })
-      .catch((err) => {
-        console.error("Connection failed:", err);
-        setConnectionStatus("error");
-      });
+      .then(() => setConnectionStatus("connected"))
+      .catch(() => setConnectionStatus("error"));
   }, []);
+
+  // DEV ONLY: re-walk onboarding without re-authenticating. Flips
+  // onboarding_complete=false and routes back to OB-01 (stays signed in, so OB-05
+  // auto-skips). Existing quit_attempts/streak rows are kept and reused.
+  const handleRestartOnboarding = async () => {
+    if (!user) return;
+    await supabase.from("profiles").update({ onboarding_complete: false }).eq("id", user.id);
+    await queryClient.invalidateQueries({ queryKey: queryKeys.profile(user.id) });
+    router.replace("/onboarding");
+  };
 
   const streakDays = 5; // Placeholder value
   const stageNames = [
@@ -57,6 +65,18 @@ export default function Home() {
           You are currently building baseline profile data. Continue using the "Log" option to record your cravings. If cravings get too intense, use the red SOS coping suite button in the bottom right.
         </Text>
       </View>
+
+      {__DEV__ && (
+        <Pressable
+          onPress={handleRestartOnboarding}
+          className="mt-8 border border-amber-800 rounded-2xl p-4 items-center active:bg-zinc-900"
+        >
+          <Text className="text-amber-500 text-sm font-semibold">DEV · Restart onboarding</Text>
+          <Text className="text-zinc-600 text-xs mt-1 text-center leading-relaxed">
+            Resets onboarding_complete and returns to OB-01. Stays signed in; keeps your data.
+          </Text>
+        </Pressable>
+      )}
     </ScrollView>
   );
 }
