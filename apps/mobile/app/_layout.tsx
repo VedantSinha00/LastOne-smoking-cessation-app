@@ -16,7 +16,10 @@ function RootLayoutNav() {
   const segments = useSegments();
 
   const { data: profile, isLoading: profileLoading } = useQuery({
-    queryKey: queryKeys.profile(user?.id ?? ''),
+    // Dedicated key — see queryKeys.onboardingGate. A slim select() under the shared
+    // `profile` key would otherwise cache a partial row (only onboarding_complete) and
+    // starve useProfile/useDashboard of cigarettes_per_day/price_per_cigarette.
+    queryKey: queryKeys.onboardingGate(user?.id ?? ''),
     queryFn: async () => {
       const { data } = await supabase
         .from('profiles')

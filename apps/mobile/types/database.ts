@@ -41,6 +41,10 @@ export type SlipType = 'one_off' | 'few_days' | 'return_to_smoking'
 export type SlipSource = 'flow_c' | 'return_modal'
 export type PostToolState = 'better' | 'same' | 'smoked'
 
+// content_cards enums (Content Cards §B1). sensitivity has a CHECK on remote;
+// trigger_type is unconstrained text (cigarette_milestone is the Milestone-Spec value).
+export type ContentSensitivity = 'low' | 'high'
+
 // coping_tools enums (Data Schema §6).
 export type ToolFamily = 'breathing' | 'physical' | 'mini_games'
 export type ToolCategory =
@@ -451,6 +455,89 @@ export interface Database {
           consecutive_ignored?: number
           auto_reduce_active_until?: string | null
           effective_tier?: NotificationTier
+        }
+        Relationships: []
+      }
+      // content_cards — read-only card catalog (Content Cards §B1, Milestone Spec §4).
+      // Holds the daily content cards (Step 14) AND the DASH-2 milestone reference
+      // cards CM-01–08 (trigger_type='cigarette_milestone'). High-sensitivity cards
+      // use the body_copy_* variant columns; low-sensitivity cards use body_copy.
+      // card_id is UNIQUE (seeds upsert on it). trigger_type is unconstrained text.
+      content_cards: {
+        Row: {
+          id: string
+          card_id: string
+          pill_tag: string
+          title: string
+          body_copy: string | null
+          body_copy_steady: string | null
+          body_copy_warm: string | null
+          body_copy_practical: string | null
+          trigger_type: string
+          trigger_value: string
+          sensitivity: ContentSensitivity
+          stage_min: number | null
+          stage_max: number | null
+          active: boolean
+        }
+        Insert: {
+          id?: string
+          card_id: string
+          pill_tag: string
+          title: string
+          body_copy?: string | null
+          body_copy_steady?: string | null
+          body_copy_warm?: string | null
+          body_copy_practical?: string | null
+          trigger_type: string
+          trigger_value: string
+          sensitivity: ContentSensitivity
+          stage_min?: number | null
+          stage_max?: number | null
+          active?: boolean
+        }
+        Update: {
+          id?: string
+          card_id?: string
+          pill_tag?: string
+          title?: string
+          body_copy?: string | null
+          body_copy_steady?: string | null
+          body_copy_warm?: string | null
+          body_copy_practical?: string | null
+          trigger_type?: string
+          trigger_value?: string
+          sensitivity?: ContentSensitivity
+          stage_min?: number | null
+          stage_max?: number | null
+          active?: boolean
+        }
+        Relationships: []
+      }
+      // user_card_history — per-user impression log for cooldown selection (Content
+      // Cards §3). UNIQUE(user_id, card_id) — cooldown upserts on the pair. NOT written
+      // for cigarette_milestone cards (their unlock state is derived; Milestone Spec §4.2).
+      user_card_history: {
+        Row: {
+          id: string
+          user_id: string
+          card_id: string
+          last_shown_at: string
+          show_count: number
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          card_id: string
+          last_shown_at?: string
+          show_count?: number
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          card_id?: string
+          last_shown_at?: string
+          show_count?: number
         }
         Relationships: []
       }

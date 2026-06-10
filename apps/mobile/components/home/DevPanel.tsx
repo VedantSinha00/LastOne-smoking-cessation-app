@@ -1,45 +1,112 @@
 import React, { useState } from "react";
 import { View, Text, Pressable, ActivityIndicator } from "react-native";
-import { format, subDays } from "date-fns";
+import { format, subDays, differenceInCalendarDays, parseISO } from "date-fns";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "../../hooks/useAuth";
 import { supabase } from "../../lib/supabase";
 import { queryClient } from "../../lib/queryClient";
-import { queryKeys } from "../../lib/queryKeys";
+import { deriveStage } from "../../lib/stage";
+import { FREEZE_MATRIX } from "../../lib/streak";
+import type { DependencyLevel } from "../../types/database";
 
 /**
- * DEV-ONLY verification panel for the Step 8 checklist. Lets the tester drive
- * quit_date (stage) and last_confirmed_date (return modal) by tapping, instead
- * of hand-editing SQL. Delete this whole component when Step 8 is signed off.
+ * DEV-ONLY verification panel (Phase 3 + 4). Drives the test state — quit_date,
+ * streak, return modal, freezes, slip pattern — by tapping, instead of SQL.
+ *
+ * Design rule (added Phase 4): every button leaves a SELF-CONSISTENT state and
+ * refreshes the dashboard. The Stage buttons are the source of truth for the quit
+ * attempt: each routes through syncStreakToQuitDate(), which sets streak_record
+ * (days, stage, freeze_period, freeze_stock) to values that AGREE with the quit_date
+ * and the FREEZE_MATRIX — so the StreakBar, the Progress Dashboard, and the stage
+ * system never disagree, and freezes are never written to an off-matrix value.
+ *
+ * Delete this whole component before release (Step 21).
  *
  * Date math mirrors the hooks:
- *   useStage:        reads quit_attempts.quit_date → null=0, yesterday=1, 10d=3
- *   useReturnModal:  daysMissed = calendarDays(today, last_confirmed) − 1
- *                    last_confirmed 2d ago → daysMissed 1 → STK-2
- *                    last_confirmed 6d ago → daysMissed 5 → STK-3
- *                    last_confirmed today  → daysMissed 0 → none
+ *   useStage:       quit_attempts.quit_date → null=0, 1d=1, 10d=3
+ *   useReturnModal: daysMissed = calendarDays(today, last_confirmed) − 1
+ *                   last_confirmed 2d ago → daysMissed 1 → STK-2
+ *                   last_confirmed 6d ago → daysMissed 5 → STK-3
  */
 
 interface DevPanelProps {
   /** Reset the home screen's local return-modal gate so the modal re-fires. */
   onUnlockReturnGate: () => void;
+  /** Tell Home to re-read the daily-check-in flag after we clear it (in-memory state). */
+  onResetCheckIn?: () => void;
 }
 
 const todayISO = () => format(new Date(), "yyyy-MM-dd");
 const daysAgoISO = (n: number) => format(subDays(new Date(), n), "yyyy-MM-dd");
 
-export const DevPanel: React.FC<DevPanelProps> = ({ onUnlockReturnGate }) => {
+/** freeze_period for a given days-since-quit (Streak Spec §2: Day 15/29/91 boundaries). */
+const periodForDays = (days: number): 0 | 1 | 2 | 3 =>
+  days >= 91 ? 3 : days >= 29 ? 2 : days >= 15 ? 1 : 0;
+
+export const DevPanel: React.FC<DevPanelProps> = ({ onUnlockReturnGate, onResetCheckIn }) => {
   const { user } = useAuth();
   const [busy, setBusy] = useState<string | null>(null);
   const [lastResult, setLastResult] = useState<string | null>(null);
 
   const refreshAll = async () => {
     if (!user) return;
-    await queryClient.invalidateQueries({ queryKey: queryKeys.currentAttempt(user.id) });
-    await queryClient.invalidateQueries({ queryKey: queryKeys.streakRecord(user.id) });
+    // Prefix invalidation so BOTH attempt reads (currentAttempt + the dashboard's
+    // allAttempts) and the whole logs subtree + streak refresh together. content_cards
+    // is included so the savings-milestone card (derives money from attempts/slips)
+    // recomputes when a stage button changes the quit_date.
+    await queryClient.invalidateQueries({ queryKey: ["quit_attempt"] });
+    await queryClient.invalidateQueries({ queryKey: ["logs", user.id] });
+    await queryClient.invalidateQueries({ queryKey: ["streak_record", user.id] });
+    await queryClient.invalidateQueries({ queryKey: ["content_cards"] });
   };
 
-  /** Set quit_date on the open attempt (ended_at IS NULL). */
+  /**
+   * Write a fully self-consistent streak_record for a target quit_date. This is the
+   * one place streak state is derived, so every button that moves the quit attempt
+   * produces matching days/stage/freeze values. freeze_stock comes from the matrix
+   * for the user's dependency_level at the period the quit_date falls in — never a
+   * hard-coded guess (the old hard-coded "2" was the source of freeze flicker).
+   */
+  const syncStreakToQuitDate = async (quitDate: string | null) => {
+    if (!user) return { days: 0, stage: 0 as ReturnType<typeof deriveStage>, freeze: 0 };
+    const days = quitDate ? Math.max(0, differenceInCalendarDays(new Date(), parseISO(quitDate))) : 0;
+    const stage = deriveStage(quitDate);
+    const period = periodForDays(days);
+
+    // Read dependency_level so freeze allocation matches the real matrix.
+    const { data: streak } = await supabase
+      .from("streak_record")
+      .select("dependency_level")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    const dep: DependencyLevel = streak?.dependency_level ?? "light";
+    const freeze = FREEZE_MATRIX[dep][period];
+
+    await supabase
+      .from("streak_record")
+      .update({
+        current_streak_days: days,
+        lifetime_smoke_free_days: days,
+        longest_streak_ever: days,
+        smoke_free_days_in_attempt: days,
+        active_days_in_attempt: days,
+        freeze_period: period,
+        freeze_max_current_period: freeze,
+        freeze_stock: freeze,
+        current_stage: stage,
+        streak_status: "active",
+        // last_confirmed yesterday (or today pre-quit) so the next confirm increments.
+        last_confirmed_date: days > 0 ? daysAgoISO(1) : todayISO(),
+        streak_start_date: quitDate ?? todayISO(),
+        paused_at: null,
+      })
+      .eq("user_id", user.id)
+      .throwOnError();
+
+    return { days, stage, freeze };
+  };
+
+  /** Set quit_date on the open attempt AND sync streak_record to match (source of truth). */
   const setQuitDate = async (label: string, value: string | null) => {
     if (!user) return;
     setBusy(label);
@@ -50,8 +117,10 @@ export const DevPanel: React.FC<DevPanelProps> = ({ onUnlockReturnGate }) => {
         .eq("user_id", user.id)
         .is("ended_at", null)
         .throwOnError();
+
+      const { days, stage, freeze } = await syncStreakToQuitDate(value);
       await refreshAll();
-      setLastResult(`quit_date → ${value ?? "null"} (${label})`);
+      setLastResult(`quit_date → ${value ?? "null"} · streak ${days}d · stage ${stage} · freezes ${freeze} (${label})`);
     } catch (e: any) {
       setLastResult(`ERROR: ${e.message}`);
     } finally {
@@ -59,7 +128,7 @@ export const DevPanel: React.FC<DevPanelProps> = ({ onUnlockReturnGate }) => {
     }
   };
 
-  /** Set last_confirmed_date on the streak record, then unlock the gate so the modal re-fires. */
+  /** Set last_confirmed_date, then unlock the gate so the return modal re-fires. */
   const setLastConfirmed = async (label: string, value: string) => {
     if (!user) return;
     setBusy(label);
@@ -69,9 +138,10 @@ export const DevPanel: React.FC<DevPanelProps> = ({ onUnlockReturnGate }) => {
         .update({ last_confirmed_date: value })
         .eq("user_id", user.id)
         .throwOnError();
-      onUnlockReturnGate();
       await refreshAll();
-      setLastResult(`last_confirmed_date → ${value} (${label})`);
+      onUnlockReturnGate();
+      const missed = Math.max(0, differenceInCalendarDays(new Date(), parseISO(value)) - 1);
+      setLastResult(`last_confirmed → ${value} · daysMissed ${missed} (${label})`);
     } catch (e: any) {
       setLastResult(`ERROR: ${e.message}`);
     } finally {
@@ -79,7 +149,7 @@ export const DevPanel: React.FC<DevPanelProps> = ({ onUnlockReturnGate }) => {
     }
   };
 
-  /** Set freeze_stock on the streak record (to exercise slip freeze/break paths). */
+  /** Override freeze_stock only (to test slip freeze vs break with freeze=0). */
   const setFreezeStock = async (label: string, value: number) => {
     if (!user) return;
     setBusy(label);
@@ -114,28 +184,47 @@ export const DevPanel: React.FC<DevPanelProps> = ({ onUnlockReturnGate }) => {
   };
 
   /**
-   * Reset streak_record to a clean baseline with last_confirmed_date = yesterday,
-   * so the NEXT Flow B / SOS 'Better' visibly increments (current 0→1, lifetime
-   * +1). Without this, repeat testing hits the "already confirmed today" guard.
+   * Reset the user's activity state to a clean slate WITHOUT touching onboarding
+   * (profiles) or the quit attempt. Re-syncs streak to the open attempt's quit_date
+   * so nothing desyncs. NOTE: the `log` table has no client DELETE policy (RLS allows
+   * INSERT/SELECT/UPDATE only), so log rows are NOT cleared here — run the SQL snippet.
    */
-  const resetStreakBaseline = async (label: string) => {
+  const resetActivityData = async (label: string) => {
     if (!user) return;
     setBusy(label);
     try {
+      const uid = user.id;
+      const { data: open } = await supabase
+        .from("quit_attempts")
+        .select("quit_date")
+        .eq("user_id", uid)
+        .is("ended_at", null)
+        .maybeSingle();
+
+      // Delete what the client may (NOT log — RLS blocks it).
+      await supabase.from("user_card_history").delete().eq("user_id", uid).throwOnError();
+      await supabase.from("user_tool_scores").delete().eq("user_id", uid).throwOnError();
+
+      // Streak re-synced to quit_date (consistent stage + matrix freezes).
+      const { days, stage } = await syncStreakToQuitDate(open?.quit_date ?? null);
+
       await supabase
-        .from("streak_record")
-        .update({
-          current_streak_days: 0,
-          streak_status: "active",
-          freeze_stock: 2,
-          last_confirmed_date: daysAgoISO(1),
-          streak_start_date: daysAgoISO(1),
-          paused_at: null,
-        })
-        .eq("user_id", user.id)
+        .from("slip_state")
+        .update({ red_flag_count: 0, last_slip_date: null, pattern_window_open: false })
+        .eq("user_id", uid)
         .throwOnError();
-      await refreshAll();
-      setLastResult(`streak reset: Day 0, freeze 2, last_confirmed = yesterday (${label})`);
+      await supabase
+        .from("user_sos_state")
+        .update({ failed_sos_count: 0, consecutive_sos_successes: 0, window_started_at: null })
+        .eq("user_id", uid)
+        .throwOnError();
+
+      await AsyncStorage.removeItem(`daily_checkin_satisfied:${uid}`);
+      await queryClient.invalidateQueries();
+      setLastResult(
+        `reset: cards/tools cleared, slip/SOS zeroed, streak synced to ${days}d/stage ${stage}. ` +
+          `NOTE: log rows NOT cleared — run the SQL snippet for that.`,
+      );
     } catch (e: any) {
       setLastResult(`ERROR: ${e.message}`);
     } finally {
@@ -149,7 +238,8 @@ export const DevPanel: React.FC<DevPanelProps> = ({ onUnlockReturnGate }) => {
     setBusy(label);
     try {
       await AsyncStorage.removeItem(`daily_checkin_satisfied:${user.id}`);
-      setLastResult(`daily check-in flag cleared — reopen Home to see the card (${label})`);
+      onResetCheckIn?.(); // re-read Home's in-memory flag so the card reappears now
+      setLastResult(`daily check-in flag cleared — card should reappear (${label})`);
     } catch (e: any) {
       setLastResult(`ERROR: ${e.message}`);
     } finally {
@@ -173,26 +263,26 @@ export const DevPanel: React.FC<DevPanelProps> = ({ onUnlockReturnGate }) => {
     <View className="border border-purple-800/60 rounded-2xl p-4 mt-2">
       <View className="flex-row items-center justify-between mb-3">
         <Text className="text-purple-400 text-xs font-bold uppercase tracking-wider">
-          DEV · Phase 3 verify
+          DEV · Phase 3+4 verify
         </Text>
         {busy && <ActivityIndicator size="small" color="#a855f7" />}
       </View>
 
-      <Text className="text-zinc-500 text-[11px] mb-1.5">Stage (quit_date)</Text>
+      <Text className="text-zinc-500 text-[11px] mb-1.5">Stage (sets quit_date + syncs streak & freezes)</Text>
       <View className="flex-row gap-2 mb-3">
         <View className="flex-1"><Btn label="Stage 0 (clear)" onPress={() => setQuitDate("Stage 0 (clear)", null)} /></View>
-        <View className="flex-1"><Btn label="Stage 1 (1d ago)" onPress={() => setQuitDate("Stage 1 (1d ago)", daysAgoISO(1))} /></View>
-        <View className="flex-1"><Btn label="Stage 3 (10d ago)" onPress={() => setQuitDate("Stage 3 (10d ago)", daysAgoISO(10))} /></View>
+        <View className="flex-1"><Btn label="Stage 1 (1d)" onPress={() => setQuitDate("Stage 1 (1d)", daysAgoISO(1))} /></View>
+        <View className="flex-1"><Btn label="Stage 3 (10d)" onPress={() => setQuitDate("Stage 3 (10d)", daysAgoISO(10))} /></View>
       </View>
 
-      <Text className="text-zinc-500 text-[11px] mb-1.5">Return modal (last_confirmed_date)</Text>
+      <Text className="text-zinc-500 text-[11px] mb-1.5">Return modal (sets last_confirmed → re-fires)</Text>
       <View className="flex-row gap-2 mb-3">
         <View className="flex-1"><Btn label="None (today)" onPress={() => setLastConfirmed("None (today)", todayISO())} /></View>
-        <View className="flex-1"><Btn label="STK-2 (2d ago)" onPress={() => setLastConfirmed("STK-2 (2d ago)", daysAgoISO(2))} /></View>
-        <View className="flex-1"><Btn label="STK-3 (6d ago)" onPress={() => setLastConfirmed("STK-3 (6d ago)", daysAgoISO(6))} /></View>
+        <View className="flex-1"><Btn label="STK-2 (missed 1)" onPress={() => setLastConfirmed("STK-2 (missed 1)", daysAgoISO(2))} /></View>
+        <View className="flex-1"><Btn label="STK-3 (missed 5)" onPress={() => setLastConfirmed("STK-3 (missed 5)", daysAgoISO(6))} /></View>
       </View>
 
-      <Text className="text-zinc-500 text-[11px] mb-1.5">Freezes (slip freeze vs break)</Text>
+      <Text className="text-zinc-500 text-[11px] mb-1.5">Freeze stock override (slip freeze vs break)</Text>
       <View className="flex-row gap-2 mb-3">
         <View className="flex-1"><Btn label="freeze = 2" onPress={() => setFreezeStock("freeze = 2", 2)} /></View>
         <View className="flex-1"><Btn label="freeze = 0" onPress={() => setFreezeStock("freeze = 0", 0)} /></View>
@@ -205,10 +295,22 @@ export const DevPanel: React.FC<DevPanelProps> = ({ onUnlockReturnGate }) => {
       </View>
 
       <Text className="text-zinc-500 text-[11px] mb-1.5">Reset (for repeat testing)</Text>
-      <View className="flex-row gap-2">
-        <View className="flex-1"><Btn label="Streak → clean baseline" onPress={() => resetStreakBaseline("Streak baseline")} /></View>
+      <View className="flex-row gap-2 mb-3">
         <View className="flex-1"><Btn label="Reset check-in flag" onPress={() => resetDailyCheckIn("Reset check-in flag")} /></View>
       </View>
+
+      <Text className="text-zinc-500 text-[11px] mb-1.5">
+        Reset activity (keeps onboarding + quit_date). Logs need SQL — see note.
+      </Text>
+      <Pressable
+        onPress={() => resetActivityData("Wipe activity")}
+        disabled={busy !== null}
+        className="border border-red-800/70 rounded-xl px-3 py-2.5 active:bg-red-950/40"
+      >
+        <Text className="text-red-400 text-xs font-semibold text-center">
+          {busy === "Wipe activity" ? "…" : "Reset cards / tools / slip / SOS (sync streak)"}
+        </Text>
+      </Pressable>
 
       {lastResult && (
         <Text className="text-zinc-600 text-[10px] mt-3 leading-relaxed">{lastResult}</Text>

@@ -51,7 +51,11 @@ export function useCreateLog() {
     },
     onSuccess: () => {
       if (user && attempt) {
-        qc.invalidateQueries({ queryKey: queryKeys.logs(user.id, attempt.attempt_id) })
+        // Invalidate the whole ['logs', userId] subtree, not just this attempt's list,
+        // so the dashboard's slip read (queryKeys.logsByType → ['logs', userId, 'type',
+        // 'slip']) also refreshes. A slip log must recompute the counters (Progress
+        // Dashboard §B5). Prefix-matching covers both keys with one call.
+        qc.invalidateQueries({ queryKey: ['logs', user.id] })
       }
     },
   })

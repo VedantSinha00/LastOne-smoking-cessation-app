@@ -14,11 +14,10 @@ import { checkFreezePeriodAdvance } from "../../lib/streak";
 import { Greeting } from "../../components/home/Greeting";
 import { StreakBar } from "../../components/home/StreakBar";
 import { HealthMilestonesCard } from "../../components/home/HealthMilestonesCard";
-import {
-  ProgressDashboardPlaceholder,
-  ContentCarouselPlaceholder,
-  InsightsPreviewPlaceholder,
-} from "../../components/home/placeholders";
+import { InsightsPreviewPlaceholder } from "../../components/home/placeholders";
+import { ProgressDashboard } from "../../components/home/ProgressDashboard";
+import { ContentCarousel } from "../../components/home/ContentCarousel";
+import { SavingsMilestoneCard } from "../../components/home/SavingsMilestoneCard";
 import { DailyCheckInCard } from "../../components/home/DailyCheckInCard";
 import { useDailyCheckIn } from "../../hooks/useDailyCheckIn";
 import { ReturnModalShort, type Stk2Choice } from "../../components/home/ReturnModalShort";
@@ -32,7 +31,7 @@ export default function Home() {
   const { stage, quitDate, isLoading: stageLoading } = useStage();
   const { data: streak, isLoading: streakLoading } = useStreakRecord();
   const returnModal = useReturnModal();
-  const { satisfied: checkInSatisfied } = useDailyCheckIn();
+  const { satisfied: checkInSatisfied, refresh: refreshCheckIn } = useDailyCheckIn();
 
   // Return-modal gate. The option handlers apply the real streak writes
   // (lib/returnModal) then clear the gate so home renders with fresh values.
@@ -41,7 +40,9 @@ export default function Home() {
   const refreshStreak = () => {
     if (!user) return;
     queryClient.invalidateQueries({ queryKey: queryKeys.streakRecord(user.id) });
-    queryClient.invalidateQueries({ queryKey: queryKeys.currentAttempt(user.id) });
+    // Prefix invalidation so the dashboard's allAttempts read refreshes too — the
+    // return-modal resolution can move the quit attempt, which moves the counters.
+    queryClient.invalidateQueries({ queryKey: ["quit_attempt"] });
   };
 
   const handleResolveStk2 = async (choice: Stk2Choice) => {
@@ -114,13 +115,16 @@ export default function Home() {
       {/* 3 — Coping Surface Card: conditional on alert_level=2 (Step 16, Insights) */}
 
       {/* 4 — Progress Dashboard */}
-      <ProgressDashboardPlaceholder />
+      <ProgressDashboard stage={stage} />
+
+      {/* 4b — Savings milestone celebration (inline, fires once per threshold) */}
+      <SavingsMilestoneCard />
 
       {/* 5 — Daily Check-In (Stage 1+, until satisfied) */}
       {showDailyCheckIn && <DailyCheckInCard />}
 
       {/* 6 — Content Carousel */}
-      <ContentCarouselPlaceholder />
+      <ContentCarousel />
 
       {/* 7 — Insights Preview */}
       <InsightsPreviewPlaceholder />
@@ -134,7 +138,10 @@ export default function Home() {
 
       {__DEV__ && (
         <>
-          <DevPanel onUnlockReturnGate={() => setReturnResolved(false)} />
+          <DevPanel
+            onUnlockReturnGate={() => setReturnResolved(false)}
+            onResetCheckIn={refreshCheckIn}
+          />
           <Pressable
             onPress={handleRestartOnboarding}
             className="border border-amber-800 rounded-2xl p-4 items-center active:bg-zinc-900"

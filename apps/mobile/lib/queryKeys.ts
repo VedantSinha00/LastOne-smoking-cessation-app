@@ -1,5 +1,9 @@
 export const queryKeys = {
   profile:        (userId: string) => ['profile', userId] as const,
+  // Narrow onboarding-gate check used by the root layout. Kept on a SEPARATE key so
+  // its slim select('onboarding_complete') never clobbers the full profile cache
+  // (which useProfile/useDashboard read) under a shared key.
+  onboardingGate: (userId: string) => ['profile', userId, 'onboarding_gate'] as const,
   currentAttempt: (userId: string) => ['quit_attempt', 'current', userId] as const,
   allAttempts:    (userId: string) => ['quit_attempt', 'all', userId] as const,
   streakRecord:   (userId: string) => ['streak_record', userId] as const,
