@@ -56,7 +56,9 @@ export default function LogC() {
     if (!user) return;
     qc.invalidateQueries({ queryKey: queryKeys.streakRecord(user.id) });
     qc.invalidateQueries({ queryKey: queryKeys.slipState(user.id) });
-    qc.invalidateQueries({ queryKey: queryKeys.currentAttempt(user.id) });
+    // Prefix so the dashboard's allAttempts read refreshes alongside currentAttempt —
+    // Flow C can change quit state (C3 restart) which moves the counters (§B5).
+    qc.invalidateQueries({ queryKey: ["quit_attempt"] });
   };
 
   // C2 commit — requires slip_type. Pre-quit: slip_type stays null (Logging §B4).

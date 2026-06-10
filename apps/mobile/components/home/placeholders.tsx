@@ -8,27 +8,6 @@ import { View, Text } from 'react-native'
  * at the step noted below.
  */
 
-/** Section C — Progress Dashboard. Real counters: Step 12 (Progress Dashboard). */
-export const ProgressDashboardPlaceholder: React.FC = () => (
-  <View className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-md">
-    <Text className="text-zinc-400 text-xs font-bold uppercase tracking-wider mb-3">
-      Your Progress
-    </Text>
-    <View className="flex-row justify-between">
-      {[
-        { label: 'Saved', value: '₹0' },
-        { label: 'Time back', value: '0h' },
-        { label: 'Not smoked', value: '0' },
-      ].map((c) => (
-        <View key={c.label} className="items-center flex-1">
-          <Text className="text-white text-xl font-extrabold">{c.value}</Text>
-          <Text className="text-zinc-500 text-[11px] mt-1">{c.label}</Text>
-        </View>
-      ))}
-    </View>
-  </View>
-)
-
 /** Section D — Content Carousel. Real cards: Step 14 (Content Cards). */
 export const ContentCarouselPlaceholder: React.FC = () => (
   <View className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-md">

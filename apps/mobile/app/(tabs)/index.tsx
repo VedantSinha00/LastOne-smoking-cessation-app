@@ -15,10 +15,10 @@ import { Greeting } from "../../components/home/Greeting";
 import { StreakBar } from "../../components/home/StreakBar";
 import { HealthMilestonesCard } from "../../components/home/HealthMilestonesCard";
 import {
-  ProgressDashboardPlaceholder,
   ContentCarouselPlaceholder,
   InsightsPreviewPlaceholder,
 } from "../../components/home/placeholders";
+import { ProgressDashboard } from "../../components/home/ProgressDashboard";
 import { DailyCheckInCard } from "../../components/home/DailyCheckInCard";
 import { useDailyCheckIn } from "../../hooks/useDailyCheckIn";
 import { ReturnModalShort, type Stk2Choice } from "../../components/home/ReturnModalShort";
@@ -41,7 +41,9 @@ export default function Home() {
   const refreshStreak = () => {
     if (!user) return;
     queryClient.invalidateQueries({ queryKey: queryKeys.streakRecord(user.id) });
-    queryClient.invalidateQueries({ queryKey: queryKeys.currentAttempt(user.id) });
+    // Prefix invalidation so the dashboard's allAttempts read refreshes too — the
+    // return-modal resolution can move the quit attempt, which moves the counters.
+    queryClient.invalidateQueries({ queryKey: ["quit_attempt"] });
   };
 
   const handleResolveStk2 = async (choice: Stk2Choice) => {
@@ -114,7 +116,7 @@ export default function Home() {
       {/* 3 — Coping Surface Card: conditional on alert_level=2 (Step 16, Insights) */}
 
       {/* 4 — Progress Dashboard */}
-      <ProgressDashboardPlaceholder />
+      <ProgressDashboard stage={stage} />
 
       {/* 5 — Daily Check-In (Stage 1+, until satisfied) */}
       {showDailyCheckIn && <DailyCheckInCard />}

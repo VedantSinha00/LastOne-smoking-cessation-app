@@ -260,6 +260,7 @@ export async function completeOnboarding(state: OnboardingState): Promise<void> 
   // 7. Refresh caches. Awaiting the profile invalidation lets the root layout
   //    observe onboarding_complete = true and route to the tabs.
   await queryClient.invalidateQueries({ queryKey: queryKeys.profile(userId) })
-  queryClient.invalidateQueries({ queryKey: queryKeys.currentAttempt(userId) })
+  // Prefix so the dashboard's allAttempts read picks up the new quit_date too.
+  queryClient.invalidateQueries({ queryKey: ['quit_attempt'] })
   queryClient.invalidateQueries({ queryKey: queryKeys.streakRecord(userId) })
 }
