@@ -8,18 +8,6 @@ import { View, Text } from 'react-native'
  * at the step noted below.
  */
 
-/** Section D — Content Carousel. Real cards: Step 14 (Content Cards). */
-export const ContentCarouselPlaceholder: React.FC = () => (
-  <View className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-md">
-    <Text className="text-zinc-400 text-xs font-bold uppercase tracking-wider mb-2">
-      For you today
-    </Text>
-    <Text className="text-zinc-500 text-sm leading-relaxed">
-      Daily content cards will appear here.
-    </Text>
-  </View>
-)
-
 /** Section F — Insights Preview card. Real insight: Step 16 (Insights). */
 export const InsightsPreviewPlaceholder: React.FC = () => (
   <View className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-md">

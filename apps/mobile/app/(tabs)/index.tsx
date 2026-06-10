@@ -14,11 +14,10 @@ import { checkFreezePeriodAdvance } from "../../lib/streak";
 import { Greeting } from "../../components/home/Greeting";
 import { StreakBar } from "../../components/home/StreakBar";
 import { HealthMilestonesCard } from "../../components/home/HealthMilestonesCard";
-import {
-  ContentCarouselPlaceholder,
-  InsightsPreviewPlaceholder,
-} from "../../components/home/placeholders";
+import { InsightsPreviewPlaceholder } from "../../components/home/placeholders";
 import { ProgressDashboard } from "../../components/home/ProgressDashboard";
+import { ContentCarousel } from "../../components/home/ContentCarousel";
+import { SavingsMilestoneCard } from "../../components/home/SavingsMilestoneCard";
 import { DailyCheckInCard } from "../../components/home/DailyCheckInCard";
 import { useDailyCheckIn } from "../../hooks/useDailyCheckIn";
 import { ReturnModalShort, type Stk2Choice } from "../../components/home/ReturnModalShort";
@@ -118,11 +117,14 @@ export default function Home() {
       {/* 4 — Progress Dashboard */}
       <ProgressDashboard stage={stage} />
 
+      {/* 4b — Savings milestone celebration (inline, fires once per threshold) */}
+      <SavingsMilestoneCard />
+
       {/* 5 — Daily Check-In (Stage 1+, until satisfied) */}
       {showDailyCheckIn && <DailyCheckInCard />}
 
       {/* 6 — Content Carousel */}
-      <ContentCarouselPlaceholder />
+      <ContentCarousel />
 
       {/* 7 — Insights Preview */}
       <InsightsPreviewPlaceholder />
