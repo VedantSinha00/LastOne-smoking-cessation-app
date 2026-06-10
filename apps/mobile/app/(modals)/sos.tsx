@@ -16,6 +16,7 @@ import {
   updateToolScore,
   recordSosOutcome,
   getSosEscalationLevel,
+  resetSosWindow,
   type SosEscalationLevel,
 } from "../../lib/sos";
 import { confirmSmokeFreeDay } from "../../lib/streak";
@@ -45,6 +46,7 @@ export default function SosModal() {
   const [context, setContext] = useState<CravingContext>("unknown");
   const [tool, setTool] = useState<CopingTool | null>(null);
   const [escalation, setEscalation] = useState<SosEscalationLevel>(0);
+  const [processing, setProcessing] = useState(false); // guards the check-in buttons
   const logIdRef = useRef<string | null>(null);
   const startedAtRef = useRef<number>(0);
   const [whatHelped, setWhatHelped] = useState<string[]>([]);
@@ -90,6 +92,7 @@ export default function SosModal() {
     if (logIdRef.current) {
       await updateLog.mutateAsync({ logId: logIdRef.current, patch: { tool_duration_seconds: seconds } });
     }
+    setProcessing(false); // fresh check-in is tappable
     setScreen("SOS3");
   };
 
@@ -102,6 +105,8 @@ export default function SosModal() {
   };
 
   const better = async () => {
+    if (processing) return;
+    setProcessing(true);
     if (!user) return router.back();
     if (logIdRef.current) {
       await updateLog.mutateAsync({ logId: logIdRef.current, patch: { tool_helpful: true, post_tool_state: "better", what_helped: whatHelped.length ? whatHelped : null } });
@@ -115,6 +120,8 @@ export default function SosModal() {
   };
 
   const same = async () => {
+    if (processing) return;
+    setProcessing(true);
     if (!user) return router.back();
     if (logIdRef.current) {
       await updateLog.mutateAsync({ logId: logIdRef.current, patch: { tool_helpful: false, post_tool_state: "same" } });
@@ -123,10 +130,13 @@ export default function SosModal() {
     await recordSosOutcome(user.id, "same");
     // Re-read escalation so the next surface reflects the new failed_sos_count (§8.1).
     setEscalation(await getSosEscalationLevel(user.id));
+    setProcessing(false); // returns to the tool list — re-enable for the next session
     setScreen("SOS1"); // 'Try another tool?'
   };
 
   const smoked = async () => {
+    if (processing) return;
+    setProcessing(true);
     if (user) {
       if (logIdRef.current) {
         await updateLog.mutateAsync({ logId: logIdRef.current, patch: { tool_helpful: false, post_tool_state: "smoked" } });
@@ -135,6 +145,27 @@ export default function SosModal() {
     }
     // Compressed Flow C — slip log handles acknowledgement + support.
     router.replace("/(modals)/log-c");
+  };
+
+  // DEV ONLY: the escalation placeholder cards aren't yet tappable into a real tool
+  // (Step 18), so there's no way to drive failed_sos_count past level 1 by hand. This
+  // simulates one more failed SOS session so the 2→3 ladder transition is testable.
+  const devSimulateFailure = async () => {
+    if (!user || processing) return;
+    setProcessing(true);
+    await recordSosOutcome(user.id, "same");
+    setEscalation(await getSosEscalationLevel(user.id));
+    setProcessing(false);
+  };
+
+  // DEV ONLY: clear the failed-SOS window so escalation drops back to level 0 (normal
+  // waterfall), so the 0→1→2 progression can be re-tested from scratch.
+  const devResetEscalation = async () => {
+    if (!user || processing) return;
+    setProcessing(true);
+    await resetSosWindow(user.id);
+    setEscalation(0);
+    setProcessing(false);
   };
 
   // ── Context gate ────────────────────────────────────────────────────────────
@@ -193,7 +224,7 @@ export default function SosModal() {
         ) : (
           <View className="gap-2">
             {/* Level 1 (2 failures): Call a Friend pinned to slot 1, tools fill 2–3. */}
-            {escalation === 1 && <CallAFriendCard pinned />}
+            {escalation === 1 && <CallAFriendCard />}
             {tools.map((t) => (
               <Pressable
                 key={t.tool_id}
@@ -206,6 +237,33 @@ export default function SosModal() {
                 </Text>
               </Pressable>
             ))}
+          </View>
+        )}
+
+        {/* DEV ONLY — drive + reset the escalation ladder (no tappable escalation tool
+            exists yet; that surfacing is Step 18). */}
+        {__DEV__ && (
+          <View className="mt-4 gap-2">
+            {escalation > 0 && (
+              <Pressable
+                onPress={devSimulateFailure}
+                disabled={processing}
+                className="border border-purple-800/60 rounded-xl p-3 active:bg-purple-950/30"
+              >
+                <Text className="text-purple-400 text-xs font-semibold text-center">
+                  DEV · Simulate another failed SOS (level {escalation})
+                </Text>
+              </Pressable>
+            )}
+            <Pressable
+              onPress={devResetEscalation}
+              disabled={processing}
+              className="border border-purple-800/60 rounded-xl p-3 active:bg-purple-950/30"
+            >
+              <Text className="text-purple-400 text-xs font-semibold text-center">
+                DEV · Reset escalation → level 0
+              </Text>
+            </Pressable>
           </View>
         )}
       </ScrollView>
@@ -240,14 +298,14 @@ export default function SosModal() {
         allowOther={false}
       />
 
-      <View className="gap-3 mt-6">
-        <Pressable onPress={better} className="bg-emerald-600/20 border border-emerald-600 rounded-2xl p-5 active:opacity-80">
+      <View className={`gap-3 mt-6 ${processing ? "opacity-50" : ""}`}>
+        <Pressable disabled={processing} onPress={better} className="bg-emerald-600/20 border border-emerald-600 rounded-2xl p-5 active:opacity-80">
           <Text className="text-emerald-400 font-bold text-center text-base">Better — the craving passed</Text>
         </Pressable>
-        <Pressable onPress={same} className="bg-zinc-900 border border-zinc-700 rounded-2xl p-5 active:bg-zinc-800">
+        <Pressable disabled={processing} onPress={same} className="bg-zinc-900 border border-zinc-700 rounded-2xl p-5 active:bg-zinc-800">
           <Text className="text-zinc-200 font-bold text-center text-base">About the same</Text>
         </Pressable>
-        <Pressable onPress={smoked} className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 active:bg-zinc-800">
+        <Pressable disabled={processing} onPress={smoked} className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 active:bg-zinc-800">
           <Text className="text-zinc-400 font-semibold text-center">I smoked</Text>
         </Pressable>
       </View>
@@ -261,9 +319,9 @@ export default function SosModal() {
  * owned by Step 18 (Giving Up Support). For now these render as "coming soon"
  * placeholders so the surface is correct without inventing Step-18 plumbing.
  */
-const CallAFriendCard: React.FC<{ pinned?: boolean }> = ({ pinned }) => (
+const CallAFriendCard: React.FC = () => (
   <View className="bg-zinc-900 border border-amber-700/50 rounded-2xl p-4">
-    <Text className="text-amber-400 font-semibold">Call a friend{pinned ? "" : ""}</Text>
+    <Text className="text-amber-400 font-semibold">Call a friend</Text>
     <Text className="text-zinc-500 text-xs mt-0.5">Coming soon — reach someone who gets it.</Text>
   </View>
 );

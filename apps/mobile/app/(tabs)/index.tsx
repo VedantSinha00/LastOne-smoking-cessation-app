@@ -32,7 +32,7 @@ export default function Home() {
   const { stage, quitDate, isLoading: stageLoading } = useStage();
   const { data: streak, isLoading: streakLoading } = useStreakRecord();
   const returnModal = useReturnModal();
-  const { satisfied: checkInSatisfied } = useDailyCheckIn();
+  const { satisfied: checkInSatisfied, refresh: refreshCheckIn } = useDailyCheckIn();
 
   // Return-modal gate. The option handlers apply the real streak writes
   // (lib/returnModal) then clear the gate so home renders with fresh values.
@@ -136,7 +136,10 @@ export default function Home() {
 
       {__DEV__ && (
         <>
-          <DevPanel onUnlockReturnGate={() => setReturnResolved(false)} />
+          <DevPanel
+            onUnlockReturnGate={() => setReturnResolved(false)}
+            onResetCheckIn={refreshCheckIn}
+          />
           <Pressable
             onPress={handleRestartOnboarding}
             className="border border-amber-800 rounded-2xl p-4 items-center active:bg-zinc-900"

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { AppState } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useAuth } from './useAuth'
 import { useProfile } from './useProfile'
@@ -30,6 +31,8 @@ export interface DailyCheckIn {
   satisfied: boolean
   isLoading: boolean
   markSatisfied: () => Promise<void>
+  /** Force a re-read of the stored flag (e.g. after a dev reset clears it). */
+  refresh: () => Promise<void>
 }
 
 export function useDailyCheckIn(): DailyCheckIn {
@@ -42,19 +45,30 @@ export function useDailyCheckIn(): DailyCheckIn {
 
   const storageKey = user ? `${STORAGE_PREFIX}${user.id}` : null
 
+  // Re-read the stored flag against today's key. Re-run on mount, on storageKey/tz
+  // change, AND whenever the app returns to the foreground — the latter catches both
+  // midnight rollover and an external clear (e.g. the DevPanel reset button), neither
+  // of which would otherwise update this hook's in-memory state until a full remount.
   useEffect(() => {
     let cancelled = false
-    if (!storageKey) {
-      setIsLoading(false)
-      return
+    const read = () => {
+      if (!storageKey) {
+        setIsLoading(false)
+        return
+      }
+      AsyncStorage.getItem(storageKey).then((stored) => {
+        if (cancelled) return
+        setSatisfied(stored === todayKey(timezone))
+        setIsLoading(false)
+      })
     }
-    AsyncStorage.getItem(storageKey).then((stored) => {
-      if (cancelled) return
-      setSatisfied(stored === todayKey(timezone))
-      setIsLoading(false)
+    read()
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') read()
     })
     return () => {
       cancelled = true
+      sub.remove()
     }
   }, [storageKey, timezone])
 
@@ -64,5 +78,11 @@ export function useDailyCheckIn(): DailyCheckIn {
     setSatisfied(true)
   }, [storageKey, timezone])
 
-  return { satisfied, isLoading, markSatisfied }
+  const refresh = useCallback(async () => {
+    if (!storageKey) return
+    const stored = await AsyncStorage.getItem(storageKey)
+    setSatisfied(stored === todayKey(timezone))
+  }, [storageKey, timezone])
+
+  return { satisfied, isLoading, markSatisfied, refresh }
 }

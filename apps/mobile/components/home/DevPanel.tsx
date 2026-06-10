@@ -32,6 +32,8 @@ import type { DependencyLevel } from "../../types/database";
 interface DevPanelProps {
   /** Reset the home screen's local return-modal gate so the modal re-fires. */
   onUnlockReturnGate: () => void;
+  /** Tell Home to re-read the daily-check-in flag after we clear it (in-memory state). */
+  onResetCheckIn?: () => void;
 }
 
 const todayISO = () => format(new Date(), "yyyy-MM-dd");
@@ -41,7 +43,7 @@ const daysAgoISO = (n: number) => format(subDays(new Date(), n), "yyyy-MM-dd");
 const periodForDays = (days: number): 0 | 1 | 2 | 3 =>
   days >= 91 ? 3 : days >= 29 ? 2 : days >= 15 ? 1 : 0;
 
-export const DevPanel: React.FC<DevPanelProps> = ({ onUnlockReturnGate }) => {
+export const DevPanel: React.FC<DevPanelProps> = ({ onUnlockReturnGate, onResetCheckIn }) => {
   const { user } = useAuth();
   const [busy, setBusy] = useState<string | null>(null);
   const [lastResult, setLastResult] = useState<string | null>(null);
@@ -233,7 +235,8 @@ export const DevPanel: React.FC<DevPanelProps> = ({ onUnlockReturnGate }) => {
     setBusy(label);
     try {
       await AsyncStorage.removeItem(`daily_checkin_satisfied:${user.id}`);
-      setLastResult(`daily check-in flag cleared — reopen Home to see the card (${label})`);
+      onResetCheckIn?.(); // re-read Home's in-memory flag so the card reappears now
+      setLastResult(`daily check-in flag cleared — card should reappear (${label})`);
     } catch (e: any) {
       setLastResult(`ERROR: ${e.message}`);
     } finally {

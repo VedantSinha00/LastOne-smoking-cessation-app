@@ -90,9 +90,33 @@ export function calcLifetimeSmokeFreeDays(
   return total
 }
 
-/** Total cigarettes logged as actually smoked (slip rows), lifetime. */
-export function calcCigarettesSmoked(slips: SlipRow[]): number {
-  return slips.reduce((sum, s) => sum + normaliseCount(s.cigarette_count), 0)
+/**
+ * Total cigarettes logged as actually smoked, counting ONLY slips that fall inside a
+ * quit-attempt window [quit_date, end). This must mirror the window logic in
+ * calcLifetimeSmokeFreeDays — otherwise smoke-free days (window-filtered) and the
+ * cigarette deduction (lifetime) disagree, over-deducting slips logged outside any
+ * attempt (e.g. dev test slips left over after a quit_date is backdated). Slips with
+ * no attempt window to belong to are not deductions (§B2 — deductions are within
+ * quit attempts).
+ */
+export function calcCigarettesSmoked(
+  slips: SlipRow[],
+  attempts: AttemptRow[],
+  now: Date = new Date(),
+): number {
+  // Precompute attempt windows once.
+  const windows = attempts
+    .filter((a) => a.quit_date)
+    .map((a) => ({ start: parseISO(a.quit_date as string), end: a.ended_at ? parseISO(a.ended_at) : now }))
+
+  let total = 0
+  for (const s of slips) {
+    const t = parseISO(s.timestamp)
+    if (windows.some((w) => t >= w.start && t < w.end)) {
+      total += normaliseCount(s.cigarette_count)
+    }
+  }
+  return total
 }
 
 /** money_saved in paise = gross − slip deductions, floored at 0 (§B2 Money Saved). */
@@ -136,7 +160,7 @@ export function computeSavings(inputs: SavingsInputs, now: Date = new Date()): S
     hasOpenAttempt && cigarettesPerDay != null && cigarettesPerDay > 0 && pricePerCigarette != null
 
   const lifetimeSmokeFreeDays = calcLifetimeSmokeFreeDays(attempts, slips, now)
-  const cigarettesSmoked = calcCigarettesSmoked(slips)
+  const cigarettesSmoked = calcCigarettesSmoked(slips, attempts, now)
   const cpd = cigarettesPerDay ?? 0
   const price = pricePerCigarette ?? 0
 
