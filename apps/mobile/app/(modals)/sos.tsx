@@ -3,45 +3,73 @@ import { View, Text, ScrollView, Pressable, ActivityIndicator } from "react-nati
 import { useRouter } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../../hooks/useAuth";
-import { useCopingTools, type RankedTool } from "../../hooks/useCopingTools";
+import { useSosSelection } from "../../hooks/useSosSelection";
 import { useCreateLog } from "../../hooks/useCreateLog";
 import { useUpdateLog } from "../../hooks/useUpdateLog";
 import { useDailyCheckIn } from "../../hooks/useDailyCheckIn";
 import { ChipMultiSelect } from "../../components/logging/chip-multi-select";
+import { ToolRunner } from "../../components/coping/ToolRunner";
 import { Button } from "../../components/ui/button";
 import { queryKeys } from "../../lib/queryKeys";
 import { WHAT_HELPED_TOKENS } from "../../lib/logOptions";
-import { updateToolScore, checkSosEscalation } from "../../lib/sos";
+import {
+  updateToolScore,
+  recordSosOutcome,
+  getSosEscalationLevel,
+  type SosEscalationLevel,
+} from "../../lib/sos";
 import { confirmSmokeFreeDay } from "../../lib/streak";
+import type { CravingContext } from "../../lib/sosTool";
+import type { Database } from "../../types/database";
 
-type Screen = "SOS1" | "SOS2" | "SOS3";
+type CopingTool = Database["public"]["Tables"]["coping_tools"]["Row"];
+type Screen = "GATE" | "SOS1" | "SOS2" | "SOS3";
 
 /**
- * SOS Flow (Logging Spec §6 / Architecture Guide §9.8).
- * SOS-1: tool selection (commit point — createLog sos + tool_selected).
- * SOS-2: tool execution, duration tracked → updateLog tool_duration_seconds.
- * SOS-3: skippable post-tool check-in.
- *   Skip → tool_helpful/post_tool_state null (excluded from scoring).
- *   Better → +1 score, confirmSmokeFreeDay('sos'). Same → -1, checkSosEscalation.
- *   I smoked → compressed Flow C (route to slip log).
+ * SOS Flow (Coping Tools §06 / Logging Spec §6).
+ * GATE: context gate — "Around people / On my own" — feeds the selection waterfall.
+ * SOS-1: three waterfall-selected tools (escalation ladder applied — §8.1).
+ * SOS-2: tool runner, duration tracked → updateLog tool_duration_seconds.
+ * SOS-3: skippable check-in. Better → +1 + confirmSmokeFreeDay; Same → -1; I smoked
+ *        → compressed Flow C. Outcome recorded into user_sos_state (§B2).
  */
 export default function SosModal() {
   const router = useRouter();
   const { user } = useAuth();
-  const { data: tools, isLoading } = useCopingTools();
   const createLog = useCreateLog();
   const updateLog = useUpdateLog();
   const { markSatisfied } = useDailyCheckIn();
   const qc = useQueryClient();
 
-  const [screen, setScreen] = useState<Screen>("SOS1");
-  const [tool, setTool] = useState<RankedTool | null>(null);
+  const [screen, setScreen] = useState<Screen>("GATE");
+  const [context, setContext] = useState<CravingContext>("unknown");
+  const [tool, setTool] = useState<CopingTool | null>(null);
+  const [escalation, setEscalation] = useState<SosEscalationLevel>(0);
   const logIdRef = useRef<string | null>(null);
   const startedAtRef = useRef<number>(0);
   const [whatHelped, setWhatHelped] = useState<string[]>([]);
 
+  // Waterfall runs once context is chosen. Intensity is unknown here (SOS triggered
+  // without an intensity log) — the cold-start "unknown" column handles that.
+  const { data: tools, isLoading } = useSosSelection(
+    { context },
+    screen !== "GATE",
+  );
+
+  // Read escalation level when we leave the gate (§8.1 ladder).
+  useEffect(() => {
+    if (screen === "SOS1" && user) {
+      getSosEscalationLevel(user.id).then(setEscalation);
+    }
+  }, [screen, user]);
+
+  const chooseContext = (c: CravingContext) => {
+    setContext(c);
+    setScreen("SOS1");
+  };
+
   // SOS-1 commit — log entry created at tool selection.
-  const selectTool = async (t: RankedTool) => {
+  const selectTool = async (t: CopingTool) => {
     setTool(t);
     startedAtRef.current = Date.now();
     setScreen("SOS2");
@@ -53,7 +81,7 @@ export default function SosModal() {
       });
       logIdRef.current = row.log_id;
     } catch {
-      // Non-fatal; the tool still runs.
+      /* Non-fatal; the tool still runs. */
     }
   };
 
@@ -79,6 +107,7 @@ export default function SosModal() {
       await updateLog.mutateAsync({ logId: logIdRef.current, patch: { tool_helpful: true, post_tool_state: "better", what_helped: whatHelped.length ? whatHelped : null } });
     }
     if (tool) await updateToolScore(user.id, tool.tool_id, +1, "better");
+    await recordSosOutcome(user.id, "better");
     await confirmSmokeFreeDay(user.id, "sos");
     await markSatisfied();
     qc.invalidateQueries({ queryKey: queryKeys.streakRecord(user.id) });
@@ -91,19 +120,52 @@ export default function SosModal() {
       await updateLog.mutateAsync({ logId: logIdRef.current, patch: { tool_helpful: false, post_tool_state: "same" } });
     }
     if (tool) await updateToolScore(user.id, tool.tool_id, -1, "same");
-    await checkSosEscalation(user.id); // escalation surfacing handled in GU (Step 18)
+    await recordSosOutcome(user.id, "same");
+    // Re-read escalation so the next surface reflects the new failed_sos_count (§8.1).
+    setEscalation(await getSosEscalationLevel(user.id));
     setScreen("SOS1"); // 'Try another tool?'
   };
 
   const smoked = async () => {
-    if (logIdRef.current) {
-      await updateLog.mutateAsync({ logId: logIdRef.current, patch: { tool_helpful: false, post_tool_state: "smoked" } });
+    if (user) {
+      if (logIdRef.current) {
+        await updateLog.mutateAsync({ logId: logIdRef.current, patch: { tool_helpful: false, post_tool_state: "smoked" } });
+      }
+      await recordSosOutcome(user.id, "smoked");
     }
     // Compressed Flow C — slip log handles acknowledgement + support.
     router.replace("/(modals)/log-c");
   };
 
-  // ── SOS-1 — Tool Selection ──────────────────────────────────────────────────
+  // ── Context gate ────────────────────────────────────────────────────────────
+  if (screen === "GATE") {
+    return (
+      <View className="flex-1 bg-zinc-950 px-6 py-8 justify-center">
+        <View className="flex-row justify-end mb-4">
+          <Pressable onPress={() => router.back()} className="px-3 py-1.5 bg-zinc-900 border border-zinc-800 rounded-lg">
+            <Text className="text-zinc-400 text-sm">Exit</Text>
+          </Pressable>
+        </View>
+        <Text className="text-red-500 text-3xl font-black mb-2">Ride it out</Text>
+        <Text className="text-zinc-400 text-base mb-10 leading-relaxed">
+          Where are you right now? This helps pick the right thing to do.
+        </Text>
+        <View className="gap-3">
+          <Pressable onPress={() => chooseContext("public")} className="bg-zinc-900 border border-zinc-700 rounded-2xl p-6 active:bg-zinc-800">
+            <Text className="text-white text-lg font-bold text-center">Around people</Text>
+          </Pressable>
+          <Pressable onPress={() => chooseContext("private")} className="bg-zinc-900 border border-zinc-700 rounded-2xl p-6 active:bg-zinc-800">
+            <Text className="text-white text-lg font-bold text-center">On my own</Text>
+          </Pressable>
+          <Pressable onPress={() => chooseContext("unknown")} className="p-3 active:opacity-70">
+            <Text className="text-zinc-500 text-sm text-center">Skip — just show me something</Text>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
+
+  // ── SOS-1 — Tool Selection (with escalation ladder) ─────────────────────────
   if (screen === "SOS1") {
     return (
       <ScrollView className="flex-1 bg-zinc-950 px-6 py-8" contentContainerClassName="pb-12">
@@ -117,16 +179,21 @@ export default function SosModal() {
           Pick one. Cravings peak and pass in a few minutes — let&apos;s get you through it.
         </Text>
 
-        {isLoading ? (
+        {/* Escalation level 2 (3+ failures): suspend the waterfall, escalation only (§8.1). */}
+        {escalation === 2 ? (
+          <EscalationOnly />
+        ) : isLoading ? (
           <ActivityIndicator color="#ef4444" className="mt-8" />
         ) : !tools?.length ? (
           <View className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6">
             <Text className="text-zinc-400 text-sm leading-relaxed">
-              No coping tools are available yet. (The tool catalog needs seeding — see Step 9 DB setup.)
+              No coping tools are available right now.
             </Text>
           </View>
         ) : (
           <View className="gap-2">
+            {/* Level 1 (2 failures): Call a Friend pinned to slot 1, tools fill 2–3. */}
+            {escalation === 1 && <CallAFriendCard pinned />}
             {tools.map((t) => (
               <Pressable
                 key={t.tool_id}
@@ -135,7 +202,7 @@ export default function SosModal() {
               >
                 <Text className="text-white font-semibold">{t.name}</Text>
                 <Text className="text-zinc-500 text-xs mt-0.5">
-                  {Math.round(t.duration_seconds / 60)} min · {t.category.replace(/_/g, " ")}
+                  {Math.round(t.duration_seconds / 60) || 1} min · {t.category.replace(/_/g, " ")}
                 </Text>
               </Pressable>
             ))}
@@ -145,9 +212,13 @@ export default function SosModal() {
     );
   }
 
-  // ── SOS-2 — Tool Execution ──────────────────────────────────────────────────
+  // ── SOS-2 — Tool runner ──────────────────────────────────────────────────────
   if (screen === "SOS2") {
-    return <ToolExecution tool={tool} onDone={finishTool} />;
+    if (!tool) {
+      setScreen("SOS1");
+      return null;
+    }
+    return <ToolRunner tool={tool} onDone={finishTool} />;
   }
 
   // ── SOS-3 — Post-Tool Check-in (skippable) ──────────────────────────────────
@@ -184,43 +255,28 @@ export default function SosModal() {
   );
 }
 
-/** SOS-2 — tool runner. Breathing tools get the 4-4-4 timer; others a simple timer. */
-function ToolExecution({ tool, onDone }: { tool: RankedTool | null; onDone: () => void }) {
-  const isBreathing = tool?.family === "breathing" || tool?.category === "breathing";
-  const [phase, setPhase] = useState<"inhale" | "hold" | "exhale">("inhale");
-  const [seconds, setSeconds] = useState(4);
+/**
+ * Escalation tools — Call a Friend + Quit Specialist Line. The escalation LADDER logic
+ * lives here (Step 13), but the working dialler + the SecureStore contact number are
+ * owned by Step 18 (Giving Up Support). For now these render as "coming soon"
+ * placeholders so the surface is correct without inventing Step-18 plumbing.
+ */
+const CallAFriendCard: React.FC<{ pinned?: boolean }> = ({ pinned }) => (
+  <View className="bg-zinc-900 border border-amber-700/50 rounded-2xl p-4">
+    <Text className="text-amber-400 font-semibold">Call a friend{pinned ? "" : ""}</Text>
+    <Text className="text-zinc-500 text-xs mt-0.5">Coming soon — reach someone who gets it.</Text>
+  </View>
+);
 
-  useEffect(() => {
-    if (!isBreathing) return;
-    const id = setInterval(() => {
-      setSeconds((prev) => {
-        if (prev > 1) return prev - 1;
-        setPhase((p) => (p === "inhale" ? "hold" : p === "hold" ? "exhale" : "inhale"));
-        return 4;
-      });
-    }, 1000);
-    return () => clearInterval(id);
-  }, [isBreathing]);
-
-  return (
-    <View className="flex-1 bg-zinc-950 px-6 py-8 items-center justify-center">
-      <Text className="text-white text-xl font-bold text-center mb-2">{tool?.name ?? "Coping tool"}</Text>
-      {isBreathing ? (
-        <>
-          <View className="w-48 h-48 rounded-full bg-red-600/10 border-4 border-red-600 items-center justify-center my-10">
-            <Text className="text-white text-2xl font-bold capitalize">{phase}</Text>
-            <Text className="text-zinc-400 text-3xl font-extrabold mt-1">{seconds}s</Text>
-          </View>
-          <Text className="text-zinc-500 text-sm text-center mb-10 leading-relaxed">
-            Follow the rhythm. Breathe in for 4, hold for 4, out for 4.
-          </Text>
-        </>
-      ) : (
-        <Text className="text-zinc-400 text-base text-center my-10 leading-relaxed px-4">
-          Take the next few minutes for this. When you&apos;re done, let us know how you feel.
-        </Text>
-      )}
-      <Button title="I'm done" onPress={onDone} className="w-full" />
+const EscalationOnly: React.FC = () => (
+  <View className="gap-2">
+    <Text className="text-zinc-400 text-sm mb-2 leading-relaxed">
+      A few tools haven&apos;t landed it this time. That&apos;s okay — let&apos;s try a person, not a screen.
+    </Text>
+    <CallAFriendCard />
+    <View className="bg-zinc-900 border border-amber-700/50 rounded-2xl p-4">
+      <Text className="text-amber-400 font-semibold">Talk to a quit specialist</Text>
+      <Text className="text-zinc-500 text-xs mt-0.5">Coming soon.</Text>
     </View>
-  );
-}
+  </View>
+);
