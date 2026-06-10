@@ -1,6 +1,12 @@
 import React from 'react'
-import { View, Text, ScrollView, ActivityIndicator } from 'react-native'
+import { View, Text, ScrollView, ActivityIndicator, Dimensions } from 'react-native'
 import { useContentCarousel } from '../../hooks/useContentCarousel'
+
+// Home wraps content in p-6 (24px each side). Size each card so one fills the screen
+// with the next peeking out — the peek signals the row is horizontally scrollable.
+const HOME_PADDING = 24
+const PEEK = 36
+const CARD_WIDTH = Dimensions.get('window').width - HOME_PADDING * 2 - PEEK
 
 /**
  * Home content carousel — Content Cards §3.1. A horizontal row of the day's scheduled
@@ -37,7 +43,8 @@ export const ContentCarousel: React.FC = () => {
         {cards.map(({ card, body }) => (
           <View
             key={card.card_id}
-            className="w-72 bg-zinc-900 border border-zinc-800 rounded-2xl p-5 shadow-md"
+            style={{ width: CARD_WIDTH }}
+            className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 shadow-md"
           >
             <Text className="text-amber-500/90 text-[11px] font-bold uppercase tracking-wider">
               {card.pill_tag}
