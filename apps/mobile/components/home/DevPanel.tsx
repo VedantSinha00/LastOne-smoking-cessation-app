@@ -51,10 +51,13 @@ export const DevPanel: React.FC<DevPanelProps> = ({ onUnlockReturnGate, onResetC
   const refreshAll = async () => {
     if (!user) return;
     // Prefix invalidation so BOTH attempt reads (currentAttempt + the dashboard's
-    // allAttempts) and the whole logs subtree + streak refresh together.
+    // allAttempts) and the whole logs subtree + streak refresh together. content_cards
+    // is included so the savings-milestone card (derives money from attempts/slips)
+    // recomputes when a stage button changes the quit_date.
     await queryClient.invalidateQueries({ queryKey: ["quit_attempt"] });
     await queryClient.invalidateQueries({ queryKey: ["logs", user.id] });
     await queryClient.invalidateQueries({ queryKey: ["streak_record", user.id] });
+    await queryClient.invalidateQueries({ queryKey: ["content_cards"] });
   };
 
   /**
