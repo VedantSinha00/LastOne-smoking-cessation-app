@@ -310,6 +310,47 @@ export const DevPanel: React.FC<DevPanelProps> = ({ onUnlockReturnGate, onResetC
     }
   };
 
+  /** Toggle profiles.notifications_enabled, then reconcile so the effect is immediate.
+   *  enabled=false → reconcile cancels/schedules nothing (Dump should be empty). */
+  const setNotificationsEnabled = async (label: string, value: boolean) => {
+    if (!user) return;
+    setBusy(label);
+    try {
+      await supabase
+        .from("profiles")
+        .update({ notifications_enabled: value })
+        .eq("id", user.id)
+        .throwOnError();
+      await queryClient.invalidateQueries({ queryKey: ["profile", user.id] });
+      await reconcileNotifications(user.id);
+      setLastResult(`notifications_enabled → ${value}, reconciled. Tap 'Dump scheduled'.`);
+    } catch (e: any) {
+      setLastResult(`ERROR: ${e.message}`);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  /** Set notification_state.effective_tier, then reconcile. on_demand → only the
+   *  on_demand-eligible milestones (N-CON-01–06) survive; N-CON-07–12 + N-STK-01 drop. */
+  const setEffectiveTier = async (label: string, tier: "app_decides" | "on_demand") => {
+    if (!user) return;
+    setBusy(label);
+    try {
+      await supabase
+        .from("notification_state")
+        .update({ effective_tier: tier })
+        .eq("user_id", user.id)
+        .throwOnError();
+      await reconcileNotifications(user.id);
+      setLastResult(`effective_tier → ${tier}, reconciled. Tap 'Dump scheduled'.`);
+    } catch (e: any) {
+      setLastResult(`ERROR: ${e.message}`);
+    } finally {
+      setBusy(null);
+    }
+  };
+
   /** Resume the streak → cancels the N-PAU track (then Dump to confirm they're gone). */
   const resumeNow = async (label: string) => {
     if (!user) return;
@@ -384,9 +425,17 @@ export const DevPanel: React.FC<DevPanelProps> = ({ onUnlockReturnGate, onResetC
         <View className="flex-1"><Btn label="Reconcile now" onPress={() => reconcileNow("Reconcile now")} /></View>
         <View className="flex-1"><Btn label="Dump scheduled" onPress={() => dumpScheduled("Dump scheduled")} /></View>
       </View>
-      <View className="flex-row gap-2 mb-3">
+      <View className="flex-row gap-2 mb-2">
         <View className="flex-1"><Btn label="Pause (→N-PAU)" onPress={() => pauseNow("Pause (→N-PAU)")} /></View>
         <View className="flex-1"><Btn label="Resume (cancel)" onPress={() => resumeNow("Resume (cancel)")} /></View>
+      </View>
+      <View className="flex-row gap-2 mb-2">
+        <View className="flex-1"><Btn label="notif OFF" onPress={() => setNotificationsEnabled("notif OFF", false)} /></View>
+        <View className="flex-1"><Btn label="notif ON" onPress={() => setNotificationsEnabled("notif ON", true)} /></View>
+      </View>
+      <View className="flex-row gap-2 mb-3">
+        <View className="flex-1"><Btn label="tier on_demand" onPress={() => setEffectiveTier("tier on_demand", "on_demand")} /></View>
+        <View className="flex-1"><Btn label="tier app_decides" onPress={() => setEffectiveTier("tier app_decides", "app_decides")} /></View>
       </View>
 
       <Text className="text-muted-foreground text-[11px] mb-1.5">
