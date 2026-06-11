@@ -24,28 +24,28 @@ const ReferenceCard: React.FC<{
 }> = ({ card, active, expanded, onPress }) => (
   <Pressable
     onPress={onPress}
-    className={`w-64 mr-3 rounded-2xl p-5 border ${
-      active ? 'bg-zinc-900 border-amber-500/30' : 'bg-zinc-900/40 border-zinc-800'
+    className={`w-64 mr-3 rounded-3xl p-5 border ${
+      active ? 'bg-card border-primary/40' : 'bg-muted border-border'
     } active:opacity-80`}
   >
     <Text
-      className={`text-[11px] font-bold uppercase tracking-wider ${
-        active ? 'text-amber-500' : 'text-zinc-600'
+      className={`text-[11px] font-sans-bold uppercase tracking-wider ${
+        active ? 'text-primary' : 'text-muted-foreground'
       }`}
     >
       {card.pillTag}
     </Text>
-    <Text className={`text-lg font-extrabold mt-1 ${active ? 'text-white' : 'text-zinc-500'}`}>
+    <Text className={`font-display text-lg mt-1 ${active ? 'text-foreground' : 'text-muted-foreground'}`}>
       {card.title}
     </Text>
     {active ? (
       expanded ? (
-        <Text className="text-zinc-300 text-sm mt-2 leading-relaxed">{card.body}</Text>
+        <Text className="text-muted-foreground text-sm mt-2 leading-relaxed">{card.body}</Text>
       ) : (
-        <Text className="text-zinc-500 text-xs mt-2">Tap to read</Text>
+        <Text className="text-muted-foreground text-xs mt-2">Tap to read</Text>
       )
     ) : (
-      <Text className="text-zinc-600 text-xs mt-2">Keep going — you&apos;ll unlock this one.</Text>
+      <Text className="text-muted-foreground text-xs mt-2">Keep going — you&apos;ll unlock this one.</Text>
     )}
   </Pressable>
 )
@@ -90,12 +90,12 @@ export default function Progress() {
   const primaryValue = d[meta.primary as 'moneyLabel' | 'timeLabel' | 'cigarettesLabel']
 
   return (
-    <ScrollView className="flex-1 bg-zinc-950" contentContainerClassName="p-6 gap-6 pb-12">
+    <ScrollView className="flex-1 bg-background" contentContainerClassName="p-6 gap-6 pb-12">
       {/* Header + current total */}
       <View>
-        <Text className="text-zinc-500 text-sm font-medium">Your Progress</Text>
-        <Text className="text-white text-2xl font-extrabold mt-0.5">{meta.title}</Text>
-        <Text className="text-amber-500 text-4xl font-extrabold mt-2">{primaryValue}</Text>
+        <Text className="text-muted-foreground text-sm font-sans-medium">Your Progress</Text>
+        <Text className="text-foreground font-display text-2xl mt-0.5">{meta.title}</Text>
+        <Text className="text-primary font-display text-4xl mt-2">{primaryValue}</Text>
       </View>
 
       {/* Counter switcher (tab-entry convenience; deep-link sets the initial one) */}
@@ -105,12 +105,12 @@ export default function Progress() {
             key={key}
             onPress={() => setCounter(key)}
             className={`px-3 py-2 rounded-full border ${
-              counter === key ? 'bg-amber-500/15 border-amber-500/40' : 'border-zinc-800'
+              counter === key ? 'bg-primary/15 border-primary/40' : 'border-border'
             }`}
           >
             <Text
-              className={`text-xs font-semibold ${
-                counter === key ? 'text-amber-500' : 'text-zinc-500'
+              className={`text-xs font-sans-bold ${
+                counter === key ? 'text-primary' : 'text-muted-foreground'
               }`}
             >
               {COUNTER_META[key].title}
@@ -120,22 +120,22 @@ export default function Progress() {
       </View>
 
       {/* Section 1 — Scale ladder (§5 Section 1) */}
-      <View className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
-        <Text className="text-zinc-400 text-xs font-bold uppercase tracking-wider mb-3">
+      <View className="bg-card border border-border rounded-3xl p-5">
+        <Text className="text-muted-foreground text-xs font-sans-bold uppercase tracking-wider mb-3">
           At this rate
         </Text>
         {ladder.length === 0 ? (
-          <Text className="text-zinc-500 text-sm">
+          <Text className="text-muted-foreground text-sm">
             Set your daily cigarettes and cost to see your scale.
           </Text>
         ) : (
           ladder.map((row) => (
             <View
               key={row.label}
-              className="flex-row justify-between items-center py-2 border-b border-zinc-800/60 last:border-0"
+              className="flex-row justify-between items-center py-2 border-b border-border last:border-0"
             >
-              <Text className="text-zinc-500 text-sm">{row.label}</Text>
-              <Text className="text-white text-base font-bold">{row.value}</Text>
+              <Text className="text-muted-foreground text-sm">{row.label}</Text>
+              <Text className="text-foreground text-base font-sans-bold">{row.value}</Text>
             </View>
           ))
         )}
@@ -143,11 +143,11 @@ export default function Progress() {
 
       {/* Section 2 — Milestone reference cards (§5 Section 2, Milestone Spec §3) */}
       <View>
-        <Text className="text-zinc-400 text-xs font-bold uppercase tracking-wider mb-3">
+        <Text className="text-muted-foreground text-xs font-sans-bold uppercase tracking-wider mb-3">
           Milestones
         </Text>
         {milestonesLoading ? (
-          <ActivityIndicator color="#f59e0b" />
+          <ActivityIndicator color="#7FC200" />
         ) : (
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             {(milestones ?? []).map((card) => (

@@ -171,25 +171,25 @@ export default function SosModal() {
   // ── Context gate ────────────────────────────────────────────────────────────
   if (screen === "GATE") {
     return (
-      <View className="flex-1 bg-zinc-950 px-6 py-8 justify-center">
+      <View className="flex-1 bg-background px-6 py-8 justify-center">
         <View className="flex-row justify-end mb-4">
-          <Pressable onPress={() => router.back()} className="px-3 py-1.5 bg-zinc-900 border border-zinc-800 rounded-lg">
-            <Text className="text-zinc-400 text-sm">Exit</Text>
+          <Pressable onPress={() => router.back()} className="px-3 py-1.5 bg-card border border-border rounded-lg">
+            <Text className="text-muted-foreground text-sm">Exit</Text>
           </Pressable>
         </View>
-        <Text className="text-red-500 text-3xl font-black mb-2">Ride it out</Text>
-        <Text className="text-zinc-400 text-base mb-10 leading-relaxed">
+        <Text className="text-craving font-display text-3xl mb-2">Ride it out</Text>
+        <Text className="text-muted-foreground text-base mb-10 leading-relaxed">
           Where are you right now? This helps pick the right thing to do.
         </Text>
         <View className="gap-3">
-          <Pressable onPress={() => chooseContext("public")} className="bg-zinc-900 border border-zinc-700 rounded-2xl p-6 active:bg-zinc-800">
-            <Text className="text-white text-lg font-bold text-center">Around people</Text>
+          <Pressable onPress={() => chooseContext("public")} className="bg-card border border-border rounded-3xl p-6 active:bg-muted">
+            <Text className="text-foreground text-lg font-sans-bold text-center">Around people</Text>
           </Pressable>
-          <Pressable onPress={() => chooseContext("private")} className="bg-zinc-900 border border-zinc-700 rounded-2xl p-6 active:bg-zinc-800">
-            <Text className="text-white text-lg font-bold text-center">On my own</Text>
+          <Pressable onPress={() => chooseContext("private")} className="bg-card border border-border rounded-3xl p-6 active:bg-muted">
+            <Text className="text-foreground text-lg font-sans-bold text-center">On my own</Text>
           </Pressable>
           <Pressable onPress={() => chooseContext("unknown")} className="p-3 active:opacity-70">
-            <Text className="text-zinc-500 text-sm text-center">Skip — just show me something</Text>
+            <Text className="text-muted-foreground text-sm text-center">Skip — just show me something</Text>
           </Pressable>
         </View>
       </View>
@@ -199,14 +199,14 @@ export default function SosModal() {
   // ── SOS-1 — Tool Selection (with escalation ladder) ─────────────────────────
   if (screen === "SOS1") {
     return (
-      <ScrollView className="flex-1 bg-zinc-950 px-6 py-8" contentContainerClassName="pb-12">
+      <ScrollView className="flex-1 bg-background px-6 py-8" contentContainerClassName="pb-12">
         <View className="flex-row justify-between items-center mb-2">
-          <Text className="text-red-500 text-2xl font-black">Ride it out</Text>
-          <Pressable onPress={() => router.back()} className="px-3 py-1.5 bg-zinc-900 border border-zinc-800 rounded-lg">
-            <Text className="text-zinc-400 text-sm">Exit</Text>
+          <Text className="text-craving font-display text-2xl">Ride it out</Text>
+          <Pressable onPress={() => router.back()} className="px-3 py-1.5 bg-card border border-border rounded-lg">
+            <Text className="text-muted-foreground text-sm">Exit</Text>
           </Pressable>
         </View>
-        <Text className="text-zinc-400 text-sm mb-6 leading-relaxed">
+        <Text className="text-muted-foreground text-sm mb-6 leading-relaxed">
           Pick one. Cravings peak and pass in a few minutes — let&apos;s get you through it.
         </Text>
 
@@ -214,10 +214,10 @@ export default function SosModal() {
         {escalation === 2 ? (
           <EscalationOnly />
         ) : isLoading ? (
-          <ActivityIndicator color="#ef4444" className="mt-8" />
+          <ActivityIndicator color="#F15025" className="mt-8" />
         ) : !tools?.length ? (
-          <View className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6">
-            <Text className="text-zinc-400 text-sm leading-relaxed">
+          <View className="bg-card border border-border rounded-3xl p-6">
+            <Text className="text-muted-foreground text-sm leading-relaxed">
               No coping tools are available right now.
             </Text>
           </View>
@@ -229,10 +229,10 @@ export default function SosModal() {
               <Pressable
                 key={t.tool_id}
                 onPress={() => selectTool(t)}
-                className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 active:bg-zinc-800"
+                className="bg-card border border-border rounded-3xl p-4 active:bg-muted"
               >
-                <Text className="text-white font-semibold">{t.name}</Text>
-                <Text className="text-zinc-500 text-xs mt-0.5">
+                <Text className="text-foreground font-sans-bold">{t.name}</Text>
+                <Text className="text-muted-foreground text-xs mt-0.5">
                   {Math.round(t.duration_seconds / 60) || 1} min · {t.category.replace(/_/g, " ")}
                 </Text>
               </Pressable>
@@ -281,14 +281,14 @@ export default function SosModal() {
 
   // ── SOS-3 — Post-Tool Check-in (skippable) ──────────────────────────────────
   return (
-    <ScrollView className="flex-1 bg-zinc-950 px-6 py-8" contentContainerClassName="flex-grow">
+    <ScrollView className="flex-1 bg-background px-6 py-8" contentContainerClassName="flex-grow">
       <View className="flex-row justify-end mb-2">
         <Pressable onPress={skip} className="px-3 py-1.5">
-          <Text className="text-zinc-500 text-sm">Skip</Text>
+          <Text className="text-muted-foreground text-sm">Skip</Text>
         </Pressable>
       </View>
-      <Text className="text-white text-2xl font-extrabold mb-1">How are you now?</Text>
-      <Text className="text-zinc-400 text-sm mb-8">No wrong answer.</Text>
+      <Text className="text-foreground font-display text-2xl mb-1">How are you now?</Text>
+      <Text className="text-muted-foreground text-sm mb-8">No wrong answer.</Text>
 
       <ChipMultiSelect
         label="What else helped? (optional)"
@@ -299,14 +299,14 @@ export default function SosModal() {
       />
 
       <View className={`gap-3 mt-6 ${processing ? "opacity-50" : ""}`}>
-        <Pressable disabled={processing} onPress={better} className="bg-emerald-600/20 border border-emerald-600 rounded-2xl p-5 active:opacity-80">
-          <Text className="text-emerald-400 font-bold text-center text-base">Better — the craving passed</Text>
+        <Pressable disabled={processing} onPress={better} className="bg-primary/15 border border-primary rounded-3xl p-5 active:opacity-80">
+          <Text className="text-success font-sans-bold text-center text-base">Better — the craving passed</Text>
         </Pressable>
-        <Pressable disabled={processing} onPress={same} className="bg-zinc-900 border border-zinc-700 rounded-2xl p-5 active:bg-zinc-800">
-          <Text className="text-zinc-200 font-bold text-center text-base">About the same</Text>
+        <Pressable disabled={processing} onPress={same} className="bg-card border border-border rounded-3xl p-5 active:bg-muted">
+          <Text className="text-foreground font-sans-bold text-center text-base">About the same</Text>
         </Pressable>
-        <Pressable disabled={processing} onPress={smoked} className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 active:bg-zinc-800">
-          <Text className="text-zinc-400 font-semibold text-center">I smoked</Text>
+        <Pressable disabled={processing} onPress={smoked} className="bg-card border border-border rounded-3xl p-5 active:bg-muted">
+          <Text className="text-muted-foreground font-sans-bold text-center">I smoked</Text>
         </Pressable>
       </View>
     </ScrollView>
@@ -320,21 +320,21 @@ export default function SosModal() {
  * placeholders so the surface is correct without inventing Step-18 plumbing.
  */
 const CallAFriendCard: React.FC = () => (
-  <View className="bg-zinc-900 border border-amber-700/50 rounded-2xl p-4">
-    <Text className="text-amber-400 font-semibold">Call a friend</Text>
-    <Text className="text-zinc-500 text-xs mt-0.5">Coming soon — reach someone who gets it.</Text>
+  <View className="bg-accent border border-craving/40 rounded-3xl p-4">
+    <Text className="text-craving font-sans-bold">Call a friend</Text>
+    <Text className="text-muted-foreground text-xs mt-0.5">Coming soon — reach someone who gets it.</Text>
   </View>
 );
 
 const EscalationOnly: React.FC = () => (
   <View className="gap-2">
-    <Text className="text-zinc-400 text-sm mb-2 leading-relaxed">
+    <Text className="text-muted-foreground text-sm mb-2 leading-relaxed">
       A few tools haven&apos;t landed it this time. That&apos;s okay — let&apos;s try a person, not a screen.
     </Text>
     <CallAFriendCard />
-    <View className="bg-zinc-900 border border-amber-700/50 rounded-2xl p-4">
-      <Text className="text-amber-400 font-semibold">Talk to a quit specialist</Text>
-      <Text className="text-zinc-500 text-xs mt-0.5">Coming soon.</Text>
+    <View className="bg-accent border border-craving/40 rounded-3xl p-4">
+      <Text className="text-craving font-sans-bold">Talk to a quit specialist</Text>
+      <Text className="text-muted-foreground text-xs mt-0.5">Coming soon.</Text>
     </View>
   </View>
 );

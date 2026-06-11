@@ -41,10 +41,10 @@ export const ChipMultiSelect: React.FC<ChipMultiSelectProps> = ({
       key={value}
       onPress={onPress}
       className={`px-4 py-2 rounded-full border ${
-        active ? 'bg-amber-600 border-amber-600' : 'bg-zinc-950 border-zinc-800'
+        active ? 'bg-primary border-primary' : 'bg-card border-border'
       } active:opacity-80`}
     >
-      <Text className={`text-sm ${active ? 'text-white font-semibold' : 'text-zinc-400'}`}>
+      <Text className={`text-sm ${active ? 'text-primary-foreground font-sans-bold' : 'text-muted-foreground'}`}>
         {text}
       </Text>
     </Pressable>
@@ -52,16 +52,16 @@ export const ChipMultiSelect: React.FC<ChipMultiSelectProps> = ({
 
   return (
     <View className="my-2">
-      <Text className="text-zinc-400 text-sm font-medium mb-3">{label}</Text>
+      <Text className="text-muted-foreground text-sm font-sans-medium mb-3">{label}</Text>
       <View className="flex-row flex-wrap gap-2">
         {options.map((o) => renderChip(o.value, o.label, selected.includes(o.value), () => toggle(o.value)))}
         {allowOther && renderChip(OTHER, 'Other', otherOpen, () => setOtherOpen((v) => !v))}
       </View>
       {allowOther && otherOpen && (
         <TextInput
-          className="bg-zinc-950 text-white px-4 py-3 rounded-xl border border-zinc-800 mt-3"
+          className="bg-input text-foreground px-4 py-3 rounded-xl border border-border mt-3"
           placeholder="Tell us more (optional)"
-          placeholderTextColor="#71717a"
+          placeholderTextColor="#76706C"
           maxLength={60}
           value={otherText}
           onChangeText={onOtherTextChange}

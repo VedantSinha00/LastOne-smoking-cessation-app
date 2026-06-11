@@ -32,19 +32,19 @@ export const SavingsMilestoneCard: React.FC = () => {
   }
 
   return (
-    <View className="bg-amber-500/10 border border-amber-500/40 rounded-2xl p-5 shadow-md">
+    <View className="bg-primary/10 border border-primary/30 rounded-3xl p-5">
       <View className="flex-row justify-between items-start">
-        <Text className="text-amber-400 text-[11px] font-bold uppercase tracking-wider">
+        <Text className="text-success text-[11px] font-sans-bold uppercase tracking-wider">
           {card.card.pill_tag}
         </Text>
         <Pressable onPress={dismiss} hitSlop={8} className="active:opacity-60">
-          <Text className="text-zinc-500 text-xs">Dismiss</Text>
+          <Text className="text-muted-foreground text-xs">Dismiss</Text>
         </Pressable>
       </View>
-      <Text className="text-white text-lg font-extrabold mt-1.5 leading-snug">
+      <Text className="text-foreground font-display text-lg mt-1.5 leading-snug">
         {card.card.title}
       </Text>
-      <Text className="text-zinc-300 text-sm mt-2 leading-relaxed">{card.body}</Text>
+      <Text className="text-muted-foreground text-sm mt-2 leading-relaxed">{card.body}</Text>
     </View>
   )
 }

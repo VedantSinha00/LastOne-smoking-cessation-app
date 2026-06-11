@@ -92,19 +92,19 @@ export const BreathingTool: React.FC<RunnerProps> = ({ tool, onDone }) => {
   const phase = pattern[Math.min(phaseIdx, pattern.length - 1)]
 
   return (
-    <View className="flex-1 bg-zinc-950 px-6 py-8 items-center justify-center">
-      <Text className="text-white text-xl font-bold text-center">{tool.name}</Text>
-      <Text className="text-zinc-500 text-xs mt-1">
+    <View className="flex-1 bg-background px-6 py-8 items-center justify-center">
+      <Text className="text-foreground font-display text-xl text-center">{tool.name}</Text>
+      <Text className="text-muted-foreground text-xs mt-1">
         Cycle {Math.min(cycle, totalCycles)} of {totalCycles}
       </Text>
 
-      <View className="w-52 h-52 rounded-full bg-sky-600/10 border-4 border-sky-500/60 items-center justify-center my-10">
+      <View className="w-52 h-52 rounded-full bg-surface-accent/10 border-4 border-surface-accent/60 items-center justify-center my-10">
         {finished ? (
-          <Text className="text-sky-300 text-lg font-bold text-center px-4">Nice. That&apos;s done.</Text>
+          <Text className="text-surface-accent text-lg font-sans-bold text-center px-4">Nice. That&apos;s done.</Text>
         ) : (
           <>
-            <Text className="text-white text-xl font-bold text-center px-4">{phase.label}</Text>
-            <Text className="text-zinc-300 text-3xl font-extrabold mt-2">{remaining}s</Text>
+            <Text className="text-foreground font-display text-xl text-center px-4">{phase.label}</Text>
+            <Text className="text-foreground font-display text-3xl mt-2">{remaining}s</Text>
           </>
         )}
       </View>
@@ -144,9 +144,9 @@ export const PhysicalTool: React.FC<RunnerProps & { repCount?: number }> = ({
   if (!isRepBased) {
     // PHY-01 Finger Pulse Press / PHY-02 Tongue Press — simple guided screen.
     return (
-      <View className="flex-1 bg-zinc-950 px-6 py-8 items-center justify-center">
-        <Text className="text-white text-xl font-bold text-center mb-4">{tool.name}</Text>
-        <Text className="text-zinc-400 text-base text-center leading-relaxed px-2 mb-10">
+      <View className="flex-1 bg-background px-6 py-8 items-center justify-center">
+        <Text className="text-foreground font-display text-xl text-center mb-4">{tool.name}</Text>
+        <Text className="text-muted-foreground text-base text-center leading-relaxed px-2 mb-10">
           {tool.tool_id === 'PHY-01'
             ? 'Press a finger to your wrist. Count 10 heartbeats — exhale slowly with each one.'
             : 'Press your tongue to the roof of your mouth. Breathe through your nose for 5 slow breaths.'}
@@ -158,19 +158,19 @@ export const PhysicalTool: React.FC<RunnerProps & { repCount?: number }> = ({
 
   if (still != null) {
     return (
-      <View className="flex-1 bg-zinc-950 px-6 py-8 items-center justify-center">
-        <Text className="text-white text-xl font-bold text-center mb-6">Stand still</Text>
-        <Text className="text-zinc-300 text-5xl font-extrabold mb-2">{still}</Text>
-        <Text className="text-zinc-500 text-sm mb-10">Notice your breathing.</Text>
+      <View className="flex-1 bg-background px-6 py-8 items-center justify-center">
+        <Text className="text-foreground font-display text-xl text-center mb-6">Stand still</Text>
+        <Text className="text-foreground font-display text-5xl mb-2">{still}</Text>
+        <Text className="text-muted-foreground text-sm mb-10">Notice your breathing.</Text>
         <Button title="How are you now?" onPress={onDone} className="w-full" disabled={still > 0} />
       </View>
     )
   }
 
   return (
-    <View className="flex-1 bg-zinc-950 px-6 py-8 items-center justify-center">
-      <Text className="text-white text-xl font-bold text-center mb-2">{tool.name}</Text>
-      <Text className="text-zinc-500 text-sm mb-8">Tap each rep. Any pace.</Text>
+    <View className="flex-1 bg-background px-6 py-8 items-center justify-center">
+      <Text className="text-foreground font-display text-xl text-center mb-2">{tool.name}</Text>
+      <Text className="text-muted-foreground text-sm mb-8">Tap each rep. Any pace.</Text>
       <Pressable
         onPress={() => {
           setReps((r) => {
@@ -181,12 +181,12 @@ export const PhysicalTool: React.FC<RunnerProps & { repCount?: number }> = ({
             return r - 1
           })
         }}
-        className="w-56 h-56 rounded-full bg-amber-500/15 border-4 border-amber-500 items-center justify-center active:bg-amber-500/30"
+        className="w-56 h-56 rounded-full bg-primary/15 border-4 border-primary items-center justify-center active:bg-primary/30"
       >
-        <Text className="text-amber-400 text-7xl font-black">{reps}</Text>
-        <Text className="text-zinc-400 text-sm mt-1">reps left</Text>
+        <Text className="text-primary font-display text-7xl">{reps}</Text>
+        <Text className="text-muted-foreground text-sm mt-1">reps left</Text>
       </Pressable>
-      <Text className="text-zinc-600 text-xs mt-8">Tap the circle for each one.</Text>
+      <Text className="text-muted-foreground text-xs mt-8">Tap the circle for each one.</Text>
     </View>
   )
 }
@@ -194,10 +194,10 @@ export const PhysicalTool: React.FC<RunnerProps & { repCount?: number }> = ({
 // ── Mini-game stubs (full games = Step 19) ───────────────────────────────────────
 
 export const GameStub: React.FC<RunnerProps> = ({ tool, onDone }) => (
-  <View className="flex-1 bg-zinc-950 px-6 py-8 items-center justify-center">
-    <Text className="text-white text-xl font-bold text-center mb-3">{tool.name}</Text>
-    <View className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 mb-10">
-      <Text className="text-zinc-400 text-sm text-center leading-relaxed">
+  <View className="flex-1 bg-background px-6 py-8 items-center justify-center">
+    <Text className="text-foreground font-display text-xl text-center mb-3">{tool.name}</Text>
+    <View className="bg-card border border-border rounded-3xl p-6 mb-10">
+      <Text className="text-muted-foreground text-sm text-center leading-relaxed">
         The full game lands soon. For now, take a couple of minutes on something that occupies
         your hands and eyes — the craving fades while your attention is busy.
       </Text>

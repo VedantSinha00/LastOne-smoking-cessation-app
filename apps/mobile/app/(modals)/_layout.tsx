@@ -11,7 +11,7 @@ export default function ModalsLayout() {
       screenOptions={{
         presentation: "modal",
         headerShown: false,
-        contentStyle: { backgroundColor: "#09090b" },
+        contentStyle: { backgroundColor: "#FBFAF9" },
       }}
     >
       <Stack.Screen name="log" options={{ presentation: "transparentModal", animation: "fade" }} />

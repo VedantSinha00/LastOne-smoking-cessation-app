@@ -79,9 +79,9 @@ export default function LogA() {
 
   if (screen === "A1") {
     return (
-      <ScrollView className="flex-1 bg-zinc-950 px-6 py-8" contentContainerClassName="flex-grow">
+      <ScrollView className="flex-1 bg-background px-6 py-8" contentContainerClassName="flex-grow">
         <Header onClose={() => router.back()} title="How strong is it?" />
-        <Text className="text-zinc-400 text-sm mb-8 leading-relaxed">
+        <Text className="text-muted-foreground text-sm mb-8 leading-relaxed">
           Just the intensity for now. You can add detail next, or stop here.
         </Text>
 
@@ -91,16 +91,16 @@ export default function LogA() {
               key={v}
               onPress={() => setIntensity(v)}
               className={`flex-1 py-5 rounded-2xl border ${
-                intensity === v ? "bg-amber-600 border-amber-600" : "bg-zinc-900 border-zinc-800"
+                intensity === v ? "bg-primary border-primary" : "bg-card border-border"
               }`}
             >
-              <Text className="text-white text-center text-xl font-bold">{v}</Text>
+              <Text className={`text-center text-xl font-sans-bold ${intensity === v ? "text-primary-foreground" : "text-foreground"}`}>{v}</Text>
             </Pressable>
           ))}
         </View>
         <View className="flex-row justify-between px-1 mb-10">
-          <Text className="text-zinc-600 text-xs">Mild</Text>
-          <Text className="text-zinc-600 text-xs">Intense</Text>
+          <Text className="text-muted-foreground text-xs">Mild</Text>
+          <Text className="text-muted-foreground text-xs">Intense</Text>
         </View>
 
         <Button title="Continue" onPress={handleContinue} loading={createLog.isPending} />
@@ -109,9 +109,9 @@ export default function LogA() {
   }
 
   return (
-    <ScrollView className="flex-1 bg-zinc-950 px-6 py-8" contentContainerClassName="pb-12">
+    <ScrollView className="flex-1 bg-background px-6 py-8" contentContainerClassName="pb-12">
       <Header onClose={handleSaveA2} title="What's going on?" />
-      <Text className="text-zinc-400 text-sm mb-4 leading-relaxed">
+      <Text className="text-muted-foreground text-sm mb-4 leading-relaxed">
         All optional — this helps spot your patterns.
       </Text>
 
@@ -128,7 +128,7 @@ export default function LogA() {
 
       <Button title="Save" onPress={handleSaveA2} loading={updateLog.isPending} className="mt-6" />
       <Pressable onPress={handleNeedHelp} className="mt-4 py-3 items-center">
-        <Text className="text-red-400 font-semibold">I need help now →</Text>
+        <Text className="text-craving font-sans-bold">I need help now →</Text>
       </Pressable>
     </ScrollView>
   );
@@ -137,9 +137,9 @@ export default function LogA() {
 function Header({ title, onClose }: { title: string; onClose: () => void }) {
   return (
     <View className="flex-row justify-between items-center mb-3">
-      <Text className="text-white text-2xl font-extrabold flex-1 pr-3">{title}</Text>
-      <Pressable onPress={onClose} className="px-3 py-1.5 bg-zinc-900 border border-zinc-800 rounded-lg">
-        <Text className="text-zinc-400 text-sm">Close</Text>
+      <Text className="text-foreground font-display text-2xl flex-1 pr-3">{title}</Text>
+      <Pressable onPress={onClose} className="px-3 py-1.5 bg-card border border-border rounded-lg">
+        <Text className="text-muted-foreground text-sm">Close</Text>
       </Pressable>
     </View>
   );

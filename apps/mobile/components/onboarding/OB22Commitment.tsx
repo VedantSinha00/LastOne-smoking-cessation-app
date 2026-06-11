@@ -11,9 +11,9 @@ function ChipRow({ chips, onPick }: { chips: string[]; onPick: (c: string) => vo
         <Pressable
           key={c}
           onPress={() => onPick(c)}
-          className="bg-zinc-900 border border-zinc-800 rounded-full px-4 py-2 mr-2 mb-2 active:bg-zinc-800"
+          className="bg-card border border-border rounded-full px-4 py-2 mr-2 mb-2 active:bg-muted"
         >
-          <Text className="text-zinc-300 text-sm">{c}</Text>
+          <Text className="text-muted-foreground text-sm">{c}</Text>
         </Pressable>
       ))}
     </View>
@@ -50,23 +50,23 @@ export function OB22Commitment() {
     <OBScreen onBack={prevStep}>
       <OBHeader title="Make it yours." subtitle="Fill these in. This is the promise you're holding yourself to." />
 
-      <Text className="text-zinc-400 text-sm mb-1">I'm doing this for…</Text>
+      <Text className="text-muted-foreground text-sm mb-1">I'm doing this for…</Text>
       <TextInput
         value={reason}
         onChangeText={(t) => setAnswer('commitmentReason', t)}
         placeholder="my reason"
-        placeholderTextColor="#52525b"
-        className="bg-zinc-900 border border-zinc-800 rounded-2xl px-5 py-4 text-white text-lg"
+        placeholderTextColor="#76706C"
+        className="bg-card border border-border rounded-2xl px-5 py-4 text-foreground text-lg"
       />
       <ChipRow chips={COMMITMENT_REASON_CHIPS} onPick={(c) => setAnswer('commitmentReason', c)} />
 
-      <Text className="text-zinc-400 text-sm mb-1">I'm becoming someone who is…</Text>
+      <Text className="text-muted-foreground text-sm mb-1">I'm becoming someone who is…</Text>
       <TextInput
         value={identity}
         onChangeText={(t) => setAnswer('commitmentIdentity', t)}
         placeholder="who I want to be"
-        placeholderTextColor="#52525b"
-        className="bg-zinc-900 border border-zinc-800 rounded-2xl px-5 py-4 text-white text-lg"
+        placeholderTextColor="#76706C"
+        className="bg-card border border-border rounded-2xl px-5 py-4 text-foreground text-lg"
       />
       <ChipRow chips={COMMITMENT_IDENTITY_CHIPS} onPick={(c) => setAnswer('commitmentIdentity', c)} />
 
@@ -75,13 +75,13 @@ export function OB22Commitment() {
         onPressOut={reset}
         disabled={!bothFilled}
         style={!bothFilled ? { opacity: 0.4 } : undefined}
-        className="h-14 rounded-2xl overflow-hidden bg-zinc-800 items-center justify-center mt-2"
+        className="h-14 rounded-2xl overflow-hidden bg-muted items-center justify-center mt-2"
       >
         <Animated.View
           style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width }}
-          className="bg-amber-600"
+          className="bg-primary"
         />
-        <Text className="text-white font-semibold text-base">Hold to commit</Text>
+        <Text className="text-foreground font-sans-bold text-base">Hold to commit</Text>
       </Pressable>
     </OBScreen>
   )

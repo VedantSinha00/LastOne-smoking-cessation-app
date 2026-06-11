@@ -33,30 +33,30 @@ export default function Profile() {
   };
 
   return (
-    <ScrollView className="flex-1 bg-zinc-950 p-6">
+    <ScrollView className="flex-1 bg-background p-6">
       <View className="mb-6">
-        <Text className="text-zinc-500 text-sm font-medium">Settings</Text>
-        <Text className="text-white text-2xl font-extrabold">Your Profile</Text>
+        <Text className="text-muted-foreground text-sm font-sans-medium">Settings</Text>
+        <Text className="text-foreground font-display text-2xl">Your Profile</Text>
       </View>
 
-      <View className="space-y-4 bg-zinc-900 border border-zinc-800 p-6 rounded-2xl mb-6">
+      <View className="space-y-4 bg-card border border-border p-6 rounded-3xl mb-6">
         <View>
-          <Text className="text-zinc-400 text-sm font-semibold mb-2">Display Name</Text>
+          <Text className="text-muted-foreground text-sm font-sans-bold mb-2">Display Name</Text>
           <TextInput
-            className="bg-zinc-950 text-white px-4 py-3 rounded-xl border border-zinc-800 focus:border-amber-500"
+            className="bg-input text-foreground px-4 py-3 rounded-xl border border-border"
             placeholder="Username"
-            placeholderTextColor="#71717a"
+            placeholderTextColor="#76706C"
             value={username}
             onChangeText={setUsername}
           />
         </View>
 
         <View className="mt-4">
-          <Text className="text-zinc-400 text-sm font-semibold mb-2">Daily Baseline Cigarettes</Text>
+          <Text className="text-muted-foreground text-sm font-sans-bold mb-2">Daily Baseline Cigarettes</Text>
           <TextInput
-            className="bg-zinc-950 text-white px-4 py-3 rounded-xl border border-zinc-800 focus:border-amber-500"
+            className="bg-input text-foreground px-4 py-3 rounded-xl border border-border"
             placeholder="10"
-            placeholderTextColor="#71717a"
+            placeholderTextColor="#76706C"
             keyboardType="numeric"
             value={baseline}
             onChangeText={setBaseline}
@@ -64,11 +64,11 @@ export default function Profile() {
         </View>
 
         <View className="mt-4">
-          <Text className="text-zinc-400 text-sm font-semibold mb-2">Cost Per Pack ($)</Text>
+          <Text className="text-muted-foreground text-sm font-sans-bold mb-2">Cost Per Pack ($)</Text>
           <TextInput
-            className="bg-zinc-950 text-white px-4 py-3 rounded-xl border border-zinc-800 focus:border-amber-500"
+            className="bg-input text-foreground px-4 py-3 rounded-xl border border-border"
             placeholder="15.00"
-            placeholderTextColor="#71717a"
+            placeholderTextColor="#76706C"
             keyboardType="numeric"
             value={cost}
             onChangeText={setCost}

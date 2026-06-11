@@ -62,11 +62,11 @@ export default function LogB() {
   };
 
   return (
-    <ScrollView className="flex-1 bg-zinc-950 px-6 py-8" contentContainerClassName="pb-12">
+    <ScrollView className="flex-1 bg-background px-6 py-8" contentContainerClassName="pb-12">
       <View className="items-center mb-8 mt-4">
         <Text className="text-5xl mb-3">💪</Text>
-        <Text className="text-white text-2xl font-extrabold text-center">That's a win.</Text>
-        <Text className="text-zinc-400 text-sm mt-2 text-center leading-relaxed px-4">
+        <Text className="text-foreground font-display text-2xl text-center">That's a win.</Text>
+        <Text className="text-muted-foreground text-sm mt-2 text-center leading-relaxed px-4">
           You rode it out. Your streak just moved — that craving doesn&apos;t count against you.
         </Text>
       </View>
@@ -82,7 +82,7 @@ export default function LogB() {
 
       <Button title="Done" onPress={handleSave} loading={!committed} className="mt-6" />
       <Pressable onPress={() => router.back()} className="mt-3 py-2 items-center">
-        <Text className="text-zinc-500 text-sm">Skip</Text>
+        <Text className="text-muted-foreground text-sm">Skip</Text>
       </Pressable>
     </ScrollView>
   );

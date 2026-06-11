@@ -54,15 +54,15 @@ export function OB23Confirmation() {
       onBack={saving ? undefined : prevStep}
       footer={
         <View>
-          {error ? <Text className="text-red-400 text-sm mb-3 text-center">{error}</Text> : null}
+          {error ? <Text className="text-destructive text-sm mb-3 text-center">{error}</Text> : null}
           <OBContinue title="Go to LastOne" onPress={handleGo} loading={saving} />
         </View>
       }
     >
       <View className="flex-1 justify-center">
-        <Text className="text-white text-3xl font-bold leading-9">{headline}</Text>
-        <Text className="text-amber-400 text-lg mt-4">Let's begin.</Text>
-        <Text className="text-zinc-500 text-base mt-8">{confirmation}</Text>
+        <Text className="text-foreground font-display text-3xl leading-9">{headline}</Text>
+        <Text className="text-primary text-lg mt-4">Let's begin.</Text>
+        <Text className="text-muted-foreground text-base mt-8">{confirmation}</Text>
       </View>
     </OBScreen>
   )

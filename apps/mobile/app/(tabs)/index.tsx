@@ -13,6 +13,7 @@ import { resolveStk2, resolveStk3 } from "../../lib/returnModal";
 import { checkFreezePeriodAdvance } from "../../lib/streak";
 import { Greeting } from "../../components/home/Greeting";
 import { StreakBar } from "../../components/home/StreakBar";
+import { SectionLabel } from "../../components/ui/SectionLabel";
 import { HealthMilestonesCard } from "../../components/home/HealthMilestonesCard";
 import { InsightsPreviewPlaceholder } from "../../components/home/placeholders";
 import { ProgressDashboard } from "../../components/home/ProgressDashboard";
@@ -81,8 +82,8 @@ export default function Home() {
   // ── Loading gate ──────────────────────────────────────────────────────────
   if (stageLoading || streakLoading || returnModal.isLoading) {
     return (
-      <View className="flex-1 bg-zinc-950 items-center justify-center">
-        <ActivityIndicator color="#f59e0b" />
+      <View className="flex-1 bg-background items-center justify-center">
+        <ActivityIndicator color="#7FC200" />
       </View>
     );
   }
@@ -105,17 +106,23 @@ export default function Home() {
   const showDailyCheckIn = stage !== 0 && !checkInSatisfied;
 
   return (
-    <ScrollView className="flex-1 bg-zinc-950 p-6" contentContainerClassName="gap-5 pb-12">
+    <ScrollView className="flex-1 bg-background px-5 pt-6" contentContainerClassName="gap-7 pb-12">
       {/* 1 — Greeting */}
       <Greeting firstName={profile?.first_name} />
 
       {/* 2 — Streak Bar */}
-      <StreakBar stage={stage} streak={streak} />
+      <View>
+        <SectionLabel>Streaks</SectionLabel>
+        <StreakBar stage={stage} streak={streak} />
+      </View>
 
       {/* 3 — Coping Surface Card: conditional on alert_level=2 (Step 16, Insights) */}
 
       {/* 4 — Progress Dashboard */}
-      <ProgressDashboard stage={stage} />
+      <View>
+        <SectionLabel>Progress</SectionLabel>
+        <ProgressDashboard stage={stage} />
+      </View>
 
       {/* 4b — Savings milestone celebration (inline, fires once per threshold) */}
       <SavingsMilestoneCard />
@@ -144,10 +151,10 @@ export default function Home() {
           />
           <Pressable
             onPress={handleRestartOnboarding}
-            className="border border-amber-800 rounded-2xl p-4 items-center active:bg-zinc-900"
+            className="border border-border rounded-2xl p-4 items-center active:bg-muted"
           >
-            <Text className="text-amber-500 text-sm font-semibold">DEV · Restart onboarding</Text>
-            <Text className="text-zinc-600 text-xs mt-1 text-center leading-relaxed">
+            <Text className="text-craving text-sm font-sans-bold">DEV · Restart onboarding</Text>
+            <Text className="text-muted-foreground text-xs mt-1 text-center leading-relaxed">
               Resets onboarding_complete and returns to OB-01. Stays signed in; keeps your data.
             </Text>
           </Pressable>

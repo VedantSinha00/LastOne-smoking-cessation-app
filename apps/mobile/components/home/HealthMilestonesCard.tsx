@@ -1,6 +1,7 @@
 import React from 'react'
-import { View, Text, Pressable } from 'react-native'
+import { Text } from 'react-native'
 import { parseISO, differenceInHours } from 'date-fns'
+import { Card } from '../ui/Card'
 import type { Stage } from '../../lib/stage'
 
 /**
@@ -65,14 +66,11 @@ export const HealthMilestonesCard: React.FC<HealthMilestonesCardProps> = ({
   }
 
   return (
-    <Pressable
-      onPress={onPress}
-      className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-md active:bg-zinc-850"
-    >
-      <Text className="text-zinc-400 text-xs font-bold uppercase tracking-wider mb-2">
+    <Card onPress={onPress}>
+      <Text className="text-muted-foreground text-xs font-sans-bold uppercase tracking-wider mb-2">
         Health
       </Text>
-      <Text className="text-white text-base leading-relaxed">{body}</Text>
-    </Pressable>
+      <Text className="text-foreground text-base leading-relaxed">{body}</Text>
+    </Card>
   )
 }
