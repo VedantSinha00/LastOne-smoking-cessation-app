@@ -33,10 +33,12 @@ function deriveProfile(
  * pure selectSOSTools. `craving` is supplied by the SOS modal (intensity + context
  * gate answer). Returns the 3 chosen tools.
  */
-export function useSosSelection(craving: CravingInput, enabled = true) {
+export function useSosSelection(craving: CravingInput, enabled = true, exclude: string[] = []) {
   const { user } = useAuth()
   return useQuery({
-    queryKey: ['sos_selection', user?.id ?? '', craving.intensity ?? 'none', craving.context],
+    // `exclude` participates in the key so the SOS-1 shuffle re-runs the waterfall
+    // with the current trio dropped, surfacing the next-best valid set.
+    queryKey: ['sos_selection', user?.id ?? '', craving.intensity ?? 'none', craving.context, exclude.join(',')],
     queryFn: async (): Promise<CopingTool[]> => {
       const [{ data: tools }, { data: scores }, { data: streak }, { data: profile }] =
         await Promise.all([
@@ -64,6 +66,7 @@ export function useSosSelection(craving: CravingInput, enabled = true) {
         stage: streak?.current_stage ?? 0,
         profile: deriveProfile(streak?.dependency_level, profile?.cigarettes_per_day),
         hasBuddy: false, // Quit Buddy is a V2/Step-18 concept — MIN-03 excluded for now.
+        exclude,
       })
     },
     enabled: enabled && !!user,

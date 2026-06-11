@@ -2,7 +2,7 @@ import { Tabs } from "expo-router";
 import { View, Pressable } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Home, BarChart3, Sparkles, User, Plus } from "lucide-react-native";
+import { Home, BarChart3, Heart, User, Plus } from "lucide-react-native";
 import { SosFab } from "../../components/sos/sos-fab";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 
@@ -31,7 +31,7 @@ const LEFT: TabDef[] = [
   { name: "progress", label: "Insights", Icon: BarChart3 },
 ];
 const RIGHT: TabDef[] = [
-  { name: "tools", label: "Tools", Icon: Sparkles },
+  { name: "tools", label: "Tools", Icon: Heart },
   { name: "profile", label: "Profile", Icon: User },
 ];
 
