@@ -29,7 +29,7 @@ export default function Home() {
   const { user } = useAuth();
   const router = useRouter();
   const { data: profile } = useProfile();
-  const { stage, quitDate, isLoading: stageLoading } = useStage();
+  const { stage, daysSinceQuit, quitDate, isLoading: stageLoading } = useStage();
   const { data: streak, isLoading: streakLoading } = useStreakRecord();
   const returnModal = useReturnModal();
   const { satisfied: checkInSatisfied, refresh: refreshCheckIn } = useDailyCheckIn();
@@ -104,11 +104,14 @@ export default function Home() {
   // ── Home (HOME-1) — scroll order per Home Spec §P6 ─────────────────────────
   // Daily check-in: Stage 1+ only (Home Spec §E), hidden once satisfied for the day.
   const showDailyCheckIn = stage !== 0 && !checkInSatisfied;
+  // "Day N" framing only makes sense once the quit streak exists (Stage 1+).
+  // At Stage 0 (pre-quit) we omit it so the greeting/card don't read "Day 0".
+  const dayCount = stage === 0 ? undefined : daysSinceQuit;
 
   return (
     <ScrollView className="flex-1 bg-background px-5 pt-6" contentContainerClassName="gap-7 pb-12">
       {/* 1 — Greeting */}
-      <Greeting firstName={profile?.first_name} />
+      <Greeting firstName={profile?.first_name} dayCount={dayCount} />
 
       {/* 2 — Streak Bar */}
       <View>
@@ -128,7 +131,7 @@ export default function Home() {
       <SavingsMilestoneCard />
 
       {/* 5 — Daily Check-In (Stage 1+, until satisfied) */}
-      {showDailyCheckIn && <DailyCheckInCard />}
+      {showDailyCheckIn && <DailyCheckInCard dayCount={dayCount} />}
 
       {/* 6 — Content Carousel */}
       <ContentCarousel />
