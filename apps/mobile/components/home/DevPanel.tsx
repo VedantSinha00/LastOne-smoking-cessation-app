@@ -434,6 +434,53 @@ export const DevPanel: React.FC<DevPanelProps> = ({ onUnlockReturnGate, onResetC
     }
   };
 
+  /** Write a HIGH-confidence risk window covering the CURRENT 2-hour bucket so
+   *  alert_level reads 2 right now → the CopingSurfaceCard appears on Home
+   *  (Insights §B2.8). Preserves nothing else; sets a single window for testing. */
+  const seedRiskWindowNow = async (label: string) => {
+    if (!user) return;
+    setBusy(label);
+    try {
+      const start = Math.floor(new Date().getHours() / 2) * 2;
+      const windows = [
+        { start_hour: start, end_hour: start + 2, confidence: "high" as const, active: true },
+      ];
+      await supabase
+        .from("profiles")
+        .update({ risk_windows: windows })
+        .eq("id", user.id)
+        .throwOnError();
+      await queryClient.invalidateQueries({ queryKey: ["profile", user.id] });
+      setLastResult(
+        `risk window ${start}:00–${start + 2}:00 (high, active) → alert_level 2 now. ` +
+          `Go to Home: the "Need a moment?" card should appear.`,
+      );
+    } catch (e: any) {
+      setLastResult(`ERROR: ${e.message}`);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  /** Clear all risk windows (alert_level back to 1 → CopingSurfaceCard hidden). */
+  const clearRiskWindows = async (label: string) => {
+    if (!user) return;
+    setBusy(label);
+    try {
+      await supabase
+        .from("profiles")
+        .update({ risk_windows: [] })
+        .eq("id", user.id)
+        .throwOnError();
+      await queryClient.invalidateQueries({ queryKey: ["profile", user.id] });
+      setLastResult("risk windows cleared → alert_level 1, card hidden.");
+    } catch (e: any) {
+      setLastResult(`ERROR: ${e.message}`);
+    } finally {
+      setBusy(null);
+    }
+  };
+
   /** Resume the streak → cancels the N-PAU track (then Dump to confirm they're gone). */
   const resumeNow = async (label: string) => {
     if (!user) return;
@@ -524,8 +571,12 @@ export const DevPanel: React.FC<DevPanelProps> = ({ onUnlockReturnGate, onResetC
       <Text className="text-muted-foreground text-[11px] mb-1.5">
         Step 16 — Insights (seed logs, then open the Insights tab)
       </Text>
-      <View className="flex-row gap-2 mb-3">
+      <View className="flex-row gap-2 mb-2">
         <View className="flex-1"><Btn label="Seed insight logs" onPress={() => seedInsightLogs("Seed insight logs")} /></View>
+      </View>
+      <View className="flex-row gap-2 mb-3">
+        <View className="flex-1"><Btn label="Risk window NOW" onPress={() => seedRiskWindowNow("Risk window NOW")} /></View>
+        <View className="flex-1"><Btn label="Clear risk windows" onPress={() => clearRiskWindows("Clear risk windows")} /></View>
       </View>
 
       <Text className="text-muted-foreground text-[11px] mb-1.5">
