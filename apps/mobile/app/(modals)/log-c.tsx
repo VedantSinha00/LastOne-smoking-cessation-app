@@ -100,16 +100,16 @@ export default function LogC() {
   // ── C1 — Acknowledgement (most tone-sensitive screen) ───────────────────────
   if (screen === "C1") {
     return (
-      <View className="flex-1 bg-zinc-950 px-6 justify-center">
+      <View className="flex-1 bg-background px-6 justify-center">
         <Text className="text-4xl mb-5">🌱</Text>
-        <Text className="text-white text-2xl font-extrabold mb-3">Thanks for being honest.</Text>
-        <Text className="text-zinc-400 text-base leading-relaxed mb-10">
+        <Text className="text-foreground font-display text-2xl mb-3">Thanks for being honest.</Text>
+        <Text className="text-muted-foreground text-base leading-relaxed mb-10">
           A slip isn&apos;t a failure — it&apos;s information. You&apos;re still in this, and logging
           it is exactly the right move. Let&apos;s note what happened.
         </Text>
         <Button title="Continue" onPress={() => setScreen("C2")} />
         <Pressable onPress={() => router.back()} className="mt-3 py-2 items-center">
-          <Text className="text-zinc-600 text-sm">Not now</Text>
+          <Text className="text-muted-foreground text-sm">Not now</Text>
         </Pressable>
       </View>
     );
@@ -118,37 +118,37 @@ export default function LogC() {
   // ── C2 — Context (slip_type required = commit) ──────────────────────────────
   if (screen === "C2") {
     return (
-      <ScrollView className="flex-1 bg-zinc-950 px-6 py-8" contentContainerClassName="pb-12">
-        <Text className="text-white text-2xl font-extrabold mb-1">What happened?</Text>
-        <Text className="text-zinc-400 text-sm mb-6 leading-relaxed">This shapes how we help next.</Text>
+      <ScrollView className="flex-1 bg-background px-6 py-8" contentContainerClassName="pb-12">
+        <Text className="text-foreground font-display text-2xl mb-1">What happened?</Text>
+        <Text className="text-muted-foreground text-sm mb-6 leading-relaxed">This shapes how we help next.</Text>
 
-        <Text className="text-zinc-400 text-sm font-medium mb-3">How would you describe it?</Text>
+        <Text className="text-muted-foreground text-sm font-sans-medium mb-3">How would you describe it?</Text>
         <View className="gap-2 mb-6">
           {SLIP_TYPES.map((s) => (
             <Pressable
               key={s.value}
               onPress={() => setSlipType(s.value)}
-              className={`rounded-2xl p-4 border ${
-                slipType === s.value ? "bg-amber-600/20 border-amber-600" : "bg-zinc-900 border-zinc-800"
+              className={`rounded-3xl p-4 border ${
+                slipType === s.value ? "bg-primary/15 border-primary" : "bg-card border-border"
               }`}
             >
-              <Text className="text-white font-semibold">{s.label}</Text>
-              <Text className="text-zinc-500 text-xs mt-0.5">{s.hint}</Text>
+              <Text className="text-foreground font-sans-bold">{s.label}</Text>
+              <Text className="text-muted-foreground text-xs mt-0.5">{s.hint}</Text>
             </Pressable>
           ))}
         </View>
 
-        <Text className="text-zinc-400 text-sm font-medium mb-3">How many? (optional)</Text>
+        <Text className="text-muted-foreground text-sm font-sans-medium mb-3">How many? (optional)</Text>
         <View className="flex-row gap-2 mb-2">
           {COUNT_OPTIONS.map((c) => (
             <Pressable
               key={c.value}
               onPress={() => setCount(count === c.value ? null : c.value)}
               className={`flex-1 py-3 rounded-xl border ${
-                count === c.value ? "bg-amber-600 border-amber-600" : "bg-zinc-900 border-zinc-800"
+                count === c.value ? "bg-primary border-primary" : "bg-card border-border"
               }`}
             >
-              <Text className="text-white text-center font-bold">{c.label}</Text>
+              <Text className={`text-center font-sans-bold ${count === c.value ? "text-primary-foreground" : "text-foreground"}`}>{c.label}</Text>
             </Pressable>
           ))}
         </View>
@@ -187,11 +187,11 @@ export default function LogC() {
       router.back();
     };
     return (
-      <View className="flex-1 bg-zinc-950 px-6 justify-center">
-        <Text className="text-white text-2xl font-extrabold mb-3">
+      <View className="flex-1 bg-background px-6 justify-center">
+        <Text className="text-foreground font-display text-2xl mb-3">
           A few slips close together.
         </Text>
-        <Text className="text-zinc-400 text-base leading-relaxed mb-10">
+        <Text className="text-muted-foreground text-base leading-relaxed mb-10">
           That&apos;s a pattern worth paying attention to — not a failure. No pressure here, just
           three paths. Whichever feels right.
         </Text>
@@ -200,7 +200,7 @@ export default function LogC() {
           <Button title="Restart — fresh quit date" onPress={handleRestart} />
           <Button title="Take a break" onPress={handleBreak} variant="secondary" />
           <Pressable onPress={() => router.back()} className="py-3 items-center">
-            <Text className="text-zinc-500 text-sm">Continue as I am</Text>
+            <Text className="text-muted-foreground text-sm">Continue as I am</Text>
           </Pressable>
         </View>
       </View>
@@ -210,9 +210,9 @@ export default function LogC() {
   // ── C3 Warm — support response (varies by slip_type) ────────────────────────
   const c3 = supportCopy(slipType);
   return (
-    <View className="flex-1 bg-zinc-950 px-6 justify-center">
-      <Text className="text-white text-2xl font-extrabold mb-3">{c3.title}</Text>
-      <Text className="text-zinc-400 text-base leading-relaxed mb-10">{c3.body}</Text>
+    <View className="flex-1 bg-background px-6 justify-center">
+      <Text className="text-foreground font-display text-2xl mb-3">{c3.title}</Text>
+      <Text className="text-muted-foreground text-base leading-relaxed mb-10">{c3.body}</Text>
       <Button title="Back to home" onPress={() => router.back()} />
     </View>
   );

@@ -25,14 +25,14 @@ export const ReturnModalLong: React.FC<ReturnModalLongProps> = ({
   onResolve,
 }) => {
   return (
-    <View className="flex-1 bg-zinc-950 px-6 justify-center">
-      <Text className="text-zinc-500 text-sm font-medium uppercase tracking-wider mb-2">
+    <View className="flex-1 bg-background px-6 justify-center">
+      <Text className="text-muted-foreground text-sm font-sans-medium uppercase tracking-wider mb-2">
         It&apos;s been a while
       </Text>
-      <Text className="text-white text-2xl font-extrabold mb-1">
+      <Text className="text-foreground font-display text-2xl mb-1">
         You&apos;ve been away {daysMissed} days.
       </Text>
-      <Text className="text-zinc-400 text-base mb-8 leading-relaxed">
+      <Text className="text-muted-foreground text-base mb-8 leading-relaxed">
         We paused your streak so nothing was lost. Where do you want to pick up?
       </Text>
 
@@ -41,10 +41,10 @@ export const ReturnModalLong: React.FC<ReturnModalLongProps> = ({
           <Pressable
             key={o.key}
             onPress={() => onResolve(o.key)}
-            className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 active:bg-zinc-850"
+            className="bg-card border border-border rounded-3xl p-5 active:bg-muted"
           >
-            <Text className="text-white text-base font-semibold">{o.label}</Text>
-            <Text className="text-zinc-500 text-xs mt-1 leading-relaxed">{o.hint}</Text>
+            <Text className="text-foreground text-base font-sans-bold">{o.label}</Text>
+            <Text className="text-muted-foreground text-xs mt-1 leading-relaxed">{o.hint}</Text>
           </Pressable>
         ))}
       </View>

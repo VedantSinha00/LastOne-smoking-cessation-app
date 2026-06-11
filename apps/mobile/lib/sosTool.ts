@@ -32,6 +32,13 @@ export interface SelectionInput {
   profile: SmokerProfile
   /** MIN-03 (Find Match 2P) only surfaces with an active Quit Buddy. */
   hasBuddy: boolean
+  /**
+   * Tool IDs to drop from the candidate pool before ranking. Used by the SOS-1
+   * "Show me other things that worked" shuffle to surface a DIFFERENT valid trio
+   * (the next-best set, still respecting every composition/stage/context rule).
+   * The caller clears this once the pool would be exhausted (wrap-around).
+   */
+  exclude?: string[]
 }
 
 const MIN_USES_FOR_WEIGHT = 5 // §B2 — below 5 uses, tool_score treated as 0
@@ -128,13 +135,16 @@ const byId = (pool: CopingTool[], id: string) => pool.find((t) => t.tool_id === 
  * happen with the 12-tool seed); callers pad from the full pool as a last resort.
  */
 export function selectSOSTools(input: SelectionInput): CopingTool[] {
-  const { tools, scores, craving, stage, profile, hasBuddy } = input
+  const { tools, scores, craving, stage, profile, hasBuddy, exclude } = input
+  const excludeSet = new Set(exclude ?? [])
 
-  // Base pool: SOS-eligible, not removed_from_sos, buddy gate, stage pre-filter.
+  // Base pool: SOS-eligible, not removed_from_sos, buddy gate, stage pre-filter,
+  // and minus any shuffle-excluded tools (so a re-roll surfaces a different trio).
   let pool = tools
     .filter((t) => t.sos_eligible)
     .filter((t) => !scores.get(t.tool_id)?.removed_from_sos)
     .filter((t) => !t.requires_buddy || hasBuddy)
+    .filter((t) => !excludeSet.has(t.tool_id))
   pool = applyStageFilter(pool, stage)
 
   // ── Step 0 — Intensity 5 override (BRE-03 slot 1, then top 2 any family) ──────

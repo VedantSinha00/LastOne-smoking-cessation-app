@@ -7,6 +7,9 @@ import { View, Text } from 'react-native'
  *   12:00–17:00 → "Hey"
  *   17:00–21:00 → "Good evening"
  *   21:00–05:00 → "Hey"
+ *
+ * Styled to the Lovable design: name rendered in primary green (Space Grotesk),
+ * with an optional "Day N of not smoking." subline beneath.
  */
 function greetingFor(hour: number): string {
   if (hour >= 5 && hour < 12) return 'Good morning'
@@ -16,17 +19,27 @@ function greetingFor(hour: number): string {
 
 interface GreetingProps {
   firstName?: string | null
+  /** Days since quit. When provided, renders the "Day N of not smoking." subline. */
+  dayCount?: number
 }
 
-export const Greeting: React.FC<GreetingProps> = ({ firstName }) => {
+export const Greeting: React.FC<GreetingProps> = ({ firstName, dayCount }) => {
   const greeting = greetingFor(new Date().getHours())
   const name = firstName?.trim()
 
   return (
-    <View className="mb-6">
-      <Text className="text-white text-2xl font-extrabold">
+    <View>
+      <Text
+        className="text-primary font-display"
+        style={{ fontSize: 34, letterSpacing: -0.5, lineHeight: 40 }}
+      >
         {name ? `${greeting}, ${name}.` : `${greeting}.`}
       </Text>
+      {typeof dayCount === 'number' && (
+        <Text className="text-muted-foreground font-sans mt-1" style={{ fontSize: 15 }}>
+          Day <Text className="text-foreground font-sans-medium">{dayCount}</Text> of not smoking.
+        </Text>
+      )}
     </View>
   )
 }

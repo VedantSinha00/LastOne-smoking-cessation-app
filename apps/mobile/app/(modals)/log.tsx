@@ -29,21 +29,21 @@ export default function LogSheet() {
       {/* Backdrop — tap to dismiss */}
       <Pressable className="absolute inset-0" onPress={() => router.back()} />
 
-      <View className="bg-zinc-900 rounded-t-3xl border-t border-zinc-800 px-5 pt-3 pb-8">
-        <View className="self-center w-10 h-1.5 rounded-full bg-zinc-700 mb-5" />
-        <Text className="text-white text-lg font-bold mb-4 px-1">What's happening?</Text>
+      <View className="bg-card rounded-t-3xl border-t border-border px-5 pt-3 pb-8">
+        <View className="self-center w-10 h-1.5 rounded-full bg-border mb-5" />
+        <Text className="text-foreground font-display text-lg mb-4 px-1">What's happening?</Text>
 
         <View className="gap-2">
           {OPTIONS.map((o) => (
             <Pressable
               key={o.route}
               onPress={() => router.replace(o.route)}
-              className="flex-row items-center bg-zinc-950 border border-zinc-800 rounded-2xl p-4 active:bg-zinc-800"
+              className="flex-row items-center bg-background border border-border rounded-3xl p-4 active:bg-muted"
             >
               <Text className="text-2xl mr-4">{o.emoji}</Text>
               <View className="flex-1">
-                <Text className="text-white text-base font-semibold">{o.title}</Text>
-                <Text className="text-zinc-500 text-xs mt-0.5">{o.subtitle}</Text>
+                <Text className="text-foreground text-base font-sans-bold">{o.title}</Text>
+                <Text className="text-muted-foreground text-xs mt-0.5">{o.subtitle}</Text>
               </View>
             </Pressable>
           ))}

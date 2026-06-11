@@ -7,9 +7,9 @@ function StepperButton({ label, onPress }: { label: string; onPress: () => void 
   return (
     <Pressable
       onPress={onPress}
-      className="w-14 h-14 rounded-2xl bg-zinc-900 border border-zinc-800 items-center justify-center active:bg-zinc-800"
+      className="w-14 h-14 rounded-2xl bg-card border border-border items-center justify-center active:bg-muted"
     >
-      <Text className="text-amber-400 text-3xl leading-8">{label}</Text>
+      <Text className="text-primary text-3xl leading-8">{label}</Text>
     </Pressable>
   )
 }
@@ -30,23 +30,23 @@ export function OB11CigarettesAndCost() {
     <OBScreen onBack={prevStep} footer={<OBContinue onPress={nextStep} />}>
       <OBHeader title="On an average day, how much?" subtitle="A rough number is fine — you can change this later." />
 
-      <Text className="text-zinc-400 text-sm mb-3">Cigarettes per day</Text>
+      <Text className="text-muted-foreground text-sm mb-3">Cigarettes per day</Text>
       <View className="flex-row items-center justify-between mb-8">
         <StepperButton label="−" onPress={() => setCigs(state.cigarettesPerDay - 1)} />
-        <Text className="text-white text-4xl font-bold">{state.cigarettesPerDay}</Text>
+        <Text className="text-foreground font-display text-4xl">{state.cigarettesPerDay}</Text>
         <StepperButton label="+" onPress={() => setCigs(state.cigarettesPerDay + 1)} />
       </View>
 
-      <Text className="text-zinc-400 text-sm mb-3">Cost per cigarette (₹)</Text>
-      <View className="flex-row items-center bg-zinc-900 border border-zinc-800 rounded-2xl px-5">
-        <Text className="text-zinc-500 text-lg mr-1">₹</Text>
+      <Text className="text-muted-foreground text-sm mb-3">Cost per cigarette (₹)</Text>
+      <View className="flex-row items-center bg-card border border-border rounded-2xl px-5">
+        <Text className="text-muted-foreground text-lg mr-1">₹</Text>
         <TextInput
           value={state.pricePerCigarette ? String(state.pricePerCigarette) : ''}
           onChangeText={onPriceChange}
           keyboardType="number-pad"
           placeholder="15"
-          placeholderTextColor="#52525b"
-          className="flex-1 py-4 text-white text-lg"
+          placeholderTextColor="#76706C"
+          className="flex-1 py-4 text-foreground text-lg"
         />
       </View>
     </OBScreen>

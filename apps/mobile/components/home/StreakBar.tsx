@@ -1,5 +1,6 @@
 import React from 'react'
 import { View, Text } from 'react-native'
+import { Card } from '../ui/Card'
 import type { Stage } from '../../lib/stage'
 import type { Database } from '../../types/database'
 
@@ -16,11 +17,11 @@ const FreezeIcons: React.FC<{ count: number }> = ({ count }) => {
   return (
     <View className="flex-row items-center mt-2">
       {Array.from({ length: count }).map((_, i) => (
-        <Text key={i} className="text-sky-400 text-base mr-0.5">
+        <Text key={i} className="text-base mr-0.5">
           ❄️
         </Text>
       ))}
-      <Text className="text-zinc-500 text-xs ml-1">
+      <Text className="text-muted-foreground text-xs ml-1">
         {count} {count === 1 ? 'freeze' : 'freezes'}
       </Text>
     </View>
@@ -49,58 +50,58 @@ export const StreakBar: React.FC<StreakBarProps> = ({ stage, streak }) => {
   // ── Stage 0: logging streak framing ──────────────────────────────────────
   if (isPreQuit) {
     return (
-      <View className="bg-zinc-900 border border-zinc-800 p-6 rounded-2xl shadow-lg">
-        <Text className="text-zinc-400 text-sm font-medium uppercase tracking-wider">
+      <Card>
+        <Text className="text-muted-foreground text-sm font-sans-medium uppercase tracking-wider">
           Learning Week
         </Text>
-        <Text className="text-white text-2xl font-extrabold mt-1">
+        <Text className="text-foreground font-display text-2xl mt-1">
           Building your profile
         </Text>
-        <Text className="text-zinc-500 text-xs mt-1 leading-relaxed">
+        <Text className="text-muted-foreground text-xs mt-1 leading-relaxed">
           Keep logging — your quit streak starts the day you quit.
         </Text>
-      </View>
+      </Card>
     )
   }
 
   // ── STK-5: streak reset state ─────────────────────────────────────────────
   if (isReset) {
     return (
-      <View className="bg-zinc-900 border border-amber-900/40 p-6 rounded-2xl shadow-lg">
-        <Text className="text-zinc-400 text-sm font-medium uppercase tracking-wider">
+      <Card>
+        <Text className="text-muted-foreground text-sm font-sans-medium uppercase tracking-wider">
           Streak Reset
         </Text>
-        <Text className="text-white text-2xl font-extrabold mt-1">Day 0</Text>
-        <Text className="text-amber-500/90 text-sm font-semibold mt-2">
+        <Text className="text-foreground font-display text-2xl mt-1">Day 0</Text>
+        <Text className="text-craving text-sm font-sans-bold mt-2">
           {lifetime} lifetime smoke-free {lifetime === 1 ? 'day' : 'days'}
         </Text>
-        <Text className="text-zinc-500 text-xs mt-1 leading-relaxed">
+        <Text className="text-muted-foreground text-xs mt-1 leading-relaxed">
           That total doesn&apos;t reset. Today is a fresh Day 1 when you&apos;re ready.
         </Text>
-      </View>
+      </Card>
     )
   }
 
   // ── STK-1: active (or paused) quit streak ─────────────────────────────────
   return (
-    <View className="bg-zinc-900 border border-zinc-800 p-6 rounded-2xl flex-row justify-between items-center shadow-lg">
+    <Card className="flex-row justify-between items-center">
       <View className="flex-1">
-        <Text className="text-zinc-400 text-sm font-medium uppercase tracking-wider">
+        <Text className="text-muted-foreground text-sm font-sans-medium uppercase tracking-wider">
           {isPaused ? 'Streak Paused' : 'Current Streak'}
         </Text>
-        <Text className="text-white text-4xl font-extrabold mt-1">
+        <Text className="text-foreground font-display mt-1" style={{ fontSize: 40, lineHeight: 44 }}>
           {currentStreak} {currentStreak === 1 ? 'Day' : 'Days'}
         </Text>
-        <Text className="text-zinc-500 text-xs mt-1">
+        <Text className="text-muted-foreground text-xs mt-1">
           {lifetime} lifetime smoke-free {lifetime === 1 ? 'day' : 'days'}
         </Text>
         {!isPaused && <FreezeIcons count={freezeStock} />}
       </View>
-      <View className="w-16 h-16 rounded-full bg-amber-500/10 border border-amber-500/20 items-center justify-center ml-4">
-        <Text className="text-amber-500 text-2xl font-bold">
+      <View className="w-16 h-16 rounded-full bg-primary/10 border border-primary/20 items-center justify-center ml-4">
+        <Text className="text-2xl">
           {isPaused ? '⏸️' : '🔥'}
         </Text>
       </View>
-    </View>
+    </Card>
   )
 }

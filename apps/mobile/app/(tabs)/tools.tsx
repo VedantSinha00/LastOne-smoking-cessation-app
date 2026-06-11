@@ -50,24 +50,24 @@ export default function ToolsLibrary() {
   };
 
   return (
-    <ScrollView className="flex-1 bg-zinc-950" contentContainerClassName="p-6 gap-6 pb-12">
+    <ScrollView className="flex-1 bg-background" contentContainerClassName="p-6 gap-6 pb-12">
       <View>
-        <Text className="text-zinc-500 text-sm font-medium">Coping Tools</Text>
-        <Text className="text-white text-2xl font-extrabold">Try one anytime</Text>
-        <Text className="text-zinc-500 text-xs mt-1 leading-relaxed">
+        <Text className="text-muted-foreground text-sm font-sans-medium">Coping Tools</Text>
+        <Text className="text-foreground font-display text-2xl">Try one anytime</Text>
+        <Text className="text-muted-foreground text-xs mt-1 leading-relaxed">
           No craving needed. Get familiar with these now so they&apos;re ready when you need them.
         </Text>
       </View>
 
       {isLoading ? (
-        <ActivityIndicator color="#f59e0b" className="mt-6" />
+        <ActivityIndicator color="#7FC200" className="mt-6" />
       ) : (
         SECTIONS.map((section) => {
           const items = (tools ?? []).filter(section.match);
           if (!items.length) return null;
           return (
             <View key={section.key}>
-              <Text className="text-zinc-400 text-xs font-bold uppercase tracking-wider mb-2">
+              <Text className="text-muted-foreground text-xs font-sans-bold uppercase tracking-wider mb-2">
                 {section.title}
               </Text>
               <View className="gap-2">
@@ -75,10 +75,10 @@ export default function ToolsLibrary() {
                   <Pressable
                     key={t.tool_id}
                     onPress={() => startTool(t)}
-                    className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 active:bg-zinc-800"
+                    className="bg-card border border-border rounded-3xl p-4 active:bg-muted"
                   >
-                    <Text className="text-white font-semibold">{t.name}</Text>
-                    <Text className="text-zinc-500 text-xs mt-0.5">
+                    <Text className="text-foreground font-sans-bold">{t.name}</Text>
+                    <Text className="text-muted-foreground text-xs mt-0.5">
                       {Math.round(t.duration_seconds / 60) || 1} min · {t.category.replace(/_/g, " ")}
                     </Text>
                   </Pressable>
@@ -91,10 +91,10 @@ export default function ToolsLibrary() {
 
       {/* AI Bot — coming soon placeholder (no backend yet). */}
       <View>
-        <Text className="text-zinc-400 text-xs font-bold uppercase tracking-wider mb-2">AI Bot</Text>
-        <View className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-4">
-          <Text className="text-zinc-500 font-semibold">Talk it through</Text>
-          <Text className="text-zinc-600 text-xs mt-0.5">Coming soon.</Text>
+        <Text className="text-muted-foreground text-xs font-sans-bold uppercase tracking-wider mb-2">AI Bot</Text>
+        <View className="bg-muted border border-border rounded-3xl p-4">
+          <Text className="text-muted-foreground font-sans-bold">Talk it through</Text>
+          <Text className="text-muted-foreground text-xs mt-0.5">Coming soon.</Text>
         </View>
       </View>
 
@@ -102,15 +102,15 @@ export default function ToolsLibrary() {
       <Modal visible={!!active} animationType="slide" onRequestClose={() => setActive(null)}>
         {active && !checkIn && <ToolRunner tool={active} onDone={() => setCheckIn(true)} />}
         {active && checkIn && (
-          <View className="flex-1 bg-zinc-950 px-6 py-8 justify-center">
-            <Text className="text-white text-2xl font-extrabold mb-1">How was that?</Text>
-            <Text className="text-zinc-400 text-sm mb-8">Helps us learn what works for you.</Text>
+          <View className="flex-1 bg-background px-6 py-8 justify-center">
+            <Text className="text-foreground font-display text-2xl mb-1">How was that?</Text>
+            <Text className="text-muted-foreground text-sm mb-8">Helps us learn what works for you.</Text>
             <View className="gap-3">
-              <Pressable onPress={() => score(+1)} className="bg-emerald-600/20 border border-emerald-600 rounded-2xl p-5 active:opacity-80">
-                <Text className="text-emerald-400 font-bold text-center text-base">That helped</Text>
+              <Pressable onPress={() => score(+1)} className="bg-primary/15 border border-primary rounded-3xl p-5 active:opacity-80">
+                <Text className="text-success font-sans-bold text-center text-base">That helped</Text>
               </Pressable>
-              <Pressable onPress={() => score(-1)} className="bg-zinc-900 border border-zinc-700 rounded-2xl p-5 active:bg-zinc-800">
-                <Text className="text-zinc-200 font-bold text-center text-base">Not really</Text>
+              <Pressable onPress={() => score(-1)} className="bg-card border border-border rounded-3xl p-5 active:bg-muted">
+                <Text className="text-foreground font-sans-bold text-center text-base">Not really</Text>
               </Pressable>
               <Button title="Close" variant="secondary" onPress={() => setActive(null)} className="mt-2" />
             </View>

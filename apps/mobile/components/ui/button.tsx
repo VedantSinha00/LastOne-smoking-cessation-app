@@ -10,6 +10,16 @@ interface ButtonProps {
   className?: string;
 }
 
+/**
+ * Primary action button — matched to the Lovable design system.
+ *   primary   → lime-green fill, light label (the signature "All good today" button)
+ *   secondary → white surface with a 1.5px near-black outline + dark label
+ *               (the "Check in →" button)
+ *   danger    → craving orange
+ *
+ * Shape mirrors Lovable: ~44px tall, 12px radius (rounded-xl), 600-weight label.
+ * API is unchanged from the previous version so existing call sites keep working.
+ */
 export const Button: React.FC<ButtonProps> = ({
   title,
   onPress,
@@ -23,13 +33,18 @@ export const Button: React.FC<ButtonProps> = ({
   const getVariantStyles = () => {
     switch (variant) {
       case "secondary":
-        return "bg-zinc-800 border border-zinc-700 active:bg-zinc-700";
+        // Lovable: white fill, 1.5px foreground outline, dark text.
+        return "bg-card border-[1.5px] border-foreground active:bg-muted";
       case "danger":
-        return "bg-red-600 active:bg-red-700";
+        return "bg-craving active:opacity-90";
       default:
-        return "bg-amber-600 active:bg-amber-700"; // Signature amber brand color
+        return "bg-primary active:opacity-90";
     }
   };
+
+  // primary/danger sit on saturated fills → light label; secondary → dark label
+  const labelColor = variant === "secondary" ? "text-foreground" : "text-primary-foreground";
+  const spinnerColor = variant === "secondary" ? "#15110D" : "#0D140B";
 
   return (
     <Pressable
@@ -39,9 +54,9 @@ export const Button: React.FC<ButtonProps> = ({
       } ${className}`}
     >
       {loading ? (
-        <ActivityIndicator color="#fff" size="small" />
+        <ActivityIndicator color={spinnerColor} size="small" />
       ) : (
-        <Text className="text-white font-semibold text-center text-base">{title}</Text>
+        <Text className={`font-sans-bold text-center text-base ${labelColor}`}>{title}</Text>
       )}
     </Pressable>
   );

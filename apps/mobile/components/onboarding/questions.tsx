@@ -35,11 +35,11 @@ export function OB06Name() {
         value={state.firstName}
         onChangeText={(t) => setAnswer('firstName', t)}
         placeholder="Your name"
-        placeholderTextColor="#52525b"
+        placeholderTextColor="#76706C"
         autoFocus
         returnKeyType="done"
         onSubmitEditing={() => valid && nextStep()}
-        className="bg-zinc-900 border border-zinc-800 rounded-2xl px-5 py-4 text-white text-lg"
+        className="bg-card border border-border rounded-2xl px-5 py-4 text-foreground text-lg"
       />
     </OBScreen>
   )

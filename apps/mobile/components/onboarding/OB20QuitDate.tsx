@@ -56,9 +56,9 @@ export function OB20QuitDate() {
       {Platform.OS === 'android' && (
         <Pressable
           onPress={() => setShow(true)}
-          className="bg-zinc-900 border border-zinc-800 rounded-2xl px-5 py-4 mb-4 active:bg-zinc-800"
+          className="bg-card border border-border rounded-2xl px-5 py-4 mb-4 active:bg-muted"
         >
-          <Text className="text-amber-300 text-lg">{fmt(selected)}</Text>
+          <Text className="text-primary text-lg">{fmt(selected)}</Text>
         </Pressable>
       )}
 
@@ -69,7 +69,7 @@ export function OB20QuitDate() {
           display={Platform.OS === 'ios' ? 'inline' : 'default'}
           minimumDate={minDate}
           onChange={onChange}
-          themeVariant="dark"
+          themeVariant="light"
         />
       )}
     </OBScreen>

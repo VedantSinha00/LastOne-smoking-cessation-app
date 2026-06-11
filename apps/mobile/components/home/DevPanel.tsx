@@ -251,9 +251,9 @@ export const DevPanel: React.FC<DevPanelProps> = ({ onUnlockReturnGate, onResetC
     <Pressable
       onPress={onPress}
       disabled={busy !== null}
-      className="bg-zinc-900 border border-zinc-700 rounded-xl px-3 py-2.5 active:bg-zinc-800"
+      className="bg-secondary border border-border rounded-xl px-3 py-2.5 active:bg-muted"
     >
-      <Text className="text-zinc-200 text-xs font-semibold text-center">
+      <Text className="text-foreground text-xs font-sans-bold text-center">
         {busy === label ? "…" : label}
       </Text>
     </Pressable>
@@ -268,38 +268,38 @@ export const DevPanel: React.FC<DevPanelProps> = ({ onUnlockReturnGate, onResetC
         {busy && <ActivityIndicator size="small" color="#a855f7" />}
       </View>
 
-      <Text className="text-zinc-500 text-[11px] mb-1.5">Stage (sets quit_date + syncs streak & freezes)</Text>
+      <Text className="text-muted-foreground text-[11px] mb-1.5">Stage (sets quit_date + syncs streak & freezes)</Text>
       <View className="flex-row gap-2 mb-3">
         <View className="flex-1"><Btn label="Stage 0 (clear)" onPress={() => setQuitDate("Stage 0 (clear)", null)} /></View>
         <View className="flex-1"><Btn label="Stage 1 (1d)" onPress={() => setQuitDate("Stage 1 (1d)", daysAgoISO(1))} /></View>
         <View className="flex-1"><Btn label="Stage 3 (10d)" onPress={() => setQuitDate("Stage 3 (10d)", daysAgoISO(10))} /></View>
       </View>
 
-      <Text className="text-zinc-500 text-[11px] mb-1.5">Return modal (sets last_confirmed → re-fires)</Text>
+      <Text className="text-muted-foreground text-[11px] mb-1.5">Return modal (sets last_confirmed → re-fires)</Text>
       <View className="flex-row gap-2 mb-3">
         <View className="flex-1"><Btn label="None (today)" onPress={() => setLastConfirmed("None (today)", todayISO())} /></View>
         <View className="flex-1"><Btn label="STK-2 (missed 1)" onPress={() => setLastConfirmed("STK-2 (missed 1)", daysAgoISO(2))} /></View>
         <View className="flex-1"><Btn label="STK-3 (missed 5)" onPress={() => setLastConfirmed("STK-3 (missed 5)", daysAgoISO(6))} /></View>
       </View>
 
-      <Text className="text-zinc-500 text-[11px] mb-1.5">Freeze stock override (slip freeze vs break)</Text>
+      <Text className="text-muted-foreground text-[11px] mb-1.5">Freeze stock override (slip freeze vs break)</Text>
       <View className="flex-row gap-2 mb-3">
         <View className="flex-1"><Btn label="freeze = 2" onPress={() => setFreezeStock("freeze = 2", 2)} /></View>
         <View className="flex-1"><Btn label="freeze = 0" onPress={() => setFreezeStock("freeze = 0", 0)} /></View>
       </View>
 
-      <Text className="text-zinc-500 text-[11px] mb-1.5">Slip pattern (red_flag → C3 nudge)</Text>
+      <Text className="text-muted-foreground text-[11px] mb-1.5">Slip pattern (red_flag → C3 nudge)</Text>
       <View className="flex-row gap-2 mb-3">
         <View className="flex-1"><Btn label="red_flag = 0" onPress={() => setRedFlag("red_flag = 0", 0)} /></View>
         <View className="flex-1"><Btn label="red_flag = 2" onPress={() => setRedFlag("red_flag = 2", 2)} /></View>
       </View>
 
-      <Text className="text-zinc-500 text-[11px] mb-1.5">Reset (for repeat testing)</Text>
+      <Text className="text-muted-foreground text-[11px] mb-1.5">Reset (for repeat testing)</Text>
       <View className="flex-row gap-2 mb-3">
         <View className="flex-1"><Btn label="Reset check-in flag" onPress={() => resetDailyCheckIn("Reset check-in flag")} /></View>
       </View>
 
-      <Text className="text-zinc-500 text-[11px] mb-1.5">
+      <Text className="text-muted-foreground text-[11px] mb-1.5">
         Reset activity (keeps onboarding + quit_date). Logs need SQL — see note.
       </Text>
       <Pressable
@@ -307,13 +307,13 @@ export const DevPanel: React.FC<DevPanelProps> = ({ onUnlockReturnGate, onResetC
         disabled={busy !== null}
         className="border border-red-800/70 rounded-xl px-3 py-2.5 active:bg-red-950/40"
       >
-        <Text className="text-red-400 text-xs font-semibold text-center">
+        <Text className="text-destructive text-xs font-semibold text-center">
           {busy === "Wipe activity" ? "…" : "Reset cards / tools / slip / SOS (sync streak)"}
         </Text>
       </Pressable>
 
       {lastResult && (
-        <Text className="text-zinc-600 text-[10px] mt-3 leading-relaxed">{lastResult}</Text>
+        <Text className="text-muted-foreground text-[10px] mt-3 leading-relaxed">{lastResult}</Text>
       )}
     </View>
   );

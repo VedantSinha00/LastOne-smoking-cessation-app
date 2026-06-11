@@ -11,7 +11,7 @@ export default function ModalsLayout() {
       screenOptions={{
         presentation: "modal",
         headerShown: false,
-        contentStyle: { backgroundColor: "#09090b" },
+        contentStyle: { backgroundColor: "#FBFAF9" },
       }}
     >
       <Stack.Screen name="log" options={{ presentation: "transparentModal", animation: "fade" }} />
@@ -19,7 +19,10 @@ export default function ModalsLayout() {
       <Stack.Screen name="log-b" />
       <Stack.Screen name="log-c" />
       <Stack.Screen name="log-d" />
-      <Stack.Screen name="sos" options={{ presentation: "fullScreenModal" }} />
+      {/* SOS-1 presents as a centered popup over the (dimmed) home, like Lovable;
+          the later SOS screens render their own full-bleed background. Transparent
+          presentation lets the scrim/dim show through behind SOS-1. */}
+      <Stack.Screen name="sos" options={{ presentation: "transparentModal", animation: "fade" }} />
     </Stack>
   );
 }

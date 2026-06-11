@@ -39,18 +39,18 @@ export function OB05CreateAccount() {
 
         <Pressable
           onPress={loading ? undefined : handleGoogle}
-          className="w-full bg-white rounded-2xl py-4 flex-row items-center justify-center"
+          className="w-full bg-card border border-border rounded-2xl py-4 flex-row items-center justify-center"
         >
           {loading ? (
-            <ActivityIndicator color="#09090b" />
+            <ActivityIndicator color="#15110D" />
           ) : (
-            <Text className="text-zinc-950 text-base font-semibold">Continue with Google</Text>
+            <Text className="text-foreground text-base font-sans-bold">Continue with Google</Text>
           )}
         </Pressable>
 
-        {error ? <Text className="text-red-400 text-sm mt-4 text-center">{error}</Text> : null}
+        {error ? <Text className="text-destructive text-sm mt-4 text-center">{error}</Text> : null}
 
-        <Text className="text-zinc-600 text-xs mt-6 text-center leading-relaxed">
+        <Text className="text-muted-foreground text-xs mt-6 text-center leading-relaxed">
           By continuing you agree to our Terms and Privacy Policy.
         </Text>
       </View>

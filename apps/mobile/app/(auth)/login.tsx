@@ -16,21 +16,21 @@ export default function Login() {
   };
 
   return (
-    <View className="flex-1 bg-zinc-950 items-center justify-center px-6">
-      <Text className="text-amber-500 text-5xl font-black mb-2">LastOne</Text>
-      <Text className="text-zinc-400 text-base text-center mb-12">
+    <View className="flex-1 bg-background items-center justify-center px-6">
+      <Text className="text-primary font-display text-5xl mb-2">LastOne</Text>
+      <Text className="text-muted-foreground text-base text-center mb-12">
         Your last cigarette starts here.
       </Text>
 
       <Pressable
         onPress={handleGoogleSignIn}
         disabled={loading}
-        className="w-full bg-white rounded-2xl py-4 flex-row items-center justify-center"
+        className="w-full bg-card border border-border rounded-2xl py-4 flex-row items-center justify-center"
       >
         {loading ? (
-          <ActivityIndicator color="#09090b" />
+          <ActivityIndicator color="#15110D" />
         ) : (
-          <Text className="text-zinc-950 text-base font-semibold">Continue with Google</Text>
+          <Text className="text-foreground text-base font-sans-bold">Continue with Google</Text>
         )}
       </Pressable>
     </View>

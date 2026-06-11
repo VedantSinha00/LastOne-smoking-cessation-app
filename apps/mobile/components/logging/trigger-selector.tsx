@@ -19,7 +19,7 @@ export const TriggerSelector: React.FC<TriggerSelectorProps> = ({ selectedTrigge
 
   return (
     <View className="my-2">
-      <Text className="text-zinc-400 text-sm font-medium mb-3">Select Triggers</Text>
+      <Text className="text-muted-foreground text-sm font-sans-medium mb-3">Select Triggers</Text>
       <View className="flex-row flex-wrap gap-2">
         {AVAILABLE_TRIGGERS.map((trigger) => {
           const isSelected = selectedTriggers.includes(trigger);
@@ -29,11 +29,11 @@ export const TriggerSelector: React.FC<TriggerSelectorProps> = ({ selectedTrigge
               onPress={() => toggleTrigger(trigger)}
               className={`px-4 py-2 rounded-full border ${
                 isSelected
-                  ? "bg-amber-600 border-amber-600"
-                  : "bg-zinc-950 border-zinc-800"
+                  ? "bg-primary border-primary"
+                  : "bg-card border-border"
               } active:opacity-80`}
             >
-              <Text className={`text-sm ${isSelected ? "text-white font-semibold" : "text-zinc-400"}`}>
+              <Text className={`text-sm ${isSelected ? "text-primary-foreground font-sans-bold" : "text-muted-foreground"}`}>
                 {trigger}
               </Text>
             </Pressable>

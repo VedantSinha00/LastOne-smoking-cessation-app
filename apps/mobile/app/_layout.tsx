@@ -1,6 +1,16 @@
 import { Slot, useRouter, useSegments } from "expo-router";
 import { useEffect } from "react";
 import { View, ActivityIndicator } from "react-native";
+import { StatusBar } from "expo-status-bar";
+import {
+  useFonts,
+  SpaceGrotesk_700Bold,
+} from "@expo-google-fonts/space-grotesk";
+import {
+  DMSans_400Regular,
+  DMSans_500Medium,
+  DMSans_700Bold,
+} from "@expo-google-fonts/dm-sans";
 import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { AuthProvider } from "../lib/auth-context";
 import { useAuth } from "../hooks/useAuth";
@@ -67,8 +77,8 @@ function RootLayoutNav() {
   // OnboardingContext and resets the flow to OB-01 (caused a sign-in loop).
   if (authLoading) {
     return (
-      <View className="flex-1 bg-zinc-950 items-center justify-center">
-        <ActivityIndicator size="large" color="#d97706" />
+      <View className="flex-1 bg-background items-center justify-center">
+        <ActivityIndicator size="large" color="#7FC200" />
       </View>
     );
   }
@@ -77,9 +87,29 @@ function RootLayoutNav() {
 }
 
 export default function RootLayout() {
+  // Load the design's display + body fonts before rendering any screen so text
+  // never flashes in a fallback face. Tokens reference these family names in
+  // tailwind.config.js (font-display / font-sans).
+  const [fontsLoaded] = useFonts({
+    SpaceGrotesk_700Bold,
+    DMSans_400Regular,
+    DMSans_500Medium,
+    DMSans_700Bold,
+  });
+
+  if (!fontsLoaded) {
+    return (
+      <View className="flex-1 bg-background items-center justify-center">
+        <ActivityIndicator size="large" color="#7FC200" />
+      </View>
+    );
+  }
+
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
+        {/* Dark status-bar icons for the light theme background */}
+        <StatusBar style="dark" />
         <RootLayoutNav />
       </AuthProvider>
     </QueryClientProvider>

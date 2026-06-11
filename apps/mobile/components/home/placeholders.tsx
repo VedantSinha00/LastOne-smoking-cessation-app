@@ -1,5 +1,6 @@
 import React from 'react'
-import { View, Text } from 'react-native'
+import { Text } from 'react-native'
+import { Card } from '../ui/Card'
 
 /**
  * Home-screen sections whose full logic is owned by later build steps. Each
@@ -10,12 +11,12 @@ import { View, Text } from 'react-native'
 
 /** Section F — Insights Preview card. Real insight: Step 16 (Insights). */
 export const InsightsPreviewPlaceholder: React.FC = () => (
-  <View className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-md">
-    <Text className="text-zinc-400 text-xs font-bold uppercase tracking-wider mb-2">
+  <Card>
+    <Text className="text-muted-foreground text-xs font-sans-bold uppercase tracking-wider mb-2">
       Insights
     </Text>
-    <Text className="text-zinc-500 text-sm leading-relaxed">
+    <Text className="text-muted-foreground text-sm leading-relaxed">
       Log a few cigarettes and we&apos;ll start finding your patterns.
     </Text>
-  </View>
+  </Card>
 )

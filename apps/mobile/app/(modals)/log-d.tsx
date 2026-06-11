@@ -63,34 +63,34 @@ export default function LogD() {
   };
 
   return (
-    <ScrollView className="flex-1 bg-zinc-950 px-6 py-8" contentContainerClassName="pb-12">
+    <ScrollView className="flex-1 bg-background px-6 py-8" contentContainerClassName="pb-12">
       <View className="flex-row justify-between items-center mb-6">
-        <Text className="text-white text-2xl font-extrabold">Quick note</Text>
-        <Pressable onPress={() => router.back()} className="px-3 py-1.5 bg-zinc-900 border border-zinc-800 rounded-lg">
-          <Text className="text-zinc-400 text-sm">Cancel</Text>
+        <Text className="text-foreground font-display text-2xl">Quick note</Text>
+        <Pressable onPress={() => router.back()} className="px-3 py-1.5 bg-card border border-border rounded-lg">
+          <Text className="text-muted-foreground text-sm">Cancel</Text>
         </Pressable>
       </View>
 
       <TextInput
-        className="bg-zinc-900 text-white px-4 py-3 rounded-2xl border border-zinc-800 h-32 text-base leading-relaxed"
+        className="bg-card text-foreground px-4 py-3 rounded-2xl border border-border h-32 text-base leading-relaxed"
         placeholder={placeholder}
-        placeholderTextColor="#71717a"
+        placeholderTextColor="#76706C"
         multiline
         maxLength={280}
         value={text}
         onChangeText={setText}
         textAlignVertical="top"
       />
-      <Text className="text-zinc-600 text-xs text-right mt-1">{text.length}/280</Text>
+      <Text className="text-muted-foreground text-xs text-right mt-1">{text.length}/280</Text>
 
-      <Text className="text-zinc-400 text-sm font-medium mt-6 mb-3">How are you feeling? (optional)</Text>
+      <Text className="text-muted-foreground text-sm font-sans-medium mt-6 mb-3">How are you feeling? (optional)</Text>
       <View className="flex-row justify-between">
         {MOODS.map((m) => (
           <Pressable
             key={m.value}
             onPress={() => setMood(mood === m.value ? null : m.value)}
             className={`w-14 h-14 rounded-full items-center justify-center border ${
-              mood === m.value ? "bg-amber-600/20 border-amber-600" : "bg-zinc-900 border-zinc-800"
+              mood === m.value ? "bg-primary/15 border-primary" : "bg-card border-border"
             }`}
           >
             <Text className="text-2xl">{m.emoji}</Text>

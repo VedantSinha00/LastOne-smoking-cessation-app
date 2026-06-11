@@ -17,11 +17,11 @@ export function OBScreen({
 }) {
   const Body: any = scroll ? ScrollView : View
   return (
-    <SafeAreaView className="flex-1 bg-zinc-950" edges={['top', 'bottom']}>
+    <SafeAreaView className="flex-1 bg-background" edges={['top', 'bottom']}>
       <View className="h-11 justify-center px-4">
         {onBack ? (
           <Pressable onPress={onBack} hitSlop={16} className="w-10">
-            <Text className="text-zinc-500 text-3xl leading-7">‹</Text>
+            <Text className="text-muted-foreground text-3xl leading-7">‹</Text>
           </Pressable>
         ) : null}
       </View>
@@ -39,8 +39,8 @@ export function OBScreen({
 export function OBHeader({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
     <View className="mb-7 mt-2">
-      <Text className="text-white text-2xl font-bold leading-8">{title}</Text>
-      {subtitle ? <Text className="text-zinc-400 text-base mt-3 leading-relaxed">{subtitle}</Text> : null}
+      <Text className="text-foreground font-display text-2xl leading-8">{title}</Text>
+      {subtitle ? <Text className="text-muted-foreground text-base mt-3 leading-relaxed">{subtitle}</Text> : null}
     </View>
   )
 }
@@ -63,14 +63,14 @@ export function OBContinue({
     <Pressable
       onPress={inactive ? undefined : onPress}
       className={`py-4 rounded-2xl items-center justify-center ${
-        disabled ? 'bg-zinc-800' : 'bg-amber-600 active:bg-amber-700'
+        disabled ? 'bg-muted' : 'bg-primary active:opacity-90'
       }`}
       style={disabled ? { opacity: 0.5 } : undefined}
     >
       {loading ? (
-        <ActivityIndicator color="#fff" />
+        <ActivityIndicator color="#0D140B" />
       ) : (
-        <Text className={`font-semibold text-base ${disabled ? 'text-zinc-500' : 'text-white'}`}>{title}</Text>
+        <Text className={`font-sans-bold text-base ${disabled ? 'text-muted-foreground' : 'text-primary-foreground'}`}>{title}</Text>
       )}
     </Pressable>
   )
@@ -79,7 +79,7 @@ export function OBContinue({
 export function OBTextLink({ title, onPress }: { title: string; onPress: () => void }) {
   return (
     <Pressable onPress={onPress} hitSlop={8} className="items-center py-3">
-      <Text className="text-zinc-400 text-sm underline">{title}</Text>
+      <Text className="text-muted-foreground text-sm underline">{title}</Text>
     </Pressable>
   )
 }
@@ -101,11 +101,11 @@ export function OptionRow({
     <Pressable
       onPress={onPress}
       className={`flex-row items-center justify-between px-5 py-4 rounded-2xl mb-3 border ${
-        selected ? 'bg-amber-600/15 border-amber-500' : 'bg-zinc-900 border-zinc-800 active:bg-zinc-800'
+        selected ? 'bg-primary/15 border-primary' : 'bg-card border-border active:bg-muted'
       }`}
     >
-      <Text className={`text-base flex-1 ${selected ? 'text-amber-100' : 'text-zinc-200'}`}>{label}</Text>
-      {selected ? <Text className="text-amber-400 text-lg ml-3">{multi ? '✓' : '●'}</Text> : null}
+      <Text className={`text-base flex-1 ${selected ? 'text-foreground font-sans-medium' : 'text-foreground'}`}>{label}</Text>
+      {selected ? <Text className="text-primary text-lg ml-3">{multi ? '✓' : '●'}</Text> : null}
     </Pressable>
   )
 }

@@ -1,6 +1,7 @@
 import React from 'react'
 import { View, Text, Pressable } from 'react-native'
 import { useRouter } from 'expo-router'
+import { Card } from '../ui/Card'
 import type { Stage } from '../../lib/stage'
 import { useDashboard } from '../../hooks/useDashboard'
 import { formatRupees, formatDuration } from '../../lib/savings'
@@ -19,12 +20,12 @@ interface CounterCardProps {
 const CounterCard: React.FC<CounterCardProps> = ({ label, value, caption, onPress, dimmed }) => {
   const body = (
     <>
-      <Text className="text-white text-xl font-extrabold" numberOfLines={1} adjustsFontSizeToFit>
+      <Text className="text-foreground font-display text-xl" numberOfLines={1} adjustsFontSizeToFit>
         {value}
       </Text>
-      <Text className="text-zinc-500 text-[11px] mt-1 text-center">{label}</Text>
+      <Text className="text-muted-foreground text-[11px] mt-1 text-center">{label}</Text>
       {caption ? (
-        <Text className="text-zinc-600 text-[10px] mt-0.5 text-center leading-tight" numberOfLines={2}>
+        <Text className="text-muted-foreground text-[10px] mt-0.5 text-center leading-tight" numberOfLines={2}>
           {caption}
         </Text>
       ) : null}
@@ -61,25 +62,22 @@ export const ProgressDashboard: React.FC<{ stage: Stage }> = ({ stage }) => {
   // ── Onboarding incomplete (§8): no cigarettes/day or price → "—" prompt ──────
   if (!d.isLoading && !d.hasOnboardingInputs) {
     return (
-      <Pressable
-        onPress={() => router.push('/profile')}
-        className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-md active:opacity-80"
-      >
-        <Text className="text-zinc-400 text-xs font-bold uppercase tracking-wider mb-3">
+      <Card onPress={() => router.push('/profile')}>
+        <Text className="text-muted-foreground text-xs font-sans-bold uppercase tracking-wider mb-3">
           Your Progress
         </Text>
         <View className="flex-row justify-between mb-3">
           {(['Saved', 'Time back', 'Not smoked'] as const).map((label) => (
             <View key={label} className="items-center flex-1">
-              <Text className="text-zinc-600 text-xl font-extrabold">—</Text>
-              <Text className="text-zinc-500 text-[11px] mt-1">{label}</Text>
+              <Text className="text-muted-foreground font-display text-xl">—</Text>
+              <Text className="text-muted-foreground text-[11px] mt-1">{label}</Text>
             </View>
           ))}
         </View>
-        <Text className="text-amber-500/90 text-xs text-center">
+        <Text className="text-craving text-xs text-center">
           Set your daily cigarettes and cost to track your progress.
         </Text>
-      </Pressable>
+      </Card>
     )
   }
 
@@ -87,8 +85,8 @@ export const ProgressDashboard: React.FC<{ stage: Stage }> = ({ stage }) => {
   if (isPreQuit) {
     const p = d.preview
     return (
-      <View className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-md">
-        <Text className="text-zinc-400 text-xs font-bold uppercase tracking-wider mb-3">
+      <Card>
+        <Text className="text-muted-foreground text-xs font-sans-bold uppercase tracking-wider mb-3">
           Your Progress · Preview
         </Text>
         <View className="flex-row justify-between">
@@ -108,14 +106,14 @@ export const ProgressDashboard: React.FC<{ stage: Stage }> = ({ stage }) => {
             caption={p ? `${p.cigarettesPerDay}/day once you quit` : undefined}
           />
         </View>
-      </View>
+      </Card>
     )
   }
 
   // ── Stage 1+ live counters (§2) ──────────────────────────────────────────────
   return (
-    <View className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-md">
-      <Text className="text-zinc-400 text-xs font-bold uppercase tracking-wider mb-3">
+    <Card>
+      <Text className="text-muted-foreground text-xs font-sans-bold uppercase tracking-wider mb-3">
         Your Progress
       </Text>
       <View className="flex-row justify-between">
@@ -137,6 +135,6 @@ export const ProgressDashboard: React.FC<{ stage: Stage }> = ({ stage }) => {
           onPress={() => openCounter('cigarettes')}
         />
       </View>
-    </View>
+    </Card>
   )
 }

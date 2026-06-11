@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { View, Text, Pressable } from 'react-native'
-import { Button } from '../ui/button'
+import { X } from 'lucide-react-native'
 import type { Database } from '../../types/database'
 
 type CopingTool = Database['public']['Tables']['coping_tools']['Row']
@@ -13,9 +13,55 @@ type CopingTool = Database['public']['Tables']['coping_tools']['Row']
  * working runners; full game implementations land in Step 19).
  */
 
+/**
+ * Accent context. Calm green for the explorative Tools library; craving orange when
+ * the runner is launched from an active SOS session (matches the Lovable SOS design).
+ */
+export type RunnerAccent = 'calm' | 'craving'
+
+type AccentCfg = { ring: string; tint: string }
+const ACCENT: Record<RunnerAccent, AccentCfg> = {
+  calm: { ring: '#4E9A52', tint: 'rgba(78,154,82,0.12)' }, // surface-accent green
+  craving: { ring: '#F15025', tint: 'rgba(241,80,37,0.15)' }, // craving orange
+}
+
+/** Shared runner chrome (Lovable SOS-2): top ✕ bar, orange badge, primary button. */
+const RunnerTopBar: React.FC<{ onClose: () => void }> = ({ onClose }) => (
+  <View className="h-14 px-5 flex-row items-center justify-end">
+    <Pressable onPress={onClose} hitSlop={12} className="active:opacity-60">
+      <X size={22} color="#76706C" strokeWidth={2} />
+    </Pressable>
+  </View>
+)
+
+const RunnerBadge: React.FC<{ label: string; accent: AccentCfg }> = ({ label, accent }) => (
+  <View className="rounded-full px-4 py-1.5 mb-8" style={{ backgroundColor: accent.tint }}>
+    <Text className="font-sans-bold" style={{ color: accent.ring, fontSize: 12, letterSpacing: 1.2 }}>
+      {label.toUpperCase()}
+    </Text>
+  </View>
+)
+
+const RunnerPrimaryButton: React.FC<{ label: string; onPress: () => void; accent: AccentCfg; disabled?: boolean }> = ({
+  label,
+  onPress,
+  accent,
+  disabled,
+}) => (
+  <Pressable
+    onPress={disabled ? undefined : onPress}
+    className="rounded-2xl h-[52px] w-full items-center justify-center active:opacity-90"
+    style={{ backgroundColor: accent.ring, maxWidth: 320, opacity: disabled ? 0.5 : 1 }}
+  >
+    <Text className="text-white font-sans-bold text-[15px]">{label}</Text>
+  </Pressable>
+)
+
 interface RunnerProps {
   tool: CopingTool
   onDone: () => void
+  /** Visual accent — defaults to calm (Tools library); SOS passes "craving". */
+  accent?: RunnerAccent
 }
 
 // ── Breathing pacer ───────────────────────────────────────────────────────────
@@ -52,7 +98,8 @@ const BREATH_PATTERNS: Record<string, Phase[]> = {
 
 const TARGET_CYCLES: Record<string, number> = { 'BRE-01': 4, 'BRE-02': 4, 'BRE-03': 3, 'BRE-04': 3 }
 
-export const BreathingTool: React.FC<RunnerProps> = ({ tool, onDone }) => {
+export const BreathingTool: React.FC<RunnerProps> = ({ tool, onDone, accent = 'calm' }) => {
+  const a = ACCENT[accent]
   const pattern = BREATH_PATTERNS[tool.tool_id] ?? BREATH_PATTERNS['BRE-01']
   const totalCycles = TARGET_CYCLES[tool.tool_id] ?? 4
   const [phaseIdx, setPhaseIdx] = useState(0)
@@ -92,28 +139,43 @@ export const BreathingTool: React.FC<RunnerProps> = ({ tool, onDone }) => {
   const phase = pattern[Math.min(phaseIdx, pattern.length - 1)]
 
   return (
-    <View className="flex-1 bg-zinc-950 px-6 py-8 items-center justify-center">
-      <Text className="text-white text-xl font-bold text-center">{tool.name}</Text>
-      <Text className="text-zinc-500 text-xs mt-1">
-        Cycle {Math.min(cycle, totalCycles)} of {totalCycles}
-      </Text>
+    <View className="flex-1 bg-secondary">
+      <RunnerTopBar onClose={onDone} />
+      <View className="flex-1 px-6 items-center justify-center">
+        <RunnerBadge label={tool.name} accent={a} />
+        <Text className="text-muted-foreground text-xs mb-8 -mt-5">
+          Cycle {Math.min(cycle, totalCycles)} of {totalCycles}
+        </Text>
 
-      <View className="w-52 h-52 rounded-full bg-sky-600/10 border-4 border-sky-500/60 items-center justify-center my-10">
-        {finished ? (
-          <Text className="text-sky-300 text-lg font-bold text-center px-4">Nice. That&apos;s done.</Text>
-        ) : (
-          <>
-            <Text className="text-white text-xl font-bold text-center px-4">{phase.label}</Text>
-            <Text className="text-zinc-300 text-3xl font-extrabold mt-2">{remaining}s</Text>
-          </>
-        )}
+        {/* Concentric breathing rings (Lovable SOS-2a). */}
+        <View className="w-52 h-52 rounded-full items-center justify-center my-2" style={{ borderWidth: 1, borderColor: a.ring + "26" }}>
+          <View className="w-[150px] h-[150px] rounded-full items-center justify-center" style={{ borderWidth: 1, borderColor: a.ring + "40" }}>
+            <View
+              className="w-[100px] h-[100px] rounded-full items-center justify-center"
+              style={{ backgroundColor: a.tint, borderWidth: 1.5, borderColor: a.ring }}
+            >
+              {finished ? (
+                <Text className="text-sm font-sans-bold text-center px-2" style={{ color: a.ring }}>Done</Text>
+              ) : (
+                <Text className="font-sans-bold text-center" style={{ color: a.ring, fontSize: 14 }}>
+                  {remaining}s
+                </Text>
+              )}
+            </View>
+          </View>
+        </View>
+
+        <Text className="text-foreground font-display text-lg text-center mt-8 mb-2">
+          {finished ? "Nice. That's done." : phase.label}
+        </Text>
+        <View className="mt-8 w-full items-center">
+          <RunnerPrimaryButton
+            label={finished ? 'How are you now?' : "I'm done"}
+            onPress={onDone}
+            accent={a}
+          />
+        </View>
       </View>
-
-      <Button
-        title={finished ? 'How are you now?' : "I'm done"}
-        onPress={onDone}
-        className="w-full"
-      />
     </View>
   )
 }
@@ -126,7 +188,9 @@ export const PhysicalTool: React.FC<RunnerProps & { repCount?: number }> = ({
   tool,
   onDone,
   repCount = 10,
+  accent = 'calm',
 }) => {
+  const a = ACCENT[accent]
   // PHY-01/02 are count/breath based and socially invisible; PHY-03/04 are rep based.
   const isRepBased = tool.tool_id === 'PHY-03' || tool.tool_id === 'PHY-04'
   const stillSeconds = STILL_SECONDS[tool.tool_id] ?? 10
@@ -144,75 +208,93 @@ export const PhysicalTool: React.FC<RunnerProps & { repCount?: number }> = ({
   if (!isRepBased) {
     // PHY-01 Finger Pulse Press / PHY-02 Tongue Press — simple guided screen.
     return (
-      <View className="flex-1 bg-zinc-950 px-6 py-8 items-center justify-center">
-        <Text className="text-white text-xl font-bold text-center mb-4">{tool.name}</Text>
-        <Text className="text-zinc-400 text-base text-center leading-relaxed px-2 mb-10">
-          {tool.tool_id === 'PHY-01'
-            ? 'Press a finger to your wrist. Count 10 heartbeats — exhale slowly with each one.'
-            : 'Press your tongue to the roof of your mouth. Breathe through your nose for 5 slow breaths.'}
-        </Text>
-        <Button title="Done" onPress={onDone} className="w-full" />
+      <View className="flex-1 bg-secondary">
+        <RunnerTopBar onClose={onDone} />
+        <View className="flex-1 px-6 items-center justify-center">
+          <RunnerBadge label={tool.name} accent={a} />
+          <Text className="text-muted-foreground text-base text-center leading-relaxed px-2 mb-12">
+            {tool.tool_id === 'PHY-01'
+              ? 'Press a finger to your wrist. Count 10 heartbeats — exhale slowly with each one.'
+              : 'Press your tongue to the roof of your mouth. Breathe through your nose for 5 slow breaths.'}
+          </Text>
+          <RunnerPrimaryButton label="Done" onPress={onDone} accent={a} />
+        </View>
       </View>
     )
   }
 
   if (still != null) {
     return (
-      <View className="flex-1 bg-zinc-950 px-6 py-8 items-center justify-center">
-        <Text className="text-white text-xl font-bold text-center mb-6">Stand still</Text>
-        <Text className="text-zinc-300 text-5xl font-extrabold mb-2">{still}</Text>
-        <Text className="text-zinc-500 text-sm mb-10">Notice your breathing.</Text>
-        <Button title="How are you now?" onPress={onDone} className="w-full" disabled={still > 0} />
+      <View className="flex-1 bg-secondary">
+        <RunnerTopBar onClose={onDone} />
+        <View className="flex-1 px-6 items-center justify-center">
+          <RunnerBadge label="Stand still" accent={a} />
+          <Text className="font-display text-6xl mb-2" style={{ color: a.ring }}>{still}</Text>
+          <Text className="text-muted-foreground text-sm mb-12">Notice your breathing.</Text>
+          <RunnerPrimaryButton label="How are you now?" onPress={onDone} accent={a} disabled={still > 0} />
+        </View>
       </View>
     )
   }
 
   return (
-    <View className="flex-1 bg-zinc-950 px-6 py-8 items-center justify-center">
-      <Text className="text-white text-xl font-bold text-center mb-2">{tool.name}</Text>
-      <Text className="text-zinc-500 text-sm mb-8">Tap each rep. Any pace.</Text>
-      <Pressable
-        onPress={() => {
-          setReps((r) => {
-            if (r <= 1) {
-              setStill(stillSeconds)
-              return 0
-            }
-            return r - 1
-          })
-        }}
-        className="w-56 h-56 rounded-full bg-amber-500/15 border-4 border-amber-500 items-center justify-center active:bg-amber-500/30"
-      >
-        <Text className="text-amber-400 text-7xl font-black">{reps}</Text>
-        <Text className="text-zinc-400 text-sm mt-1">reps left</Text>
-      </Pressable>
-      <Text className="text-zinc-600 text-xs mt-8">Tap the circle for each one.</Text>
+    <View className="flex-1 bg-secondary">
+      <RunnerTopBar onClose={onDone} />
+      <View className="flex-1 px-6 items-center justify-center">
+        <RunnerBadge label={tool.name} accent={a} />
+        <Text className="text-muted-foreground text-sm mb-8">Tap each rep. Any pace.</Text>
+        <Pressable
+          onPress={() => {
+            setReps((r) => {
+              if (r <= 1) {
+                setStill(stillSeconds)
+                return 0
+              }
+              return r - 1
+            })
+          }}
+          className="w-56 h-56 rounded-full border-4 items-center justify-center active:opacity-80"
+          style={{ backgroundColor: a.tint, borderColor: a.ring }}
+        >
+          <Text className="font-display text-7xl" style={{ color: a.ring }}>{reps}</Text>
+          <Text className="text-muted-foreground text-sm mt-1">reps left</Text>
+        </Pressable>
+        <Text className="text-muted-foreground text-xs mt-8">Tap the circle for each one.</Text>
+      </View>
     </View>
   )
 }
 
 // ── Mini-game stubs (full games = Step 19) ───────────────────────────────────────
 
-export const GameStub: React.FC<RunnerProps> = ({ tool, onDone }) => (
-  <View className="flex-1 bg-zinc-950 px-6 py-8 items-center justify-center">
-    <Text className="text-white text-xl font-bold text-center mb-3">{tool.name}</Text>
-    <View className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 mb-10">
-      <Text className="text-zinc-400 text-sm text-center leading-relaxed">
-        The full game lands soon. For now, take a couple of minutes on something that occupies
-        your hands and eyes — the craving fades while your attention is busy.
-      </Text>
+export const GameStub: React.FC<RunnerProps> = ({ tool, onDone, accent = 'calm' }) => {
+  const a = ACCENT[accent]
+  return (
+    <View className="flex-1 bg-secondary">
+      <RunnerTopBar onClose={onDone} />
+      <View className="flex-1 px-6 items-center justify-center">
+        <RunnerBadge label={tool.name} accent={a} />
+        <View className="bg-card border border-border rounded-2xl p-6 mb-12">
+          <Text className="text-muted-foreground text-sm text-center leading-relaxed">
+            The full game lands soon. For now, take a couple of minutes on something that occupies
+            your hands and eyes — the craving fades while your attention is busy.
+          </Text>
+        </View>
+        <RunnerPrimaryButton label="How are you now?" onPress={onDone} accent={a} />
+      </View>
     </View>
-    <Button title="How are you now?" onPress={onDone} className="w-full" />
-  </View>
-)
+  )
+}
 
 /** Route a tool to its runner by family. */
 export const ToolRunner: React.FC<RunnerProps & { repCount?: number }> = ({
   tool,
   onDone,
   repCount,
+  accent = 'calm',
 }) => {
-  if (tool.family === 'breathing') return <BreathingTool tool={tool} onDone={onDone} />
-  if (tool.family === 'physical') return <PhysicalTool tool={tool} onDone={onDone} repCount={repCount} />
-  return <GameStub tool={tool} onDone={onDone} />
+  if (tool.family === 'breathing') return <BreathingTool tool={tool} onDone={onDone} accent={accent} />
+  if (tool.family === 'physical')
+    return <PhysicalTool tool={tool} onDone={onDone} repCount={repCount} accent={accent} />
+  return <GameStub tool={tool} onDone={onDone} accent={accent} />
 }
