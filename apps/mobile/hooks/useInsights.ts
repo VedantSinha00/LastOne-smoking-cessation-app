@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { useAuth } from './useAuth'
 import { useProfile } from './useProfile'
@@ -31,6 +31,9 @@ export interface InsightsData {
   feed: FeedItem[]
   hasAnyLog: boolean
   isLoading: boolean
+  /** Re-rank the feed order. Call on screen focus so 'read' cards settle lower on
+   *  the NEXT visit, not the instant they're tapped (§5.2 — ranks on screen open). */
+  resnapshotOrder: () => void
 }
 
 /**
@@ -95,15 +98,46 @@ export function useInsights(): InsightsData {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, attemptId, logsQuery.isLoading, logs.length])
 
+  // Feed ORDER is snapshotted (§5.2/DD-05: ranking "runs on screen open"). The order
+  // re-ranks only when the card SET changes (new card generated) or when the screen
+  // re-focuses (resnapshotOrder) — NOT when a card's state flips to 'read'. Otherwise
+  // a tapped card would re-rank and visibly drop while the user is still reading it.
+  // Card DATA stays live (the tapped card renders expanded + read in place); only its
+  // POSITION holds until the next screen open re-snapshots it.
+  const cards = cardsQuery.data
+  const cardSetKey = useMemo(
+    () => (cards ?? []).map((c) => c.insight_key).sort().join('|'),
+    [cards],
+  )
+  const [orderEpoch, setOrderEpoch] = useState(0)
+  const orderRef = useRef<{ key: string; epoch: number; order: string[] }>({
+    key: '',
+    epoch: -1,
+    order: [],
+  })
+  // Recompute the snapshot when the card set changes OR a re-focus bumps the epoch.
+  if (orderRef.current.key !== cardSetKey || orderRef.current.epoch !== orderEpoch) {
+    orderRef.current = {
+      key: cardSetKey,
+      epoch: orderEpoch,
+      order: rankFeed(cards ?? [], screenState).map((c) => c.insight_key),
+    }
+  }
+  const resnapshotOrder = useCallback(() => setOrderEpoch((e) => e + 1), [])
+
   const feed = useMemo<FeedItem[]>(() => {
-    const ranked = rankFeed(cardsQuery.data ?? [], screenState)
+    const byKey = new Map((cards ?? []).map((c) => [c.insight_key, c]))
     const items: FeedItem[] = []
-    for (const card of ranked) {
+    for (const key of orderRef.current.order) {
+      const card = byKey.get(key)
+      if (!card) continue
       const content = insightCardContent(card.insight_type, metrics, profile?.voice_style)
       if (content) items.push({ card, content })
     }
     return items
-  }, [cardsQuery.data, screenState, metrics, profile?.voice_style])
+    // orderRef is recomputed synchronously above before this memo runs; cardSetKey +
+    // orderEpoch capture every order change, and `cards` captures state/content updates.
+  }, [cards, cardSetKey, orderEpoch, screenState, metrics, profile?.voice_style])
 
   return {
     screenState,
@@ -111,6 +145,7 @@ export function useInsights(): InsightsData {
     feed,
     hasAnyLog: logs.length > 0,
     isLoading: logsQuery.isLoading || cardsQuery.isLoading,
+    resnapshotOrder,
   }
 }
 

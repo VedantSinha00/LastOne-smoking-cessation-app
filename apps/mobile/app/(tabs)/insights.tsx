@@ -15,16 +15,18 @@ import { InsightCardView } from '../../components/insights/InsightCardView'
  * INS-1a empty state (Stage 0, before the first log) shows the single log prompt.
  */
 export default function Insights() {
-  const { feed, hasAnyLog, screenState, isLoading } = useInsights()
+  const { feed, hasAnyLog, screenState, isLoading, resnapshotOrder } = useInsights()
   const { stage } = useStage()
   const { expandCard, toggleRiskWindow } = useInsightActions()
   const [expandedKey, setExpandedKey] = useState<string | null>(null)
 
-  // Collapse any expanded card when the screen loses focus, so it opens fresh.
+  // On each focus: re-rank the feed order (so cards read last visit settle lower
+  // now — ranking "runs on screen open", §5.2). On blur: collapse any expanded card.
   useFocusEffect(
     useCallback(() => {
+      resnapshotOrder()
       return () => setExpandedKey(null)
-    }, []),
+    }, [resnapshotOrder]),
   )
 
   if (isLoading) {

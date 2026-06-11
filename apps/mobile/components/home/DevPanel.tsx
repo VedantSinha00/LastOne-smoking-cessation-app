@@ -351,6 +351,89 @@ export const DevPanel: React.FC<DevPanelProps> = ({ onUnlockReturnGate, onResetC
     }
   };
 
+  /**
+   * Seed a realistic batch of craving/overcome logs into the OPEN attempt so the
+   * Insights thresholds (§B2.3) actually fire on device:
+   *   - top_trigger      → ≥5 cravings, 'boredom' dominant
+   *   - peak_risk_window → cravings clustered at 18:00 across 6 distinct days (≥5 → HIGH confidence)
+   *   - resistance_rate  → ≥10 outcome-bearing logs (cravings + overcomes)
+   *   - craving_drop     → prior 7d weighted heavier than current 7d
+   * Timestamps are backdated across the last ~13 days. attempt_id/stage taken from
+   * the open attempt. NOTE: the `log` table has no client DELETE policy — clear with
+   * SQL between runs if needed (re-seeding just stacks more rows, which is fine).
+   */
+  const seedInsightLogs = async (label: string) => {
+    if (!user) return;
+    setBusy(label);
+    try {
+      const { data: attempt } = await supabase
+        .from("quit_attempts")
+        .select("attempt_id, quit_date")
+        .eq("user_id", user.id)
+        .is("ended_at", null)
+        .maybeSingle();
+      if (!attempt) {
+        setLastResult("ERROR: no open attempt — set a Stage first.");
+        return;
+      }
+      const quitDate = attempt.quit_date;
+      const dayNum = (d: Date) =>
+        quitDate ? differenceInCalendarDays(d, parseISO(quitDate)) : 0;
+      const stageOf = (d: Date) =>
+        quitDate ? deriveStage(format(d, "yyyy-MM-dd")) : 0;
+
+      // Build a craving at a given days-ago + hour with a trigger.
+      const at = (daysAgo: number, hour: number) => {
+        const d = subDays(new Date(), daysAgo);
+        d.setHours(hour, 15, 0, 0);
+        return d;
+      };
+      type Seed = { daysAgo: number; hour: number; triggers: string[]; type: "craving" | "overcome" };
+      const seeds: Seed[] = [
+        // PRIOR week (8–13 days ago) — heavier, for craving_drop. 18:00 cluster = risk window.
+        { daysAgo: 13, hour: 18, triggers: ["boredom"], type: "craving" },
+        { daysAgo: 12, hour: 18, triggers: ["boredom"], type: "craving" },
+        { daysAgo: 12, hour: 11, triggers: ["stress"], type: "craving" },
+        { daysAgo: 11, hour: 18, triggers: ["boredom"], type: "craving" },
+        { daysAgo: 10, hour: 18, triggers: ["social"], type: "craving" },
+        { daysAgo: 10, hour: 14, triggers: ["boredom"], type: "overcome" },
+        { daysAgo: 9, hour: 18, triggers: ["boredom"], type: "craving" },
+        { daysAgo: 9, hour: 20, triggers: ["habit"], type: "overcome" },
+        { daysAgo: 8, hour: 18, triggers: ["boredom"], type: "craving" },
+        // CURRENT week (1–6 days ago) — lighter (craving_drop), still keeps 18:00 cluster.
+        { daysAgo: 6, hour: 18, triggers: ["boredom"], type: "craving" },
+        { daysAgo: 4, hour: 18, triggers: ["boredom"], type: "overcome" },
+        { daysAgo: 2, hour: 11, triggers: ["stress"], type: "overcome" },
+      ];
+
+      const rows = seeds.map((s) => {
+        const ts = at(s.daysAgo, s.hour);
+        return {
+          user_id: user.id,
+          attempt_id: attempt.attempt_id,
+          log_type: s.type,
+          timestamp: ts.toISOString(),
+          quit_day_number: dayNum(ts),
+          current_stage: stageOf(ts),
+          entry_method: "fab" as const,
+          triggers: s.triggers,
+        };
+      });
+
+      await supabase.from("log").insert(rows).throwOnError();
+      await queryClient.invalidateQueries({ queryKey: ["logs", user.id] });
+      await queryClient.invalidateQueries({ queryKey: ["insights", user.id] });
+      setLastResult(
+        `seeded ${rows.length} logs (boredom@18:00 ×6 days + overcomes). ` +
+          `Open Insights to generate cards; high-conf risk window ~18:00.`,
+      );
+    } catch (e: any) {
+      setLastResult(`ERROR: ${e.message}`);
+    } finally {
+      setBusy(null);
+    }
+  };
+
   /** Resume the streak → cancels the N-PAU track (then Dump to confirm they're gone). */
   const resumeNow = async (label: string) => {
     if (!user) return;
@@ -436,6 +519,13 @@ export const DevPanel: React.FC<DevPanelProps> = ({ onUnlockReturnGate, onResetC
       <View className="flex-row gap-2 mb-3">
         <View className="flex-1"><Btn label="tier on_demand" onPress={() => setEffectiveTier("tier on_demand", "on_demand")} /></View>
         <View className="flex-1"><Btn label="tier app_decides" onPress={() => setEffectiveTier("tier app_decides", "app_decides")} /></View>
+      </View>
+
+      <Text className="text-muted-foreground text-[11px] mb-1.5">
+        Step 16 — Insights (seed logs, then open the Insights tab)
+      </Text>
+      <View className="flex-row gap-2 mb-3">
+        <View className="flex-1"><Btn label="Seed insight logs" onPress={() => seedInsightLogs("Seed insight logs")} /></View>
       </View>
 
       <Text className="text-muted-foreground text-[11px] mb-1.5">
