@@ -1,6 +1,13 @@
 import { differenceInCalendarDays, parseISO } from 'date-fns'
 import { supabase } from './supabase'
 import { todayKey } from './dateKey'
+import {
+  loadDeliveryContext,
+  schedulePauseNotifications,
+  cancelPauseNotifications,
+  cancelHealthMilestoneNotifications,
+  cancelDailyCheckinReminder,
+} from './notifications'
 import type { ConfirmationSource, DependencyLevel, Database } from '../types/database'
 
 /**
@@ -190,6 +197,7 @@ export async function restartAttempt(userId: string): Promise<void> {
     streak_status: 'active',
     streak_start_date: today,
     last_confirmed_date: today,
+    paused_at: null,
   })
 
   await supabase
@@ -197,10 +205,29 @@ export async function restartAttempt(userId: string): Promise<void> {
     .update({ red_flag_count: 0, pattern_window_open: false, last_slip_date: null })
     .eq('user_id', userId)
     .throwOnError()
+
+  // A restart from a paused state stops the N-PAU track (Edge Case: "User restarts
+  // from pause → N-PAU track stops"). Active-user notifications resume via reconcile.
+  await cancelPauseNotifications().catch(() => {})
 }
 
 export async function pauseStreak(userId: string): Promise<void> {
-  await patch(userId, { streak_status: 'paused', paused_at: new Date().toISOString() })
+  const pausedAt = new Date().toISOString()
+  await patch(userId, { streak_status: 'paused', paused_at: pausedAt })
+  // Suspend ALL active-user notifications immediately and start the N-PAU
+  // re-engagement track (Notifications Decision 10 / §6: during pause, N-CON /
+  // N-STK / N-INS / N-GOAL are suppressed — the PAU track replaces them). Done
+  // here, not deferred to reconcile, so suppression is immediate on pause.
+  try {
+    await Promise.all([
+      cancelHealthMilestoneNotifications(),
+      cancelDailyCheckinReminder(),
+    ])
+    const ctx = await loadDeliveryContext(userId)
+    await schedulePauseNotifications(userId, pausedAt, ctx)
+  } catch (err) {
+    console.warn('Pause notifications skipped:', err)
+  }
 }
 
 /**
@@ -222,6 +249,10 @@ export async function resumeStreak(userId: string): Promise<void> {
     last_confirmed_date: today,
     paused_at: null,
   })
+  // Stop the pause track immediately (Edge Case: "User resumes while a N-PAU
+  // notification is pending → cancel it"). Active-user notifications are
+  // re-scheduled by the next reconcile on app open.
+  await cancelPauseNotifications().catch(() => {})
 }
 
 /**

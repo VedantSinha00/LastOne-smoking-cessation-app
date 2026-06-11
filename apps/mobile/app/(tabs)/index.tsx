@@ -15,7 +15,8 @@ import { Greeting } from "../../components/home/Greeting";
 import { StreakBar } from "../../components/home/StreakBar";
 import { SectionLabel } from "../../components/ui/SectionLabel";
 import { HealthMilestonesCard } from "../../components/home/HealthMilestonesCard";
-import { InsightsPreviewPlaceholder } from "../../components/home/placeholders";
+import { CopingSurfaceCard } from "../../components/home/CopingSurfaceCard";
+import { InsightsPreview } from "../../components/home/InsightsPreview";
 import { ProgressDashboard } from "../../components/home/ProgressDashboard";
 import { ContentCarousel } from "../../components/home/ContentCarousel";
 import { SavingsMilestoneCard } from "../../components/home/SavingsMilestoneCard";
@@ -119,7 +120,8 @@ export default function Home() {
         <StreakBar stage={stage} streak={streak} />
       </View>
 
-      {/* 3 — Coping Surface Card: conditional on alert_level=2 (Step 16, Insights) */}
+      {/* 3 — Coping Surface Card: renders only at alert_level=2 (Insights §B2.8) */}
+      <CopingSurfaceCard />
 
       {/* 4 — Progress Dashboard */}
       <View>
@@ -131,13 +133,15 @@ export default function Home() {
       <SavingsMilestoneCard />
 
       {/* 5 — Daily Check-In (Stage 1+, until satisfied) */}
-      {showDailyCheckIn && <DailyCheckInCard dayCount={dayCount} />}
+      {showDailyCheckIn && (
+        <DailyCheckInCard dayCount={dayCount} onSatisfied={refreshCheckIn} />
+      )}
 
       {/* 6 — Content Carousel */}
       <ContentCarousel />
 
       {/* 7 — Insights Preview */}
-      <InsightsPreviewPlaceholder />
+      <InsightsPreview />
 
       {/* 8 — Health Milestones */}
       <HealthMilestonesCard

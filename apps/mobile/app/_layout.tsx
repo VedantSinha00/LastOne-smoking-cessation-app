@@ -2,6 +2,7 @@ import { Slot, useRouter, useSegments } from "expo-router";
 import { useEffect } from "react";
 import { View, ActivityIndicator } from "react-native";
 import { StatusBar } from "expo-status-bar";
+import * as Notifications from "expo-notifications";
 import {
   useFonts,
   SpaceGrotesk_700Bold,
@@ -17,8 +18,20 @@ import { useAuth } from "../hooks/useAuth";
 import { queryClient } from "../lib/queryClient";
 import { queryKeys } from "../lib/queryKeys";
 import { supabase } from "../lib/supabase";
-import { syncPushTokenIfGranted } from "../lib/notifications";
+import { syncPushTokenIfGranted, reconcileNotifications } from "../lib/notifications";
+import { handleNotificationResponse } from "../lib/notificationHandler";
 import "../global.css";
+
+// Foreground presentation (Architecture Guide §Step 15). Show the alert + play
+// sound even when the app is open so scheduled milestones/check-ins are visible.
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowBanner: true,
+    shouldShowList: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
 
 function RootLayoutNav() {
   const { user, loading: authLoading } = useAuth();
@@ -41,12 +54,27 @@ function RootLayoutNav() {
     enabled: !!user,
   });
 
-  // Backfill the Expo push token on launch when permission is already granted
-  // (idempotent, best-effort, never prompts). Covers users who onboarded before
-  // profiles.push_token existed or before a token could be fetched.
+  // On launch (authenticated): backfill the push token if already granted, and
+  // reconcile the locally-scheduled notification set against current state
+  // (quit date, stage, pause status). Both idempotent + best-effort.
   useEffect(() => {
-    if (user?.id) syncPushTokenIfGranted(user.id);
+    if (!user?.id) return;
+    syncPushTokenIfGranted(user.id);
+    reconcileNotifications(user.id);
   }, [user?.id]);
+
+  // Route to the right screen when a notification is tapped, and mark it opened
+  // (resets the auto-reduce counter — Notifications §B2.4).
+  useEffect(() => {
+    const sub = Notifications.addNotificationResponseReceivedListener((response) => {
+      handleNotificationResponse(
+        user?.id,
+        response.notification.request.content.data as Record<string, unknown> | undefined,
+        router,
+      );
+    });
+    return () => sub.remove();
+  }, [user?.id, router]);
 
   useEffect(() => {
     if (authLoading) return;

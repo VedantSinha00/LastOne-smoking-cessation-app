@@ -34,6 +34,46 @@ export type StreakStatus = 'active' | 'paused' | 'reset'
 export type ConfirmationSource = 'sos' | 'log'
 export type NotificationTier = 'app_decides' | 'few_daily' | 'on_demand'
 
+// notification_log enums (Notifications Spec §B1 / Registry §5).
+// notification_type is the closed set of N-codes; status is the delivery lifecycle.
+export type NotificationType =
+  | 'N-OB-00' | 'N-OB-01' | 'N-OB-02' | 'N-OB-03' | 'N-OB-04' | 'N-OB-05'
+  | 'N-STK-01' | 'N-STK-02' | 'N-STK-03'
+  | 'N-CON-01' | 'N-CON-02' | 'N-CON-03' | 'N-CON-04' | 'N-CON-05' | 'N-CON-06'
+  | 'N-CON-07' | 'N-CON-08' | 'N-CON-09' | 'N-CON-10' | 'N-CON-11' | 'N-CON-12'
+  | 'N-INS-01' | 'N-INS-02' | 'N-INS-03'
+  | 'N-GOAL-01' | 'N-GOAL-02'
+  | 'N-PROF-01'
+  | 'N-PAU-01' | 'N-PAU-02' | 'N-PAU-03' | 'N-PAU-04'
+export type NotificationLogStatus =
+  | 'queued' | 'delivered' | 'opened' | 'ignored' | 'expired' | 'discarded'
+
+// risk_windows — nested array on profiles (Insights Spec §B1, written by Insights).
+// Only high-confidence active windows raise alert_level to 2 (Insights §B2.8).
+export interface RiskWindow {
+  start_hour: number // 0–23 local
+  end_hour: number // 0–23 local
+  confidence: 'high' | 'medium'
+  active: boolean
+}
+
+// insight_card enums (Insights Spec §B1.1). insight_key is the idempotency key:
+// {user_id}_{insight_type}_{attempt_id}. The card row holds STATE + metadata only —
+// display copy + detected values are derived client-side from insight_type + logs.
+export type InsightType =
+  | 'peak_risk_window' | 'top_trigger' | 'resistance_rate' | 'tool_effectiveness'
+  | 'slip_pattern' | 'craving_drop' | 'cross_attempt_comparison' | 'trigger_shift'
+  | 'profile_peak_windows' | 'profile_social_context' | 'profile_trigger_category'
+  | 'first_craving_match'
+export type CardState = 'collapsed' | 'expanded' | 'read'
+export type ToneSensitivity = 'high' | 'low'
+// Derived from current_stage at render (Insights §B2.1) — not stored.
+export type InsightScreenState =
+  | 'profile_building' | 'profile_led' | 'transitional' | 'feed_led' | 'feed_continues'
+// insight_notification enum (Insights §B1.1) — server-delivered (Step 21).
+export type InsightNotificationType =
+  | 'new_pattern_detected' | 'progress_threshold' | 'slip_pattern_emerging'
+
 // log enums (Data Schema §3 / Logging Spec §B1).
 export type LogType = 'craving' | 'overcome' | 'slip' | 'note' | 'sos'
 export type EntryMethod = 'daily_card' | 'fab' | 'sos' | 'notification'
@@ -87,6 +127,15 @@ export interface Database {
           voice_style: VoiceStyle | null
           push_token: string | null
           timezone: string
+          // Notification controls (Notifications Spec §2.4 / Settings PROF-10/11).
+          // Server defaults apply; onboarding does not write these.
+          notification_preference: NotificationTier
+          notifications_enabled: boolean
+          quiet_hours_enabled: boolean
+          quiet_hours_start: string | null // 'HH:MM:SS' local
+          quiet_hours_end: string | null // 'HH:MM:SS' local
+          // risk_windows — written by Insights (Step 16); read for alert_level.
+          risk_windows: RiskWindow[] | null
         }
         Insert: {
           id: string
@@ -118,6 +167,12 @@ export interface Database {
           voice_style?: VoiceStyle | null
           push_token?: string | null
           timezone?: string
+          notification_preference?: NotificationTier
+          notifications_enabled?: boolean
+          quiet_hours_enabled?: boolean
+          quiet_hours_start?: string | null
+          quiet_hours_end?: string | null
+          risk_windows?: RiskWindow[] | null
         }
         Update: {
           id?: string
@@ -149,6 +204,12 @@ export interface Database {
           voice_style?: VoiceStyle | null
           push_token?: string | null
           timezone?: string
+          notification_preference?: NotificationTier
+          notifications_enabled?: boolean
+          quiet_hours_enabled?: boolean
+          quiet_hours_start?: string | null
+          quiet_hours_end?: string | null
+          risk_windows?: RiskWindow[] | null
         }
         Relationships: []
       }
@@ -455,6 +516,125 @@ export interface Database {
           consecutive_ignored?: number
           auto_reduce_active_until?: string | null
           effective_tier?: NotificationTier
+        }
+        Relationships: []
+      }
+      // notification_log — one row per notification that enters the delivery
+      // pipeline (Notifications Spec §B1). status tracks the lifecycle; expires_at
+      // is set only for insight notifications (N-INS-01/02/03).
+      notification_log: {
+        Row: {
+          id: string
+          user_id: string
+          notification_type: NotificationType
+          status: NotificationLogStatus
+          scheduled_for: string
+          delivered_at: string | null
+          opened_at: string | null
+          expires_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          notification_type: NotificationType
+          status: NotificationLogStatus
+          scheduled_for: string
+          delivered_at?: string | null
+          opened_at?: string | null
+          expires_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          notification_type?: NotificationType
+          status?: NotificationLogStatus
+          scheduled_for?: string
+          delivered_at?: string | null
+          opened_at?: string | null
+          expires_at?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      // insight_card — per-user/attempt insight state + metadata (Insights §B1.1).
+      // insight_key is the PK + idempotency key. No copy/value columns: presentation
+      // is derived client-side from insight_type + the underlying log data.
+      insight_card: {
+        Row: {
+          insight_key: string
+          user_id: string
+          attempt_id: number
+          insight_type: InsightType
+          card_state: CardState
+          has_app_action: boolean
+          tone_sensitivity: ToneSensitivity
+          generated_at: string
+          last_seen_at: string | null
+          engagement_score: number
+          archived: boolean
+        }
+        Insert: {
+          insight_key: string
+          user_id: string
+          attempt_id: number
+          insight_type: InsightType
+          card_state?: CardState
+          has_app_action?: boolean
+          tone_sensitivity?: ToneSensitivity
+          generated_at?: string
+          last_seen_at?: string | null
+          engagement_score?: number
+          archived?: boolean
+        }
+        Update: {
+          insight_key?: string
+          user_id?: string
+          attempt_id?: number
+          insight_type?: InsightType
+          card_state?: CardState
+          has_app_action?: boolean
+          tone_sensitivity?: ToneSensitivity
+          generated_at?: string
+          last_seen_at?: string | null
+          engagement_score?: number
+          archived?: boolean
+        }
+        Relationships: []
+      }
+      // insight_notification — queued insight pushes (Insights §B1.1). Created +
+      // delivered server-side (Edge Function, Step 21); typed here for completeness.
+      insight_notification: {
+        Row: {
+          notification_id: string
+          user_id: string
+          insight_key: string
+          notification_type: InsightNotificationType
+          scheduled_for: string
+          expires_at: string
+          status: 'queued' | 'delivered' | 'expired' | 'discarded'
+          content_id: string
+        }
+        Insert: {
+          notification_id?: string
+          user_id: string
+          insight_key: string
+          notification_type: InsightNotificationType
+          scheduled_for: string
+          expires_at: string
+          status?: 'queued' | 'delivered' | 'expired' | 'discarded'
+          content_id: string
+        }
+        Update: {
+          notification_id?: string
+          user_id?: string
+          insight_key?: string
+          notification_type?: InsightNotificationType
+          scheduled_for?: string
+          expires_at?: string
+          status?: 'queued' | 'delivered' | 'expired' | 'discarded'
+          content_id?: string
         }
         Relationships: []
       }

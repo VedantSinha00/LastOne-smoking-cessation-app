@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { View, Text, Pressable, ActivityIndicator } from "react-native";
+import * as Notifications from "expo-notifications";
 import { format, subDays, differenceInCalendarDays, parseISO } from "date-fns";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "../../hooks/useAuth";
@@ -7,6 +8,8 @@ import { supabase } from "../../lib/supabase";
 import { queryClient } from "../../lib/queryClient";
 import { deriveStage } from "../../lib/stage";
 import { FREEZE_MATRIX } from "../../lib/streak";
+import { reconcileNotifications } from "../../lib/notifications";
+import { pauseStreak, resumeStreak } from "../../lib/streak";
 import type { DependencyLevel } from "../../types/database";
 
 /**
@@ -247,6 +250,252 @@ export const DevPanel: React.FC<DevPanelProps> = ({ onUnlockReturnGate, onResetC
     }
   };
 
+  // ── Phase 5 (Notifications) verification ──────────────────────────────────
+
+  /** Re-run the app-open reconcile so scheduling reflects the current quit_date/
+   *  stage/pause without a relaunch (after tapping a Stage button above). */
+  const reconcileNow = async (label: string) => {
+    if (!user) return;
+    setBusy(label);
+    try {
+      await reconcileNotifications(user.id);
+      setLastResult(`reconcileNotifications ran (${label})`);
+    } catch (e: any) {
+      setLastResult(`ERROR: ${e.message}`);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  /** Dump every OS-scheduled notification so check-in / milestone / pause schedules
+   *  are observable without waiting for their real fire times. */
+  const dumpScheduled = async (label: string) => {
+    setBusy(label);
+    try {
+      const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+      if (scheduled.length === 0) {
+        setLastResult("scheduled: (none)");
+        return;
+      }
+      const lines = scheduled.map((s) => {
+        const type = (s.content.data?.type as string) ?? "?";
+        const trig: any = s.trigger;
+        let when = "";
+        if (trig?.type === "date" && trig.value) when = new Date(trig.value).toLocaleString();
+        else if (trig?.type === "daily") when = `daily ${trig.hour}:${String(trig.minute).padStart(2, "0")}`;
+        else if (trig?.dateComponents) when = `daily ${trig.dateComponents.hour}:00`;
+        else when = JSON.stringify(trig).slice(0, 40);
+        return `• ${type} — ${when}`;
+      });
+      setLastResult(`scheduled (${scheduled.length}):\n${lines.join("\n")}`);
+    } catch (e: any) {
+      setLastResult(`ERROR: ${e.message}`);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  /** Pause the streak → schedules the N-PAU track (then Dump to confirm 4 entries). */
+  const pauseNow = async (label: string) => {
+    if (!user) return;
+    setBusy(label);
+    try {
+      await pauseStreak(user.id);
+      await refreshAll();
+      setLastResult("paused → N-PAU track scheduled. Tap 'Dump scheduled' to confirm.");
+    } catch (e: any) {
+      setLastResult(`ERROR: ${e.message}`);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  /** Toggle profiles.notifications_enabled, then reconcile so the effect is immediate.
+   *  enabled=false → reconcile cancels/schedules nothing (Dump should be empty). */
+  const setNotificationsEnabled = async (label: string, value: boolean) => {
+    if (!user) return;
+    setBusy(label);
+    try {
+      await supabase
+        .from("profiles")
+        .update({ notifications_enabled: value })
+        .eq("id", user.id)
+        .throwOnError();
+      await queryClient.invalidateQueries({ queryKey: ["profile", user.id] });
+      await reconcileNotifications(user.id);
+      setLastResult(`notifications_enabled → ${value}, reconciled. Tap 'Dump scheduled'.`);
+    } catch (e: any) {
+      setLastResult(`ERROR: ${e.message}`);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  /** Set notification_state.effective_tier, then reconcile. on_demand → only the
+   *  on_demand-eligible milestones (N-CON-01–06) survive; N-CON-07–12 + N-STK-01 drop. */
+  const setEffectiveTier = async (label: string, tier: "app_decides" | "on_demand") => {
+    if (!user) return;
+    setBusy(label);
+    try {
+      await supabase
+        .from("notification_state")
+        .update({ effective_tier: tier })
+        .eq("user_id", user.id)
+        .throwOnError();
+      await reconcileNotifications(user.id);
+      setLastResult(`effective_tier → ${tier}, reconciled. Tap 'Dump scheduled'.`);
+    } catch (e: any) {
+      setLastResult(`ERROR: ${e.message}`);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  /**
+   * Seed a realistic batch of craving/overcome logs into the OPEN attempt so the
+   * Insights thresholds (§B2.3) actually fire on device:
+   *   - top_trigger      → ≥5 cravings, 'boredom' dominant
+   *   - peak_risk_window → cravings clustered at 18:00 across 6 distinct days (≥5 → HIGH confidence)
+   *   - resistance_rate  → ≥10 outcome-bearing logs (cravings + overcomes)
+   *   - craving_drop     → prior 7d weighted heavier than current 7d
+   * Timestamps are backdated across the last ~13 days. attempt_id/stage taken from
+   * the open attempt. NOTE: the `log` table has no client DELETE policy — clear with
+   * SQL between runs if needed (re-seeding just stacks more rows, which is fine).
+   */
+  const seedInsightLogs = async (label: string) => {
+    if (!user) return;
+    setBusy(label);
+    try {
+      const { data: attempt } = await supabase
+        .from("quit_attempts")
+        .select("attempt_id, quit_date")
+        .eq("user_id", user.id)
+        .is("ended_at", null)
+        .maybeSingle();
+      if (!attempt) {
+        setLastResult("ERROR: no open attempt — set a Stage first.");
+        return;
+      }
+      const quitDate = attempt.quit_date;
+      const dayNum = (d: Date) =>
+        quitDate ? differenceInCalendarDays(d, parseISO(quitDate)) : 0;
+      const stageOf = (d: Date) =>
+        quitDate ? deriveStage(format(d, "yyyy-MM-dd")) : 0;
+
+      // Build a craving at a given days-ago + hour with a trigger.
+      const at = (daysAgo: number, hour: number) => {
+        const d = subDays(new Date(), daysAgo);
+        d.setHours(hour, 15, 0, 0);
+        return d;
+      };
+      type Seed = { daysAgo: number; hour: number; triggers: string[]; type: "craving" | "overcome" };
+      const seeds: Seed[] = [
+        // PRIOR week (8–13 days ago) — heavier, for craving_drop. 18:00 cluster = risk window.
+        { daysAgo: 13, hour: 18, triggers: ["boredom"], type: "craving" },
+        { daysAgo: 12, hour: 18, triggers: ["boredom"], type: "craving" },
+        { daysAgo: 12, hour: 11, triggers: ["stress"], type: "craving" },
+        { daysAgo: 11, hour: 18, triggers: ["boredom"], type: "craving" },
+        { daysAgo: 10, hour: 18, triggers: ["social"], type: "craving" },
+        { daysAgo: 10, hour: 14, triggers: ["boredom"], type: "overcome" },
+        { daysAgo: 9, hour: 18, triggers: ["boredom"], type: "craving" },
+        { daysAgo: 9, hour: 20, triggers: ["habit"], type: "overcome" },
+        { daysAgo: 8, hour: 18, triggers: ["boredom"], type: "craving" },
+        // CURRENT week (1–6 days ago) — lighter (craving_drop), still keeps 18:00 cluster.
+        { daysAgo: 6, hour: 18, triggers: ["boredom"], type: "craving" },
+        { daysAgo: 4, hour: 18, triggers: ["boredom"], type: "overcome" },
+        { daysAgo: 2, hour: 11, triggers: ["stress"], type: "overcome" },
+      ];
+
+      const rows = seeds.map((s) => {
+        const ts = at(s.daysAgo, s.hour);
+        return {
+          user_id: user.id,
+          attempt_id: attempt.attempt_id,
+          log_type: s.type,
+          timestamp: ts.toISOString(),
+          quit_day_number: dayNum(ts),
+          current_stage: stageOf(ts),
+          entry_method: "fab" as const,
+          triggers: s.triggers,
+        };
+      });
+
+      await supabase.from("log").insert(rows).throwOnError();
+      await queryClient.invalidateQueries({ queryKey: ["logs", user.id] });
+      await queryClient.invalidateQueries({ queryKey: ["insights", user.id] });
+      setLastResult(
+        `seeded ${rows.length} logs (boredom@18:00 ×6 days + overcomes). ` +
+          `Open Insights to generate cards; high-conf risk window ~18:00.`,
+      );
+    } catch (e: any) {
+      setLastResult(`ERROR: ${e.message}`);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  /** Write a HIGH-confidence risk window covering the CURRENT 2-hour bucket so
+   *  alert_level reads 2 right now → the CopingSurfaceCard appears on Home
+   *  (Insights §B2.8). Preserves nothing else; sets a single window for testing. */
+  const seedRiskWindowNow = async (label: string) => {
+    if (!user) return;
+    setBusy(label);
+    try {
+      const start = Math.floor(new Date().getHours() / 2) * 2;
+      const windows = [
+        { start_hour: start, end_hour: start + 2, confidence: "high" as const, active: true },
+      ];
+      await supabase
+        .from("profiles")
+        .update({ risk_windows: windows })
+        .eq("id", user.id)
+        .throwOnError();
+      await queryClient.invalidateQueries({ queryKey: ["profile", user.id] });
+      setLastResult(
+        `risk window ${start}:00–${start + 2}:00 (high, active) → alert_level 2 now. ` +
+          `Go to Home: the "Need a moment?" card should appear.`,
+      );
+    } catch (e: any) {
+      setLastResult(`ERROR: ${e.message}`);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  /** Clear all risk windows (alert_level back to 1 → CopingSurfaceCard hidden). */
+  const clearRiskWindows = async (label: string) => {
+    if (!user) return;
+    setBusy(label);
+    try {
+      await supabase
+        .from("profiles")
+        .update({ risk_windows: [] })
+        .eq("id", user.id)
+        .throwOnError();
+      await queryClient.invalidateQueries({ queryKey: ["profile", user.id] });
+      setLastResult("risk windows cleared → alert_level 1, card hidden.");
+    } catch (e: any) {
+      setLastResult(`ERROR: ${e.message}`);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  /** Resume the streak → cancels the N-PAU track (then Dump to confirm they're gone). */
+  const resumeNow = async (label: string) => {
+    if (!user) return;
+    setBusy(label);
+    try {
+      await resumeStreak(user.id);
+      await refreshAll();
+      setLastResult("resumed → N-PAU cancelled. Tap 'Dump scheduled' to confirm.");
+    } catch (e: any) {
+      setLastResult(`ERROR: ${e.message}`);
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const Btn = ({ label, onPress }: { label: string; onPress: () => void }) => (
     <Pressable
       onPress={onPress}
@@ -297,6 +546,37 @@ export const DevPanel: React.FC<DevPanelProps> = ({ onUnlockReturnGate, onResetC
       <Text className="text-muted-foreground text-[11px] mb-1.5">Reset (for repeat testing)</Text>
       <View className="flex-row gap-2 mb-3">
         <View className="flex-1"><Btn label="Reset check-in flag" onPress={() => resetDailyCheckIn("Reset check-in flag")} /></View>
+      </View>
+
+      <Text className="text-muted-foreground text-[11px] mb-1.5">
+        Phase 5 — Notifications (set a Stage above, then Reconcile, then Dump)
+      </Text>
+      <View className="flex-row gap-2 mb-2">
+        <View className="flex-1"><Btn label="Reconcile now" onPress={() => reconcileNow("Reconcile now")} /></View>
+        <View className="flex-1"><Btn label="Dump scheduled" onPress={() => dumpScheduled("Dump scheduled")} /></View>
+      </View>
+      <View className="flex-row gap-2 mb-2">
+        <View className="flex-1"><Btn label="Pause (→N-PAU)" onPress={() => pauseNow("Pause (→N-PAU)")} /></View>
+        <View className="flex-1"><Btn label="Resume (cancel)" onPress={() => resumeNow("Resume (cancel)")} /></View>
+      </View>
+      <View className="flex-row gap-2 mb-2">
+        <View className="flex-1"><Btn label="notif OFF" onPress={() => setNotificationsEnabled("notif OFF", false)} /></View>
+        <View className="flex-1"><Btn label="notif ON" onPress={() => setNotificationsEnabled("notif ON", true)} /></View>
+      </View>
+      <View className="flex-row gap-2 mb-3">
+        <View className="flex-1"><Btn label="tier on_demand" onPress={() => setEffectiveTier("tier on_demand", "on_demand")} /></View>
+        <View className="flex-1"><Btn label="tier app_decides" onPress={() => setEffectiveTier("tier app_decides", "app_decides")} /></View>
+      </View>
+
+      <Text className="text-muted-foreground text-[11px] mb-1.5">
+        Step 16 — Insights (seed logs, then open the Insights tab)
+      </Text>
+      <View className="flex-row gap-2 mb-2">
+        <View className="flex-1"><Btn label="Seed insight logs" onPress={() => seedInsightLogs("Seed insight logs")} /></View>
+      </View>
+      <View className="flex-row gap-2 mb-3">
+        <View className="flex-1"><Btn label="Risk window NOW" onPress={() => seedRiskWindowNow("Risk window NOW")} /></View>
+        <View className="flex-1"><Btn label="Clear risk windows" onPress={() => clearRiskWindows("Clear risk windows")} /></View>
       </View>
 
       <Text className="text-muted-foreground text-[11px] mb-1.5">

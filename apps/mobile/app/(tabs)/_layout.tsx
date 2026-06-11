@@ -13,8 +13,12 @@ import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
  *
  *   Home · Insights · [ + Log ] · Tools · Profile
  *
- * - Home / Insights / Tools / Profile are real screens (Insights = the progress
- *   route; Insights Spec: "the entry point from all navigation").
+ * - Home / Insights / Tools / Profile are real screens. Insights (INS-1) is its
+ *   own route — the self-awareness feed (Insights Spec: "the entry point from all
+ *   navigation"), distinct from the Progress Dashboard (motivation). Progress
+ *   (DASH-2) is reached contextually from Home's counter / health cards via
+ *   `/progress`; it is not a tab (no slot, and the two surfaces are intentionally
+ *   separate — Insights Spec §1.1).
  * - The center control is the Log action (Architecture Guide §lines 25–27: Log is
  *   a central FAB), opening the log half-sheet rather than navigating to a tab.
  * - SOS is a separate persistent floating FAB (Architecture Guide §8.5).
@@ -28,7 +32,7 @@ type TabDef = { name: string; label: string; Icon: typeof Home };
 // Two slots left of the center "+", two to the right.
 const LEFT: TabDef[] = [
   { name: "index", label: "Home", Icon: Home },
-  { name: "progress", label: "Insights", Icon: BarChart3 },
+  { name: "insights", label: "Insights", Icon: BarChart3 },
 ];
 const RIGHT: TabDef[] = [
   { name: "tools", label: "Tools", Icon: Heart },
@@ -106,9 +110,12 @@ export default function TabsLayout() {
         }}
       >
         <Tabs.Screen name="index" options={{ title: "Home" }} />
-        <Tabs.Screen name="progress" options={{ title: "Insights" }} />
+        <Tabs.Screen name="insights" options={{ title: "Insights" }} />
         <Tabs.Screen name="tools" options={{ title: "Tools" }} />
         <Tabs.Screen name="profile" options={{ title: "Profile" }} />
+        {/* Progress Dashboard (DASH-2) — reachable from Home's counter/health cards
+            via /progress, not a tab (Insights took the slot; surfaces are distinct). */}
+        <Tabs.Screen name="progress" options={{ href: null, title: "Progress" }} />
         {/* No-op slot intercepted by the center Log button; never shown as a tab. */}
         <Tabs.Screen name="log-dummy" options={{ href: null }} />
       </Tabs>
