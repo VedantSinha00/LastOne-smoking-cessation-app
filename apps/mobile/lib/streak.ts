@@ -5,6 +5,8 @@ import {
   loadDeliveryContext,
   schedulePauseNotifications,
   cancelPauseNotifications,
+  cancelHealthMilestoneNotifications,
+  cancelDailyCheckinReminder,
 } from './notifications'
 import type { ConfirmationSource, DependencyLevel, Database } from '../types/database'
 
@@ -212,11 +214,15 @@ export async function restartAttempt(userId: string): Promise<void> {
 export async function pauseStreak(userId: string): Promise<void> {
   const pausedAt = new Date().toISOString()
   await patch(userId, { streak_status: 'paused', paused_at: pausedAt })
-  // Suspend active-user notifications and start the N-PAU re-engagement track
-  // (Notifications Decision 10). Cancellation of milestones/check-in is handled by
-  // the next reconcile on app open; the pause track is scheduled now so it begins
-  // even if the app isn't relaunched.
+  // Suspend ALL active-user notifications immediately and start the N-PAU
+  // re-engagement track (Notifications Decision 10 / §6: during pause, N-CON /
+  // N-STK / N-INS / N-GOAL are suppressed — the PAU track replaces them). Done
+  // here, not deferred to reconcile, so suppression is immediate on pause.
   try {
+    await Promise.all([
+      cancelHealthMilestoneNotifications(),
+      cancelDailyCheckinReminder(),
+    ])
     const ctx = await loadDeliveryContext(userId)
     await schedulePauseNotifications(userId, pausedAt, ctx)
   } catch (err) {

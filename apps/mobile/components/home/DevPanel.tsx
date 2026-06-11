@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { View, Text, Pressable, ActivityIndicator } from "react-native";
+import * as Notifications from "expo-notifications";
 import { format, subDays, differenceInCalendarDays, parseISO } from "date-fns";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "../../hooks/useAuth";
@@ -7,6 +8,8 @@ import { supabase } from "../../lib/supabase";
 import { queryClient } from "../../lib/queryClient";
 import { deriveStage } from "../../lib/stage";
 import { FREEZE_MATRIX } from "../../lib/streak";
+import { reconcileNotifications } from "../../lib/notifications";
+import { pauseStreak, resumeStreak } from "../../lib/streak";
 import type { DependencyLevel } from "../../types/database";
 
 /**
@@ -247,6 +250,81 @@ export const DevPanel: React.FC<DevPanelProps> = ({ onUnlockReturnGate, onResetC
     }
   };
 
+  // ── Phase 5 (Notifications) verification ──────────────────────────────────
+
+  /** Re-run the app-open reconcile so scheduling reflects the current quit_date/
+   *  stage/pause without a relaunch (after tapping a Stage button above). */
+  const reconcileNow = async (label: string) => {
+    if (!user) return;
+    setBusy(label);
+    try {
+      await reconcileNotifications(user.id);
+      setLastResult(`reconcileNotifications ran (${label})`);
+    } catch (e: any) {
+      setLastResult(`ERROR: ${e.message}`);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  /** Dump every OS-scheduled notification so check-in / milestone / pause schedules
+   *  are observable without waiting for their real fire times. */
+  const dumpScheduled = async (label: string) => {
+    setBusy(label);
+    try {
+      const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+      if (scheduled.length === 0) {
+        setLastResult("scheduled: (none)");
+        return;
+      }
+      const lines = scheduled.map((s) => {
+        const type = (s.content.data?.type as string) ?? "?";
+        const trig: any = s.trigger;
+        let when = "";
+        if (trig?.type === "date" && trig.value) when = new Date(trig.value).toLocaleString();
+        else if (trig?.type === "daily") when = `daily ${trig.hour}:${String(trig.minute).padStart(2, "0")}`;
+        else if (trig?.dateComponents) when = `daily ${trig.dateComponents.hour}:00`;
+        else when = JSON.stringify(trig).slice(0, 40);
+        return `• ${type} — ${when}`;
+      });
+      setLastResult(`scheduled (${scheduled.length}):\n${lines.join("\n")}`);
+    } catch (e: any) {
+      setLastResult(`ERROR: ${e.message}`);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  /** Pause the streak → schedules the N-PAU track (then Dump to confirm 4 entries). */
+  const pauseNow = async (label: string) => {
+    if (!user) return;
+    setBusy(label);
+    try {
+      await pauseStreak(user.id);
+      await refreshAll();
+      setLastResult("paused → N-PAU track scheduled. Tap 'Dump scheduled' to confirm.");
+    } catch (e: any) {
+      setLastResult(`ERROR: ${e.message}`);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  /** Resume the streak → cancels the N-PAU track (then Dump to confirm they're gone). */
+  const resumeNow = async (label: string) => {
+    if (!user) return;
+    setBusy(label);
+    try {
+      await resumeStreak(user.id);
+      await refreshAll();
+      setLastResult("resumed → N-PAU cancelled. Tap 'Dump scheduled' to confirm.");
+    } catch (e: any) {
+      setLastResult(`ERROR: ${e.message}`);
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const Btn = ({ label, onPress }: { label: string; onPress: () => void }) => (
     <Pressable
       onPress={onPress}
@@ -297,6 +375,18 @@ export const DevPanel: React.FC<DevPanelProps> = ({ onUnlockReturnGate, onResetC
       <Text className="text-muted-foreground text-[11px] mb-1.5">Reset (for repeat testing)</Text>
       <View className="flex-row gap-2 mb-3">
         <View className="flex-1"><Btn label="Reset check-in flag" onPress={() => resetDailyCheckIn("Reset check-in flag")} /></View>
+      </View>
+
+      <Text className="text-muted-foreground text-[11px] mb-1.5">
+        Phase 5 — Notifications (set a Stage above, then Reconcile, then Dump)
+      </Text>
+      <View className="flex-row gap-2 mb-2">
+        <View className="flex-1"><Btn label="Reconcile now" onPress={() => reconcileNow("Reconcile now")} /></View>
+        <View className="flex-1"><Btn label="Dump scheduled" onPress={() => dumpScheduled("Dump scheduled")} /></View>
+      </View>
+      <View className="flex-row gap-2 mb-3">
+        <View className="flex-1"><Btn label="Pause (→N-PAU)" onPress={() => pauseNow("Pause (→N-PAU)")} /></View>
+        <View className="flex-1"><Btn label="Resume (cancel)" onPress={() => resumeNow("Resume (cancel)")} /></View>
       </View>
 
       <Text className="text-muted-foreground text-[11px] mb-1.5">
