@@ -1,10 +1,13 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { View, Text, Pressable } from "react-native";
 import { useRouter } from "expo-router";
 import { Check } from "lucide-react-native";
 import { Card } from "../ui/Card";
 import { SectionLabel } from "../ui/SectionLabel";
 import { useDailyCheckIn } from "../../hooks/useDailyCheckIn";
+
+/** How long the success ("Day N. Clean.") state lingers before the card dismisses. */
+const SUCCESS_LINGER_MS = 1800;
 
 /**
  * Daily Check-In card — Home Spec §E / Logging Spec §8.
@@ -13,22 +16,35 @@ import { useDailyCheckIn } from "../../hooks/useDailyCheckIn";
  * header with an optional Day-N pill, and two actions —
  *   • "All good today"  → green primary; marks the day satisfied (a no-craving day)
  *   • "Check in →"       → outlined secondary; opens Flow A (Craving Log)
- * On confirm it briefly shows Lovable's success state before the parent unmounts it
- * (Home hides the card once the check-in is satisfied).
+ * On confirm it shows Lovable's success state briefly, then calls onSatisfied so the
+ * parent re-reads the flag and unmounts the card (Home hides it once satisfied).
  *
  * Structure follows the code/spec: satisfaction is the device-local flag owned by
  * useDailyCheckIn; the parent decides visibility (Stage 1+, not-yet-satisfied).
  */
-export const DailyCheckInCard: React.FC<{ dayCount?: number }> = ({ dayCount }) => {
+export const DailyCheckInCard: React.FC<{
+  dayCount?: number;
+  /** Fired after the success state has shown, so the parent can dismiss the card. */
+  onSatisfied?: () => void;
+}> = ({ dayCount, onSatisfied }) => {
   const router = useRouter();
   const { markSatisfied } = useDailyCheckIn();
   const [confirmed, setConfirmed] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
 
   const handleAllGood = async () => {
     setConfirmed(true);
     await markSatisfied();
-    // Home re-reads the flag on focus/foreground and unmounts the card; the brief
-    // confirmed state here mirrors Lovable's success moment in the meantime.
+    // Show the success moment, then tell Home to re-read the flag and unmount us.
+    // (The card and Home hold separate useDailyCheckIn instances, so marking here
+    //  doesn't update Home's copy on its own — the callback bridges that.)
+    timerRef.current = setTimeout(() => onSatisfied?.(), SUCCESS_LINGER_MS);
   };
 
   if (confirmed) {
