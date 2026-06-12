@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { View, Text, Pressable, ActivityIndicator } from "react-native";
 import * as Notifications from "expo-notifications";
-import { format, subDays, differenceInCalendarDays, parseISO } from "date-fns";
+import { format, subDays, addDays, differenceInCalendarDays, parseISO } from "date-fns";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "../../hooks/useAuth";
 import { supabase } from "../../lib/supabase";
@@ -10,6 +10,7 @@ import { deriveStage } from "../../lib/stage";
 import { FREEZE_MATRIX } from "../../lib/streak";
 import { reconcileNotifications } from "../../lib/notifications";
 import { pauseStreak, resumeStreak } from "../../lib/streak";
+import { DEV_OCCASION_KEY } from "../../lib/occasions";
 import type { DependencyLevel } from "../../types/database";
 
 /**
@@ -496,6 +497,91 @@ export const DevPanel: React.FC<DevPanelProps> = ({ onUnlockReturnGate, onResetC
     }
   };
 
+  // ── Step 17 (Personal Goals) verification ─────────────────────────────────
+
+  /** Delete ALL goal rows (cascades top_up_log) for repeat creation-flow tests. */
+  const clearGoals = async (label: string) => {
+    if (!user) return;
+    setBusy(label);
+    try {
+      await supabase.from("goal").delete().eq("user_id", user.id).throwOnError();
+      await queryClient.invalidateQueries({ queryKey: ["goals", user.id] });
+      setLastResult("all goals (+ top-ups via cascade) deleted.");
+    } catch (e: any) {
+      setLastResult(`ERROR: ${e.message}`);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  /** Clear causes_card_log → next eligible impression starts the rotation at CFI.
+   *  Needs Stage 3 + total_saved > 0 (tap "Stage 3 (10d)" above first). */
+  const clearCausesLog = async (label: string) => {
+    if (!user) return;
+    setBusy(label);
+    try {
+      await supabase.from("causes_card_log").delete().eq("user_id", user.id).throwOnError();
+      await queryClient.invalidateQueries({ queryKey: ["causes_card_log", user.id] });
+      setLastResult("causes_card_log cleared → card eligible on next Goals-dashboard open (CFI first).");
+    } catch (e: any) {
+      setLastResult(`ERROR: ${e.message}`);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  /** Backdate the newest impression to 15 days ago so the 14-day interval has
+   *  elapsed → card eligible again, rotation advanced past the backdated NGO. */
+  const backdateCausesLog = async (label: string) => {
+    if (!user) return;
+    setBusy(label);
+    try {
+      const { data: latest } = await supabase
+        .from("causes_card_log")
+        .select("log_id, ngo_id")
+        .eq("user_id", user.id)
+        .order("shown_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (!latest) {
+        setLastResult("no impressions yet — open the Goals dashboard once (or Clear log).");
+        return;
+      }
+      await supabase
+        .from("causes_card_log")
+        .update({ shown_at: subDays(new Date(), 15).toISOString() })
+        .eq("log_id", latest.log_id)
+        .throwOnError();
+      await queryClient.invalidateQueries({ queryKey: ["causes_card_log", user.id] });
+      setLastResult(`latest impression (${latest.ngo_id}) backdated 15d → eligible again; next NGO in rotation shows.`);
+    } catch (e: any) {
+      setLastResult(`ERROR: ${e.message}`);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  /** Inject a test occasion 4 days out (inside the 3–5 day window) via the
+   *  AsyncStorage override lib/occasions reads. Clears its dismissal flag too. */
+  const setDevOccasion = async (label: string, on: boolean) => {
+    setBusy(label);
+    try {
+      const date = format(addDays(new Date(), 4), "yyyy-MM-dd");
+      if (on) {
+        await AsyncStorage.setItem(DEV_OCCASION_KEY, date);
+        await AsyncStorage.removeItem(`occasion_dismissed_dev_occasion_${parseISO(date).getFullYear()}`);
+        setLastResult(`dev occasion set for ${date} (4d out) → nudge card on Goals dashboard (Stage 1+).`);
+      } else {
+        await AsyncStorage.removeItem(DEV_OCCASION_KEY);
+        setLastResult("dev occasion cleared.");
+      }
+    } catch (e: any) {
+      setLastResult(`ERROR: ${e.message}`);
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const Btn = ({ label, onPress }: { label: string; onPress: () => void }) => (
     <Pressable
       onPress={onPress}
@@ -577,6 +663,21 @@ export const DevPanel: React.FC<DevPanelProps> = ({ onUnlockReturnGate, onResetC
       <View className="flex-row gap-2 mb-3">
         <View className="flex-1"><Btn label="Risk window NOW" onPress={() => seedRiskWindowNow("Risk window NOW")} /></View>
         <View className="flex-1"><Btn label="Clear risk windows" onPress={() => clearRiskWindows("Clear risk windows")} /></View>
+      </View>
+
+      <Text className="text-muted-foreground text-[11px] mb-1.5">
+        Step 17 — Goals (Causes Card needs Stage 3 + savings &gt; 0)
+      </Text>
+      <View className="flex-row gap-2 mb-2">
+        <View className="flex-1"><Btn label="Causes: clear log" onPress={() => clearCausesLog("Causes: clear log")} /></View>
+        <View className="flex-1"><Btn label="Causes: backdate 15d" onPress={() => backdateCausesLog("Causes: backdate 15d")} /></View>
+      </View>
+      <View className="flex-row gap-2 mb-2">
+        <View className="flex-1"><Btn label="Occasion in 4d" onPress={() => setDevOccasion("Occasion in 4d", true)} /></View>
+        <View className="flex-1"><Btn label="Occasion clear" onPress={() => setDevOccasion("Occasion clear", false)} /></View>
+      </View>
+      <View className="flex-row gap-2 mb-3">
+        <View className="flex-1"><Btn label="Clear all goals" onPress={() => clearGoals("Clear all goals")} /></View>
       </View>
 
       <Text className="text-muted-foreground text-[11px] mb-1.5">
