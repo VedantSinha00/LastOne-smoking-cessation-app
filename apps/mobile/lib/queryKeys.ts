@@ -18,6 +18,7 @@ export const queryKeys = {
   cardHistory:    (userId: string) => ['card_history', userId] as const,
   goals:          (userId: string) => ['goals', userId] as const,
   topUpLog:       (goalId: string) => ['top_up_log', goalId] as const,
+  causesLog:      (userId: string) => ['causes_card_log', userId] as const,
   notifState:     (userId: string) => ['notification_state', userId] as const,
   cpdLog:         (userId: string) => ['cpd_log', userId] as const,
   priceLog:       (userId: string) => ['price_log', userId] as const,

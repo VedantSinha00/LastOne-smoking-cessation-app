@@ -85,6 +85,11 @@ export type PostToolState = 'better' | 'same' | 'smoked'
 // trigger_type is unconstrained text (cigarette_milestone is the Milestone-Spec value).
 export type ContentSensitivity = 'low' | 'high'
 
+// Personal Goals enums (Personal Goals Spec §B1 / Data Schema §15–17).
+export type GoalSource = 'link' | 'manual'
+export type GoalStatus = 'active' | 'completed' | 'retired'
+export type NgoId = 'CFI' | 'CPAA' | 'CanSupport'
+
 // coping_tools enums (Data Schema §6).
 export type ToolFamily = 'breathing' | 'physical' | 'mini_games'
 export type ToolCategory =
@@ -718,6 +723,101 @@ export interface Database {
           card_id?: string
           last_shown_at?: string
           show_count?: number
+        }
+        Relationships: []
+      }
+      // goal — user savings goals (Data Schema §15). current_amount is ALWAYS
+      // derived client-side as SUM(top_up_log.amount) — the column itself is never
+      // written after insert (stays at its default 0); see lib/goals.ts.
+      goal: {
+        Row: {
+          goal_id: string
+          user_id: string
+          goal_name: string
+          target_amount: number
+          current_amount: number
+          allocated_amount: number
+          source: GoalSource
+          product_url: string | null
+          product_image_url: string | null
+          emoji: string | null
+          why: string | null
+          status: GoalStatus
+          created_at: string
+          completed_at: string | null
+        }
+        Insert: {
+          goal_id?: string
+          user_id: string
+          goal_name: string
+          target_amount: number
+          allocated_amount?: number
+          source: GoalSource
+          product_url?: string | null
+          product_image_url?: string | null
+          emoji?: string | null
+          why?: string | null
+          status?: GoalStatus
+          created_at?: string
+          completed_at?: string | null
+        }
+        Update: {
+          goal_name?: string
+          target_amount?: number
+          allocated_amount?: number
+          product_url?: string | null
+          product_image_url?: string | null
+          emoji?: string | null
+          why?: string | null
+          status?: GoalStatus
+          completed_at?: string | null
+        }
+        Relationships: []
+      }
+      // top_up_log — manual savings top-ups (Data Schema §16). Source of truth
+      // for a goal's committed amount.
+      top_up_log: {
+        Row: {
+          topup_id: string
+          goal_id: string
+          user_id: string
+          amount: number
+          created_at: string
+        }
+        Insert: {
+          topup_id?: string
+          goal_id: string
+          user_id: string
+          amount: number
+          created_at?: string
+        }
+        Update: never
+        Relationships: []
+      }
+      // causes_card_log — Causes Card impressions (Data Schema §17). 14-day
+      // eligibility from MAX(shown_at); NGO rotation = COUNT(rows) % 3.
+      causes_card_log: {
+        Row: {
+          log_id: string
+          user_id: string
+          ngo_id: NgoId
+          shown_at: string
+          dismissed_at: string | null
+          tapped_learn_more: boolean
+        }
+        Insert: {
+          log_id?: string
+          user_id: string
+          ngo_id: NgoId
+          shown_at?: string
+          dismissed_at?: string | null
+          tapped_learn_more?: boolean
+        }
+        Update: {
+          // shown_at writable for DevPanel interval-backdating only.
+          shown_at?: string
+          dismissed_at?: string | null
+          tapped_learn_more?: boolean
         }
         Relationships: []
       }

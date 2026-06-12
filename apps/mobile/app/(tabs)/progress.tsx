@@ -1,8 +1,9 @@
 import React, { useCallback, useState } from 'react'
 import { View, Text, ScrollView, Pressable, ActivityIndicator } from 'react-native'
-import { useLocalSearchParams, useFocusEffect } from 'expo-router'
+import { useLocalSearchParams, useFocusEffect, useRouter } from 'expo-router'
 import { useProfile } from '../../hooks/useProfile'
 import { useDashboard } from '../../hooks/useDashboard'
+import { useGoals } from '../../hooks/useGoals'
 import { useMilestoneCards, type MilestoneCard } from '../../hooks/useMilestoneCards'
 import { scaleLadder } from '../../lib/savings'
 import type { CounterKey } from '../../components/home/ProgressDashboard'
@@ -60,6 +61,7 @@ const ReferenceCard: React.FC<{
  * defaulting to the cigarettes counter (the spec's emotional anchor, §2.3).
  */
 export default function Progress() {
+  const router = useRouter()
   const params = useLocalSearchParams<{ counter?: string }>()
   const initial = (params.counter as CounterKey) ?? 'cigarettes'
   const [counter, setCounter] = useState<CounterKey>(
@@ -79,6 +81,7 @@ export default function Progress() {
 
   const { data: profile } = useProfile()
   const d = useDashboard()
+  const { active: activeGoals } = useGoals()
   const { data: milestones, isLoading: milestonesLoading } = useMilestoneCards(
     profile?.voice_style ?? null,
   )
@@ -140,6 +143,27 @@ export default function Progress() {
           ))
         )}
       </View>
+
+      {/* Personal Goals entry (Step 17) — Goals live inside the Progress/Savings
+          section, not a tab of their own (Personal Goals Spec §2.2). */}
+      <Pressable
+        onPress={() => router.push('/goals')}
+        className="bg-card border border-border rounded-3xl p-5 active:opacity-80"
+      >
+        <View className="flex-row items-center justify-between">
+          <View className="flex-1 pr-3">
+            <Text className="text-muted-foreground text-xs font-sans-bold uppercase tracking-wider">
+              Personal Goals
+            </Text>
+            <Text className="text-foreground font-display text-lg mt-1">
+              {activeGoals.length > 0
+                ? `${activeGoals.length} active goal${activeGoals.length > 1 ? 's' : ''}`
+                : 'Give your savings a destination'}
+            </Text>
+          </View>
+          <Text className="text-primary font-display text-xl">→</Text>
+        </View>
+      </Pressable>
 
       {/* Section 2 — Milestone reference cards (§5 Section 2, Milestone Spec §3) */}
       <View>
