@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
-import { View, Text, ScrollView, Pressable, ActivityIndicator, Dimensions } from "react-native";
+import { View, Text, ScrollView, Pressable, ActivityIndicator, Dimensions, Linking } from "react-native";
 import { useRouter } from "expo-router";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { subDays } from "date-fns";
 import { Wind, Activity, Puzzle, Shuffle, ChevronRight, ThumbsUp, ThumbsDown, Check } from "lucide-react-native";
 import { useAuth } from "../../hooks/useAuth";
 import { useProfile } from "../../hooks/useProfile";
@@ -21,6 +22,9 @@ import {
   type SosEscalationLevel,
 } from "../../lib/sos";
 import { confirmSmokeFreeDay } from "../../lib/streak";
+import { supabase } from "../../lib/supabase";
+import { useSupportPerson } from "../../hooks/useSupportPerson";
+import { telUrl, RESOURCE_CARDS } from "../../lib/givingUp";
 import type { CravingContext } from "../../lib/sosTool";
 import type { Database, ToolFamily } from "../../types/database";
 
@@ -493,32 +497,109 @@ export default function SosModal() {
       <Pressable disabled={processing} onPress={smoked} className="mt-6 py-3 items-center active:opacity-60">
         <Text className="text-muted-foreground font-sans-medium text-sm">I smoked</Text>
       </Pressable>
+
+      {/* Tier-3 escalation link (GU §B2 SOS integration) — silent conditional. */}
+      <Tier3Link />
     </ScrollView>
   );
 }
 
 /**
- * Escalation tools — Call a Friend + Quit Specialist Line. The escalation LADDER logic
- * lives here (Step 13), but the working dialler + the SecureStore contact number are
- * owned by Step 18 (Giving Up Support). For now these render as "coming soon"
- * placeholders so the surface is correct without inventing Step-18 plumbing.
+ * Escalation tools — Call a Friend + Quit Specialist Line (Step 13 ladder,
+ * wired live in Step 18). Call a Friend dials the SecureStore support person
+ * (or routes to setup when none is configured); the specialist line is the
+ * GU-8 tobacco quitline (⚠ number must be team-verified pre-ship).
  */
-const CallAFriendCard: React.FC = () => (
-  <View className="bg-accent border border-craving/40 rounded-3xl p-4">
-    <Text className="text-craving font-sans-bold">Call a friend</Text>
-    <Text className="text-muted-foreground text-xs mt-0.5">Coming soon — reach someone who gets it.</Text>
-  </View>
-);
+const CallAFriendCard: React.FC = () => {
+  const router = useRouter();
+  const { person, configured } = useSupportPerson();
 
-const EscalationOnly: React.FC = () => (
-  <View className="gap-2">
-    <Text className="text-muted-foreground text-sm mb-2 leading-relaxed">
-      A few tools haven&apos;t landed it this time. That&apos;s okay — let&apos;s try a person, not a screen.
-    </Text>
-    <CallAFriendCard />
-    <View className="bg-accent border border-craving/40 rounded-3xl p-4">
-      <Text className="text-craving font-sans-bold">Talk to a quit specialist</Text>
-      <Text className="text-muted-foreground text-xs mt-0.5">Coming soon.</Text>
+  if (configured && person) {
+    return (
+      <Pressable
+        onPress={() => Linking.openURL(telUrl(person.phone))}
+        className="bg-accent border border-craving/40 rounded-3xl p-4 active:opacity-80"
+      >
+        <Text className="text-craving font-sans-bold">Call {person.name}</Text>
+        <Text className="text-muted-foreground text-xs mt-0.5">
+          They know you&apos;re trying. Just say the word.
+        </Text>
+      </Pressable>
+    );
+  }
+  return (
+    <Pressable
+      onPress={() => router.push("/(modals)/support-person")}
+      className="bg-accent border border-craving/40 rounded-3xl p-4 active:opacity-80"
+    >
+      <Text className="text-craving font-sans-bold">Call a friend</Text>
+      <Text className="text-muted-foreground text-xs mt-0.5">
+        Set up your support person — one person, two minutes.
+      </Text>
+    </Pressable>
+  );
+};
+
+const EscalationOnly: React.FC = () => {
+  const quitline = RESOURCE_CARDS[0];
+  return (
+    <View className="gap-2">
+      <Text className="text-muted-foreground text-sm mb-2 leading-relaxed">
+        A few tools haven&apos;t landed it this time. That&apos;s okay — let&apos;s try a person, not a screen.
+      </Text>
+      <CallAFriendCard />
+      <Pressable
+        onPress={() => Linking.openURL(telUrl(quitline.phone))}
+        className="bg-accent border border-craving/40 rounded-3xl p-4 active:opacity-80"
+      >
+        <Text className="text-craving font-sans-bold">Talk to a quit specialist</Text>
+        <Text className="text-muted-foreground text-xs mt-0.5">
+          {quitline.organisation} — free, confidential. {quitline.phoneDisplay}
+        </Text>
+      </Pressable>
     </View>
-  </View>
-);
+  );
+};
+
+/**
+ * Tier-3 surface on SOS-3 (GU Spec §B2): after 3+ SOS uses in 24h where 2+
+ * ended "same"/"smoked", offer the professional resources route. Independent
+ * of the Tier-1 trigger.
+ */
+const Tier3Link: React.FC = () => {
+  const router = useRouter();
+  const { user } = useAuth();
+  const { data } = useQuery({
+    queryKey: ["sos_tier3", user?.id ?? ""],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("log")
+        .select("post_tool_state")
+        .eq("user_id", user!.id)
+        .eq("log_type", "sos")
+        .gte("timestamp", subDays(new Date(), 1).toISOString())
+        .throwOnError();
+      return (data ?? []) as { post_tool_state: string | null }[];
+    },
+    enabled: !!user,
+  });
+
+  const rows = data ?? [];
+  const struggling = rows.filter(
+    (r) => r.post_tool_state === "same" || r.post_tool_state === "smoked",
+  ).length;
+  if (rows.length < 3 || struggling < 2) return null;
+
+  return (
+    <Pressable
+      onPress={() =>
+        router.push({ pathname: "/(modals)/giving-up", params: { screen: "resources" } })
+      }
+      className="mt-4 py-2 items-center active:opacity-60"
+    >
+      <Text className="text-craving font-sans-bold text-sm">
+        Talk to someone who&apos;s heard this before →
+      </Text>
+    </Pressable>
+  );
+};

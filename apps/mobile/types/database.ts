@@ -90,6 +90,12 @@ export type GoalSource = 'link' | 'manual'
 export type GoalStatus = 'active' | 'completed' | 'retired'
 export type NgoId = 'CFI' | 'CPAA' | 'CanSupport'
 
+// Giving Up Support enums (GU Spec §B1 / Data Schema §20).
+export type GuTriggerCondition = 'slip_threshold' | 'return_to_smoking' | 'passive_disengagement'
+export type GuOutcome = 'kept_going' | 'routed_to_support' | 'dismissed_mid_flow'
+export type GuSupportAction = 'called_person' | 'whatsapped_person' | 'viewed_resources' | 'dismissed'
+export type GuCallOutcome = 'helped_a_lot' | 'helped_a_little' | 'didnt_help' | 'not_logged'
+
 // coping_tools enums (Data Schema §6).
 export type ToolFamily = 'breathing' | 'physical' | 'mini_games'
 export type ToolCategory =
@@ -141,6 +147,11 @@ export interface Database {
           quiet_hours_end: string | null // 'HH:MM:SS' local
           // risk_windows — written by Insights (Step 16); read for alert_level.
           risk_windows: RiskWindow[] | null
+          // Giving Up Support state (GU Spec §B1). NOTE: live column is
+          // last_giving_up_trigger_at (not …_timestamp as the spec doc writes).
+          // support_person name/number are SecureStore-only — never here.
+          last_giving_up_trigger_at: string | null
+          giving_up_card_dismissed_count: number
         }
         Insert: {
           id: string
@@ -178,6 +189,8 @@ export interface Database {
           quiet_hours_start?: string | null
           quiet_hours_end?: string | null
           risk_windows?: RiskWindow[] | null
+          last_giving_up_trigger_at?: string | null
+          giving_up_card_dismissed_count?: number
         }
         Update: {
           id?: string
@@ -215,6 +228,8 @@ export interface Database {
           quiet_hours_start?: string | null
           quiet_hours_end?: string | null
           risk_windows?: RiskWindow[] | null
+          last_giving_up_trigger_at?: string | null
+          giving_up_card_dismissed_count?: number
         }
         Relationships: []
       }
@@ -792,6 +807,46 @@ export interface Database {
           created_at?: string
         }
         Update: never
+        Relationships: []
+      }
+      // giving_up_event — one row per GU activation (Data Schema §20). Created
+      // at GU-1 tap with outcome='dismissed_mid_flow' (the mid-flow exit value),
+      // PATCHed forward as beats complete. Live column is triggered_at.
+      giving_up_event: {
+        Row: {
+          event_id: string
+          user_id: string
+          triggered_at: string
+          current_stage: number
+          trigger_condition: GuTriggerCondition
+          beat_1_completed: boolean
+          beat_2_completed: boolean
+          resistance_count_shown: number | null
+          outcome: GuOutcome
+          support_action: GuSupportAction | null
+          support_call_outcome: GuCallOutcome | null
+        }
+        Insert: {
+          event_id?: string
+          user_id: string
+          triggered_at?: string
+          current_stage: number
+          trigger_condition: GuTriggerCondition
+          beat_1_completed?: boolean
+          beat_2_completed?: boolean
+          resistance_count_shown?: number | null
+          outcome: GuOutcome
+          support_action?: GuSupportAction | null
+          support_call_outcome?: GuCallOutcome | null
+        }
+        Update: {
+          beat_1_completed?: boolean
+          beat_2_completed?: boolean
+          resistance_count_shown?: number | null
+          outcome?: GuOutcome
+          support_action?: GuSupportAction | null
+          support_call_outcome?: GuCallOutcome | null
+        }
         Relationships: []
       }
       // causes_card_log — Causes Card impressions (Data Schema §17). 14-day

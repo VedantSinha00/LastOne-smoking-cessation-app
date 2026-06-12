@@ -21,7 +21,10 @@ import { ProgressDashboard } from "../../components/home/ProgressDashboard";
 import { ContentCarousel } from "../../components/home/ContentCarousel";
 import { SavingsMilestoneCard } from "../../components/home/SavingsMilestoneCard";
 import { DailyCheckInCard } from "../../components/home/DailyCheckInCard";
+import { GivingUpCard } from "../../components/home/GivingUpCard";
+import { SupportSetupPromptCard } from "../../components/home/SupportSetupPromptCard";
 import { useDailyCheckIn } from "../../hooks/useDailyCheckIn";
+import { useGivingUpTrigger } from "../../hooks/useGivingUpTrigger";
 import { ReturnModalShort, type Stk2Choice } from "../../components/home/ReturnModalShort";
 import { ReturnModalLong, type Stk3Choice } from "../../components/home/ReturnModalLong";
 import { DevPanel } from "../../components/home/DevPanel";
@@ -34,6 +37,7 @@ export default function Home() {
   const { data: streak, isLoading: streakLoading } = useStreakRecord();
   const returnModal = useReturnModal();
   const { satisfied: checkInSatisfied, refresh: refreshCheckIn } = useDailyCheckIn();
+  const givingUp = useGivingUpTrigger();
 
   // Return-modal gate. The option handlers apply the real streak writes
   // (lib/returnModal) then clear the gate so home renders with fresh values.
@@ -104,7 +108,9 @@ export default function Home() {
 
   // ── Home (HOME-1) — scroll order per Home Spec §P6 ─────────────────────────
   // Daily check-in: Stage 1+ only (Home Spec §E), hidden once satisfied for the day.
-  const showDailyCheckIn = stage !== 0 && !checkInSatisfied;
+  // GU-1 takes priority over it for the session when both are due (GU Spec §8) —
+  // the day still counts as engaged without resolving the check-in.
+  const showDailyCheckIn = stage !== 0 && !checkInSatisfied && !givingUp.showCard;
   // "Day N" framing only makes sense once the quit streak exists (Stage 1+).
   // At Stage 0 (pre-quit) we omit it so the greeting/card don't read "Day 0".
   const dayCount = stage === 0 ? undefined : daysSinceQuit;
@@ -132,7 +138,9 @@ export default function Home() {
       {/* 4b — Savings milestone celebration (inline, fires once per threshold) */}
       <SavingsMilestoneCard />
 
-      {/* 5 — Daily Check-In (Stage 1+, until satisfied) */}
+      {/* 5 — GU-1 trigger card (replaces the check-in this session when due),
+            else Daily Check-In (Stage 1+, until satisfied) */}
+      <GivingUpCard />
       {showDailyCheckIn && (
         <DailyCheckInCard dayCount={dayCount} onSatisfied={refreshCheckIn} />
       )}
@@ -142,6 +150,9 @@ export default function Home() {
 
       {/* 7 — Insights Preview */}
       <InsightsPreview />
+
+      {/* 7b — One-time Stage-2 support person setup prompt (GU §B2, low priority) */}
+      <SupportSetupPromptCard />
 
       {/* 8 — Health Milestones */}
       <HealthMilestonesCard
