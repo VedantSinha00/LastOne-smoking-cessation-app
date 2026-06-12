@@ -11,6 +11,8 @@ import { FREEZE_MATRIX } from "../../lib/streak";
 import { reconcileNotifications } from "../../lib/notifications";
 import { pauseStreak, resumeStreak } from "../../lib/streak";
 import { DEV_OCCASION_KEY } from "../../lib/occasions";
+import { clearSupportPerson } from "../../lib/givingUp";
+import { resetGuSessionGuard } from "../../hooks/useGivingUpTrigger";
 import type { DependencyLevel } from "../../types/database";
 
 /**
@@ -582,6 +584,130 @@ export const DevPanel: React.FC<DevPanelProps> = ({ onUnlockReturnGate, onResetC
     }
   };
 
+  // ── Step 18 (Giving Up Support) verification ──────────────────────────────
+
+  /** Insert N backdated one_off slip logs into the open attempt so Condition A
+   *  (rolling_14d_slips ≥ 3) trips. NOTE: log has no client DELETE — seeds stack. */
+  const seedGuSlips = async (label: string) => {
+    if (!user) return;
+    setBusy(label);
+    try {
+      const { data: attempt } = await supabase
+        .from("quit_attempts")
+        .select("attempt_id, quit_date")
+        .eq("user_id", user.id)
+        .is("ended_at", null)
+        .maybeSingle();
+      if (!attempt) {
+        setLastResult("ERROR: no open attempt — set a Stage first.");
+        return;
+      }
+      const rows = [2, 4, 6].map((daysAgo) => {
+        const ts = subDays(new Date(), daysAgo);
+        return {
+          user_id: user.id,
+          attempt_id: attempt.attempt_id,
+          log_type: "slip" as const,
+          slip_type: "one_off" as const,
+          cigarette_count: 1,
+          timestamp: ts.toISOString(),
+          quit_day_number: attempt.quit_date
+            ? differenceInCalendarDays(ts, parseISO(attempt.quit_date))
+            : 0,
+          current_stage: deriveStage(attempt.quit_date),
+          entry_method: "fab" as const,
+          source: "flow_c" as const,
+        };
+      });
+      await supabase.from("log").insert(rows).throwOnError();
+      await queryClient.invalidateQueries({ queryKey: ["logs", user.id] });
+      setLastResult("3 one_off slips seeded (2/4/6 days ago) → Condition A at Stage 2–4. Reopen Home.");
+    } catch (e: any) {
+      setLastResult(`ERROR: ${e.message}`);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  /** Insert a return_to_smoking slip log NOW → Condition B (48h window). */
+  const seedReturnToSmoking = async (label: string) => {
+    if (!user) return;
+    setBusy(label);
+    try {
+      const { data: attempt } = await supabase
+        .from("quit_attempts")
+        .select("attempt_id, quit_date")
+        .eq("user_id", user.id)
+        .is("ended_at", null)
+        .maybeSingle();
+      if (!attempt) {
+        setLastResult("ERROR: no open attempt — set a Stage first.");
+        return;
+      }
+      await supabase
+        .from("log")
+        .insert({
+          user_id: user.id,
+          attempt_id: attempt.attempt_id,
+          log_type: "slip",
+          slip_type: "return_to_smoking",
+          cigarette_count: 5,
+          timestamp: new Date().toISOString(),
+          quit_day_number: attempt.quit_date
+            ? differenceInCalendarDays(new Date(), parseISO(attempt.quit_date))
+            : 0,
+          current_stage: deriveStage(attempt.quit_date),
+          entry_method: "fab",
+          source: "flow_c",
+        })
+        .throwOnError();
+      await queryClient.invalidateQueries({ queryKey: ["logs", user.id] });
+      setLastResult("return_to_smoking slip seeded NOW → Condition B for 48h. Reopen Home.");
+    } catch (e: any) {
+      setLastResult(`ERROR: ${e.message}`);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  /** Reset GU suppression + dismissal count + events so the card can re-fire. */
+  const clearGuState = async (label: string) => {
+    if (!user) return;
+    setBusy(label);
+    try {
+      await supabase
+        .from("profiles")
+        .update({ last_giving_up_trigger_at: null, giving_up_card_dismissed_count: 0 })
+        .eq("id", user.id)
+        .throwOnError();
+      await supabase.from("giving_up_event").delete().eq("user_id", user.id).throwOnError();
+      resetGuSessionGuard();
+      await queryClient.invalidateQueries({ queryKey: ["profile", user.id] });
+      setLastResult("GU state cleared: suppression off, dismissed_count 0, events deleted, session guard reset.");
+    } catch (e: any) {
+      setLastResult(`ERROR: ${e.message}`);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  /** Wipe the SecureStore support person (+ device-side GU flags). */
+  const clearSupportPersonDev = async (label: string) => {
+    if (!user) return;
+    setBusy(label);
+    try {
+      await clearSupportPerson();
+      await AsyncStorage.removeItem(`gu_briefing_sent:${user.id}`);
+      await AsyncStorage.removeItem(`gu_setup_prompt_shown:${user.id}`);
+      await queryClient.invalidateQueries({ queryKey: ["support_person"] });
+      setLastResult("support person cleared (SecureStore) + briefing/setup-prompt flags reset.");
+    } catch (e: any) {
+      setLastResult(`ERROR: ${e.message}`);
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const Btn = ({ label, onPress }: { label: string; onPress: () => void }) => (
     <Pressable
       onPress={onPress}
@@ -678,6 +804,18 @@ export const DevPanel: React.FC<DevPanelProps> = ({ onUnlockReturnGate, onResetC
       </View>
       <View className="flex-row gap-2 mb-3">
         <View className="flex-1"><Btn label="Clear all goals" onPress={() => clearGoals("Clear all goals")} /></View>
+      </View>
+
+      <Text className="text-muted-foreground text-[11px] mb-1.5">
+        Step 18 — Giving Up (needs Stage 2+; card shows on Home reopen)
+      </Text>
+      <View className="flex-row gap-2 mb-2">
+        <View className="flex-1"><Btn label="Seed 3 slips" onPress={() => seedGuSlips("Seed 3 slips")} /></View>
+        <View className="flex-1"><Btn label="Seed return-to-smoking" onPress={() => seedReturnToSmoking("Seed return-to-smoking")} /></View>
+      </View>
+      <View className="flex-row gap-2 mb-3">
+        <View className="flex-1"><Btn label="GU: clear state" onPress={() => clearGuState("GU: clear state")} /></View>
+        <View className="flex-1"><Btn label="Clear support person" onPress={() => clearSupportPersonDev("Clear support person")} /></View>
       </View>
 
       <Text className="text-muted-foreground text-[11px] mb-1.5">
