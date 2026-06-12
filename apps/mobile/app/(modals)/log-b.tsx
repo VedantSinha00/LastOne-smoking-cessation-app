@@ -62,7 +62,12 @@ export default function LogB() {
   };
 
   return (
-    <ScrollView className="flex-1 bg-background px-6 py-8" contentContainerClassName="pb-12">
+    <ScrollView
+      className="flex-1 bg-background px-6 py-8"
+      contentContainerClassName="pb-12"
+      // First-tap buttons while the keyboard is up (chips' "Other" input).
+      keyboardShouldPersistTaps="handled"
+    >
       <View className="items-center mb-8 mt-4">
         <Text className="text-5xl mb-3">💪</Text>
         <Text className="text-foreground font-display text-2xl text-center">That's a win.</Text>

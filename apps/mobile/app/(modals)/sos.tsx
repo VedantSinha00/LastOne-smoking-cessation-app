@@ -443,7 +443,12 @@ export default function SosModal() {
 
   // ── SOS-3 — Post-Tool Check-in (skippable), Lovable two-card layout ───────────
   return (
-    <ScrollView className="flex-1 bg-secondary px-6 py-8" contentContainerClassName="flex-grow">
+    <ScrollView
+      className="flex-1 bg-secondary px-6 py-8"
+      contentContainerClassName="flex-grow"
+      // First-tap buttons while the keyboard is up (chips' "Other" input).
+      keyboardShouldPersistTaps="handled"
+    >
       <View className="flex-row justify-end mb-2">
         <Pressable onPress={skip} className="px-3 py-1.5">
           <Text className="text-muted-foreground text-sm">Skip</Text>

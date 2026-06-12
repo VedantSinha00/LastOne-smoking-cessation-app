@@ -33,7 +33,11 @@ export default function Profile() {
   };
 
   return (
-    <ScrollView className="flex-1 bg-background p-6">
+    <ScrollView
+      className="flex-1 bg-background p-6"
+      // First-tap Save while the keyboard is up (profile inputs).
+      keyboardShouldPersistTaps="handled"
+    >
       <View className="mb-6">
         <Text className="text-muted-foreground text-sm font-sans-medium">Settings</Text>
         <Text className="text-foreground font-display text-2xl">Your Profile</Text>
