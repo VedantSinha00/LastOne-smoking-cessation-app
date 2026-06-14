@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { View, Text, ScrollView, Pressable, ActivityIndicator, Modal } from "react-native";
 import { useQuery } from "@tanstack/react-query";
+import { useRouter } from "expo-router";
 import { useAuth } from "../../hooks/useAuth";
 import { supabase } from "../../lib/supabase";
 import { queryKeys } from "../../lib/queryKeys";
@@ -11,11 +12,12 @@ import type { Database } from "../../types/database";
 
 type CopingTool = Database["public"]["Tables"]["coping_tools"]["Row"];
 
-/** Library display sections (Coping Tools §1.2). AI Bot is a placeholder for now. */
+/** Library display sections (Coping Tools §1.2). Games route to the dedicated
+ *  hub (Step 19), so the library only lists breathing + physical as runnable
+ *  tools here. AI Bot is a placeholder for now. */
 const SECTIONS: { key: string; title: string; match: (t: CopingTool) => boolean }[] = [
   { key: "breathing", title: "Breathing Exercises", match: (t) => t.family === "breathing" },
   { key: "physical", title: "Physical Reset", match: (t) => t.family === "physical" },
-  { key: "games", title: "Games & Puzzles", match: (t) => t.family === "mini_games" },
 ];
 
 /**
@@ -26,6 +28,7 @@ const SECTIONS: { key: string; title: string; match: (t: CopingTool) => boolean 
  */
 export default function ToolsLibrary() {
   const { user } = useAuth();
+  const router = useRouter();
   const [active, setActive] = useState<CopingTool | null>(null);
   const [checkIn, setCheckIn] = useState(false);
 
@@ -88,6 +91,27 @@ export default function ToolsLibrary() {
           );
         })
       )}
+
+      {/* Games & Puzzles → dedicated games hub (Step 19). */}
+      <View>
+        <Text className="text-muted-foreground text-xs font-sans-bold uppercase tracking-wider mb-2">
+          Games &amp; Puzzles
+        </Text>
+        <Pressable
+          onPress={() => router.push("/games")}
+          className="bg-card border border-border rounded-3xl p-4 active:bg-muted"
+        >
+          <View className="flex-row items-center justify-between">
+            <View className="flex-1 pr-3">
+              <Text className="text-foreground font-sans-bold">Distraction games</Text>
+              <Text className="text-muted-foreground text-xs mt-0.5">
+                Memory, Echo Tap, and 2-player — ride out a craving.
+              </Text>
+            </View>
+            <Text className="text-primary font-display text-xl">→</Text>
+          </View>
+        </Pressable>
+      </View>
 
       {/* AI Bot — coming soon placeholder (no backend yet). */}
       <View>

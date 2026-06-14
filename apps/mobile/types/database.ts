@@ -96,6 +96,14 @@ export type GuOutcome = 'kept_going' | 'routed_to_support' | 'dismissed_mid_flow
 export type GuSupportAction = 'called_person' | 'whatsapped_person' | 'viewed_resources' | 'dismissed'
 export type GuCallOutcome = 'helped_a_lot' | 'helped_a_little' | 'didnt_help' | 'not_logged'
 
+// Mini-Games enums (MiniGames Spec §B1 / Data Schema §21–23).
+export type GameType = 'memory_1p' | 'echo_tap' | 'memory_2p'
+export type GameSessionType = 'craving_linked' | 'casual'
+export type GameGridSize = '3x4' | '4x4'
+export type GameCardSkin = 'generic' | 'themed'
+export type GameWinner = 'player1' | 'player2' | 'draw'
+export type GameReflection = 'passed' | 'partial' | 'ongoing'
+
 // coping_tools enums (Data Schema §6).
 export type ToolFamily = 'breathing' | 'physical' | 'mini_games'
 export type ToolCategory =
@@ -846,6 +854,101 @@ export interface Database {
           outcome?: GuOutcome
           support_action?: GuSupportAction | null
           support_call_outcome?: GuCallOutcome | null
+        }
+        Relationships: []
+      }
+      // game_session — one row per mini-game session (Data Schema §21). Sparse
+      // columns by game_type; reflection_response only on craving_linked.
+      game_session: {
+        Row: {
+          session_id: string
+          user_id: string
+          game_type: GameType
+          session_type: GameSessionType
+          started_at: string
+          ended_at: string
+          duration_seconds: number
+          stage_at_session: number
+          grid_size: GameGridSize | null
+          card_skin: GameCardSkin | null
+          pairs_matched: number | null
+          time_taken_seconds: number | null
+          sequences_completed: number | null
+          longest_streak: number | null
+          player1_score: number | null
+          player2_score: number | null
+          winner: GameWinner | null
+          reflection_response: GameReflection | null
+        }
+        Insert: {
+          session_id?: string
+          user_id: string
+          game_type: GameType
+          session_type: GameSessionType
+          started_at: string
+          ended_at: string
+          duration_seconds: number
+          stage_at_session: number
+          grid_size?: GameGridSize | null
+          card_skin?: GameCardSkin | null
+          pairs_matched?: number | null
+          time_taken_seconds?: number | null
+          sequences_completed?: number | null
+          longest_streak?: number | null
+          player1_score?: number | null
+          player2_score?: number | null
+          winner?: GameWinner | null
+          reflection_response?: GameReflection | null
+        }
+        Update: {
+          reflection_response?: GameReflection | null
+        }
+        Relationships: []
+      }
+      // game_streak — one row per user (Data Schema §22). Consecutive-day streak
+      // of craving-linked sessions; longest_streak_ever never decreases.
+      game_streak: {
+        Row: {
+          user_id: string
+          current_streak: number
+          longest_streak_ever: number
+          sessions_this_week: number
+          last_craving_session_date: string
+        }
+        Insert: {
+          user_id: string
+          current_streak?: number
+          longest_streak_ever?: number
+          sessions_this_week?: number
+          last_craving_session_date: string
+        }
+        Update: {
+          current_streak?: number
+          longest_streak_ever?: number
+          sessions_this_week?: number
+          last_craving_session_date?: string
+        }
+        Relationships: []
+      }
+      // streak_nudge_log — one row per user (Data Schema §23). Stage-4 in-app
+      // nudge cap: times_shown ≤ 2, then permanently_suppressed.
+      streak_nudge_log: {
+        Row: {
+          user_id: string
+          times_shown: number
+          last_shown_at: string
+          permanently_suppressed: boolean
+        }
+        Insert: {
+          user_id: string
+          times_shown?: number
+          last_shown_at: string
+          permanently_suppressed?: boolean
+        }
+        Update: {
+          times_shown?: number
+          last_shown_at?: string
+          permanently_suppressed?: boolean
         }
         Relationships: []
       }

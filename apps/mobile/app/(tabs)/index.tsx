@@ -23,6 +23,7 @@ import { SavingsMilestoneCard } from "../../components/home/SavingsMilestoneCard
 import { DailyCheckInCard } from "../../components/home/DailyCheckInCard";
 import { GivingUpCard } from "../../components/home/GivingUpCard";
 import { SupportSetupPromptCard } from "../../components/home/SupportSetupPromptCard";
+import { GameStreakNudgeCard } from "../../components/home/GameStreakNudgeCard";
 import { useDailyCheckIn } from "../../hooks/useDailyCheckIn";
 import { useGivingUpTrigger } from "../../hooks/useGivingUpTrigger";
 import { ReturnModalShort, type Stk2Choice } from "../../components/home/ReturnModalShort";
@@ -153,6 +154,9 @@ export default function Home() {
 
       {/* 7b — One-time Stage-2 support person setup prompt (GU §B2, low priority) */}
       <SupportSetupPromptCard />
+
+      {/* 7c — Stage-4 mini-game re-engagement nudge (MiniGames §B2, max 2 lifetime) */}
+      <GameStreakNudgeCard />
 
       {/* 8 — Health Milestones */}
       <HealthMilestonesCard

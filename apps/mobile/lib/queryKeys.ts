@@ -23,4 +23,5 @@ export const queryKeys = {
   cpdLog:         (userId: string) => ['cpd_log', userId] as const,
   priceLog:       (userId: string) => ['price_log', userId] as const,
   gameStreak:     (userId: string) => ['game_streak', userId] as const,
+  streakNudge:    (userId: string) => ['streak_nudge_log', userId] as const,
 }
