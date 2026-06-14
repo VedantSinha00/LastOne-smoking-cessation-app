@@ -21,7 +21,7 @@ export default function EditName() {
       return
     }
     await updateProfile.mutateAsync({ display_name: trimmed.slice(0, 30) })
-    router.back()
+    router.navigate('/(tabs)/profile')
   }
 
   return (

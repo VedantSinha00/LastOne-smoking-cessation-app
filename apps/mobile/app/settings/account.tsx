@@ -20,6 +20,15 @@ export default function AccountDetails() {
   const [newPassword, setNewPassword] = useState('')
   const [busy, setBusy] = useState(false)
 
+  // OAuth users (e.g. Google) have no app-managed password, and their email is
+  // tied to the provider — so change email/password don't apply. Detect the
+  // provider and show a read-only "signed in with X" state instead.
+  const provider =
+    (user?.app_metadata?.provider as string | undefined) ??
+    (user?.app_metadata?.providers as string[] | undefined)?.[0] ??
+    'email'
+  const isOAuth = provider !== 'email'
+
   const changeEmail = async () => {
     if (!newEmail.trim()) return
     setBusy(true)
@@ -54,11 +63,21 @@ export default function AccountDetails() {
         <Text className="text-foreground text-base mt-0.5">{user?.email ?? '—'}</Text>
       </View>
 
-      {mode === 'view' && (
-        <View className="gap-3">
-          <Button title="Change Email" variant="secondary" onPress={() => setMode('email')} />
-          <Button title="Change Password" variant="secondary" onPress={() => setMode('password')} />
+      {isOAuth ? (
+        <View className="bg-muted border border-border rounded-3xl px-5 py-4">
+          <Text className="text-foreground text-sm leading-relaxed">
+            You&apos;re signed in with {provider === 'google' ? 'Google' : provider}. Your email and
+            password are managed there — change them in your {provider === 'google' ? 'Google' : provider}{' '}
+            account.
+          </Text>
         </View>
+      ) : (
+        mode === 'view' && (
+          <View className="gap-3">
+            <Button title="Change Email" variant="secondary" onPress={() => setMode('email')} />
+            <Button title="Change Password" variant="secondary" onPress={() => setMode('password')} />
+          </View>
+        )
       )}
 
       {mode === 'email' && (

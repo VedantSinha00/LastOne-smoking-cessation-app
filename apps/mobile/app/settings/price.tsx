@@ -18,11 +18,11 @@ export default function EditPrice() {
   const save = async () => {
     const n = parseFloat(value)
     if (!Number.isFinite(n) || n <= 0) {
-      setError('Enter a price greater than ₹0.')
+      setError("We need the price of one cigarette to work out your savings. What does a single one cost?")
       return
     }
     await updatePrice.mutateAsync(n)
-    router.back()
+    router.navigate('/(tabs)/profile')
   }
 
   return (

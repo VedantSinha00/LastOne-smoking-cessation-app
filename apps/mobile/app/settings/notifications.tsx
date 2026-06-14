@@ -1,51 +1,45 @@
-import React, { useState } from 'react'
+import React from 'react'
 import { View, Text, Pressable, Switch } from 'react-native'
-import { useRouter } from 'expo-router'
 import { useAuth } from '../../hooks/useAuth'
 import { useProfile } from '../../hooks/useProfile'
 import { useSettings } from '../../hooks/useSettings'
 import { supabase } from '../../lib/supabase'
 import { reconcileNotifications } from '../../lib/notifications'
 import { EditScreen } from '../../components/settings/EditScreen'
-import { Button } from '../../components/ui/button'
 import { TIER_OPTIONS } from '../../lib/settings'
 import type { NotificationTier } from '../../types/database'
 
 /**
- * PROF-10 — Notification Settings. Master on/off toggle (saved immediately) +
- * frequency tier (saved on Confirm). Saving the tier also resets
- * notification_state.effective_tier so the auto-reduce clears when the
- * preference changes (Architecture Guide §20). Reconciles after each change.
+ * PROF-10 — Notification Settings. Both the master toggle and the frequency
+ * tier autosave on tap (no Save button — a missed Save would silently keep the
+ * old preference). Changing the tier also resets notification_state.effective_tier
+ * so any active auto-reduce clears (Architecture Guide §20); reconciles after.
  */
 export default function NotificationSettings() {
-  const router = useRouter()
   const { user } = useAuth()
   const { data: profile } = useProfile()
   const { updateProfile } = useSettings()
 
-  const [enabled, setEnabled] = useState(profile?.notifications_enabled ?? true)
-  const [tier, setTier] = useState<NotificationTier>(profile?.notification_preference ?? 'app_decides')
+  const enabled = profile?.notifications_enabled ?? true
+  const tier = profile?.notification_preference ?? 'app_decides'
 
   const toggleMaster = async (value: boolean) => {
-    setEnabled(value)
     await updateProfile.mutateAsync({ notifications_enabled: value })
     if (user) await reconcileNotifications(user.id)
   }
 
-  const save = async () => {
-    if (tier !== profile?.notification_preference) {
-      await updateProfile.mutateAsync({ notification_preference: tier })
+  const pickTier = async (value: NotificationTier) => {
+    if (value === tier) return
+    await updateProfile.mutateAsync({ notification_preference: value })
+    if (user) {
       // Reset effective_tier so any active auto-reduce is cleared on a manual change.
-      if (user) {
-        await supabase
-          .from('notification_state')
-          .update({ effective_tier: tier, consecutive_ignored: 0, auto_reduce_active_until: null })
-          .eq('user_id', user.id)
-          .throwOnError()
-        await reconcileNotifications(user.id)
-      }
+      await supabase
+        .from('notification_state')
+        .update({ effective_tier: value, consecutive_ignored: 0, auto_reduce_active_until: null })
+        .eq('user_id', user.id)
+        .throwOnError()
+      await reconcileNotifications(user.id)
     }
-    router.back()
   }
 
   return (
@@ -66,7 +60,7 @@ export default function NotificationSettings() {
           <Pressable
             key={opt.value}
             disabled={!enabled}
-            onPress={() => setTier(opt.value)}
+            onPress={() => pickTier(opt.value)}
             className={`rounded-2xl border p-4 flex-row items-center justify-between ${
               active ? 'bg-primary/10 border-primary' : 'bg-card border-border'
             } ${enabled ? '' : 'opacity-40'}`}
@@ -78,8 +72,6 @@ export default function NotificationSettings() {
           </Pressable>
         )
       })}
-
-      <Button title="Save" onPress={save} loading={updateProfile.isPending} />
     </EditScreen>
   )
 }

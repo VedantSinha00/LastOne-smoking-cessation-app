@@ -10,21 +10,25 @@ interface RowProps {
   danger?: boolean
 }
 
-/** One PROF-01 settings row: label left, value + chevron right. */
+/** One PROF-01 settings row: label left, value + chevron right. Generous
+ *  vertical padding + a two-line layout for editable rows keeps the value from
+ *  crowding the label. */
 export const Row: React.FC<RowProps> = ({ label, value, onPress, danger }) => {
   const body = (
-    <View className="flex-row items-center justify-between py-3.5">
-      <Text className={`text-base ${danger ? 'text-destructive font-sans-bold' : 'text-foreground'}`}>
-        {label}
-      </Text>
-      <View className="flex-row items-center gap-2 flex-1 justify-end">
+    <View className="flex-row items-center justify-between py-4 min-h-[56px]">
+      <View className="flex-1 pr-3">
+        <Text
+          className={`text-base ${danger ? 'text-destructive font-sans-bold' : 'text-foreground font-sans-medium'}`}
+        >
+          {label}
+        </Text>
         {value !== undefined && (
-          <Text className="text-muted-foreground text-sm" numberOfLines={1}>
+          <Text className="text-muted-foreground text-sm mt-0.5" numberOfLines={1}>
             {value}
           </Text>
         )}
-        {onPress && <Text className="text-muted-foreground text-lg">›</Text>}
       </View>
+      {onPress && <Text className="text-muted-foreground text-xl">›</Text>}
     </View>
   )
   if (onPress) {
@@ -43,7 +47,7 @@ export const Section: React.FC<{ title: string; children: React.ReactNode }> = (
   children,
 }) => (
   <View>
-    <Text className="text-muted-foreground text-xs font-sans-bold uppercase tracking-wider mb-2">
+    <Text className="text-muted-foreground text-xs font-sans-bold uppercase tracking-wider mb-2.5 ml-1">
       {title}
     </Text>
     <View className="bg-card border border-border rounded-3xl px-5 divide-y divide-border">

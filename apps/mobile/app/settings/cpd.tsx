@@ -18,16 +18,20 @@ export default function EditCpd() {
   const save = async () => {
     const n = parseInt(value, 10)
     if (!Number.isFinite(n) || n <= 0) {
-      setError('Enter a number greater than 0.')
+      // Not a "smoke more" nudge — this is the pre-quit baseline used for savings.
+      setError("This is your old daily habit (before quitting), not today's — we use it to work out your savings. Pop in that number.")
       return
     }
     await updateCpd.mutateAsync(n)
-    router.back()
+    router.navigate('/(tabs)/profile')
   }
 
   return (
     <EditScreen title="Cigarettes per day">
-      <Text className="text-muted-foreground text-sm">How many you smoked on an average day.</Text>
+      <Text className="text-muted-foreground text-sm leading-relaxed">
+        How many you used to smoke on an average day, before you quit. This is your baseline — we use
+        it to calculate how much you&apos;ve saved, not what you smoke now.
+      </Text>
       <TextInput
         value={value}
         onChangeText={(t) => {

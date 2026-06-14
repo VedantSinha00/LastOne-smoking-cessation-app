@@ -49,14 +49,14 @@ export default function DeleteAccount() {
         onChangeText={setConfirm}
         placeholder="Type DELETE"
         placeholderTextColor="#A8A29E"
-        autoCapitalize="characters"
+        autoCapitalize="none"
         autoCorrect={false}
         className="bg-card border border-border rounded-xl px-4 py-3 text-foreground text-base"
       />
       <View className="gap-3 mt-2">
         {/* danger variant; disabled until the exact word is typed */}
         <Button title="Delete my account" variant="danger" onPress={doDelete} disabled={!enabled} loading={busy} />
-        <Button title="Cancel" variant="secondary" onPress={() => router.back()} />
+        <Button title="Cancel" variant="secondary" onPress={() => router.navigate('/(tabs)/profile')} />
       </View>
     </EditScreen>
   )

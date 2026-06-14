@@ -1,11 +1,9 @@
 import React, { useState } from 'react'
 import { View, Text, Pressable, Switch, Platform } from 'react-native'
-import { useRouter } from 'expo-router'
 import DateTimePicker from '@react-native-community/datetimepicker'
 import { useProfile } from '../../hooks/useProfile'
 import { useSettings } from '../../hooks/useSettings'
 import { EditScreen } from '../../components/settings/EditScreen'
-import { Button } from '../../components/ui/button'
 import { formatTime } from '../../lib/settings'
 
 /** 'HH:MM:SS' → Date (today) for the picker; null → a default time. */
@@ -22,12 +20,12 @@ function hmsToDate(hms: string | null, fallbackHour: number): Date {
 const dateToHms = (d: Date) => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:00`
 
 /**
- * PROF-11 — Quiet Hours. Toggle (saved immediately) + start/end time pickers
- * (saved on Confirm). Overnight ranges (start > end) are valid. SOS always
- * bypasses — note shown (§5 Flow 10). Default 23:00–08:00 on first enable.
+ * PROF-11 — Quiet Hours. Toggle + start/end time pickers all autosave on
+ * change (no Save button). Overnight ranges (start > end) are valid; start ==
+ * end is rejected inline. SOS always bypasses — note shown (§5 Flow 10).
+ * Default 23:00–08:00 on first enable.
  */
 export default function QuietHours() {
-  const router = useRouter()
   const { data: profile } = useProfile()
   const { updateProfile } = useSettings()
 
@@ -48,25 +46,25 @@ export default function QuietHours() {
     })
   }
 
-  const save = async () => {
-    if (dateToHms(start) === dateToHms(end)) {
+  // A time change autosaves immediately, unless it would make start == end
+  // (invalid range) — then we hold the local value + show the error and skip
+  // the write, so a missed Save can't leave an inconsistent range.
+  const onChange = (which: 'start' | 'end') => (_e: unknown, date?: Date) => {
+    if (Platform.OS === 'android') setShow(null)
+    if (!date) return
+    const nextStart = which === 'start' ? date : start
+    const nextEnd = which === 'end' ? date : end
+    which === 'start' ? setStart(date) : setEnd(date)
+    if (dateToHms(nextStart) === dateToHms(nextEnd)) {
       setError('Start and end time cannot be the same.')
       return
     }
-    await updateProfile.mutateAsync({
-      quiet_hours_enabled: enabled,
-      quiet_hours_start: dateToHms(start),
-      quiet_hours_end: dateToHms(end),
+    setError(null)
+    updateProfile.mutate({
+      quiet_hours_enabled: true,
+      quiet_hours_start: dateToHms(nextStart),
+      quiet_hours_end: dateToHms(nextEnd),
     })
-    router.back()
-  }
-
-  const onChange = (which: 'start' | 'end') => (_e: unknown, date?: Date) => {
-    if (Platform.OS === 'android') setShow(null)
-    if (date) {
-      which === 'start' ? setStart(date) : setEnd(date)
-      setError(null)
-    }
   }
 
   return (
@@ -111,7 +109,6 @@ export default function QuietHours() {
         SOS notifications always come through, even during quiet hours.
       </Text>
       {error && <Text className="text-craving text-sm">{error}</Text>}
-      {enabled && <Button title="Save" onPress={save} loading={updateProfile.isPending} />}
     </EditScreen>
   )
 }

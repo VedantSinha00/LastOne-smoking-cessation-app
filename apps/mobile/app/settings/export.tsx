@@ -36,7 +36,7 @@ export default function DataExport() {
       ) : (
         <Button title="Request Export" onPress={requestExport} />
       )}
-      <Button title="Back" variant="secondary" onPress={() => router.back()} />
+      <Button title="Back" variant="secondary" onPress={() => router.navigate('/(tabs)/profile')} />
     </EditScreen>
   )
 }

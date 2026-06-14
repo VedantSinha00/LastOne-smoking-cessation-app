@@ -1,26 +1,20 @@
-import React, { useState } from 'react'
+import React from 'react'
 import { View, Text, Pressable } from 'react-native'
-import { useRouter } from 'expo-router'
 import { useProfile } from '../../hooks/useProfile'
 import { useSettings } from '../../hooks/useSettings'
 import { EditScreen } from '../../components/settings/EditScreen'
-import { Button } from '../../components/ui/button'
 import { CATEGORY_OPTIONS } from '../../lib/settings'
 import type { RelatableCategory } from '../../types/database'
 
-/** PROF-07 — Spending Category Picker. Change re-renders dashboard equivalents
- *  (§5 Flow 6). */
+/** PROF-07 — Spending Category Picker. Autosaves on tap; stays on screen.
+ *  Change re-renders dashboard equivalents (§5 Flow 6). */
 export default function EditCategory() {
-  const router = useRouter()
   const { data: profile } = useProfile()
   const { updateProfile } = useSettings()
-  const [selected, setSelected] = useState<RelatableCategory | null>(profile?.relatable_category ?? null)
+  const selected = profile?.relatable_category ?? null
 
-  const save = async () => {
-    if (selected && selected !== profile?.relatable_category) {
-      await updateProfile.mutateAsync({ relatable_category: selected })
-    }
-    router.back()
+  const pick = (value: RelatableCategory) => {
+    if (value !== selected) updateProfile.mutate({ relatable_category: value })
   }
 
   return (
@@ -30,7 +24,7 @@ export default function EditCategory() {
         return (
           <Pressable
             key={opt.value}
-            onPress={() => setSelected(opt.value)}
+            onPress={() => pick(opt.value)}
             className={`rounded-3xl border p-4 ${active ? 'bg-primary/10 border-primary' : 'bg-card border-border'}`}
           >
             <View className="flex-row items-center justify-between">
@@ -43,7 +37,6 @@ export default function EditCategory() {
           </Pressable>
         )
       })}
-      <Button title="Confirm" onPress={save} loading={updateProfile.isPending} />
     </EditScreen>
   )
 }

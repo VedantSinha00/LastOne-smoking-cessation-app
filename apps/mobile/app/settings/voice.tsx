@@ -1,26 +1,21 @@
-import React, { useState } from 'react'
+import React from 'react'
 import { View, Text, Pressable } from 'react-native'
-import { useRouter } from 'expo-router'
 import { useProfile } from '../../hooks/useProfile'
 import { useSettings } from '../../hooks/useSettings'
 import { EditScreen } from '../../components/settings/EditScreen'
-import { Button } from '../../components/ui/button'
 import { VOICE_OPTIONS } from '../../lib/settings'
 import type { VoiceStyle } from '../../types/database'
 
-/** PROF-06 — Voice Style Picker. Each option shows an example line; change
- *  reflects on next content delivery (§5 Flow 5). */
+/** PROF-06 — Voice Style Picker. Autosaves on tap (the selection IS the
+ *  decision); stays on screen so you can compare examples. Change reflects on
+ *  next content delivery (§5 Flow 5). */
 export default function EditVoice() {
-  const router = useRouter()
   const { data: profile } = useProfile()
   const { updateProfile } = useSettings()
-  const [selected, setSelected] = useState<VoiceStyle | null>(profile?.voice_style ?? null)
+  const selected = profile?.voice_style ?? null
 
-  const save = async () => {
-    if (selected && selected !== profile?.voice_style) {
-      await updateProfile.mutateAsync({ voice_style: selected })
-    }
-    router.back()
+  const pick = (value: VoiceStyle) => {
+    if (value !== selected) updateProfile.mutate({ voice_style: value })
   }
 
   return (
@@ -30,7 +25,7 @@ export default function EditVoice() {
         return (
           <Pressable
             key={opt.value}
-            onPress={() => setSelected(opt.value)}
+            onPress={() => pick(opt.value)}
             className={`rounded-3xl border p-4 ${active ? 'bg-primary/10 border-primary' : 'bg-card border-border'}`}
           >
             <View className="flex-row items-center justify-between">
@@ -46,7 +41,6 @@ export default function EditVoice() {
           </Pressable>
         )
       })}
-      <Button title="Confirm" onPress={save} loading={updateProfile.isPending} />
     </EditScreen>
   )
 }

@@ -60,10 +60,10 @@ export default function SettingsRoot() {
   const email = user?.email ?? '—'
 
   return (
-    <ScrollView className="flex-1 bg-background" contentContainerClassName="p-6 gap-5 pb-12">
+    <ScrollView className="flex-1 bg-background" contentContainerClassName="px-5 pt-8 pb-16 gap-7">
       <View>
         <Text className="text-muted-foreground text-sm font-sans-medium">Settings</Text>
-        <Text className="text-foreground font-display text-2xl">Your Profile</Text>
+        <Text className="text-foreground font-display text-3xl mt-0.5">Your Profile</Text>
       </View>
 
       <Section title="Your Journey">
