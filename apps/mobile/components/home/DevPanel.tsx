@@ -584,6 +584,79 @@ export const DevPanel: React.FC<DevPanelProps> = ({ onUnlockReturnGate, onResetC
     }
   };
 
+  // ── Step 19 (Mini-Games) verification ─────────────────────────────────────
+
+  /** Backdate the game streak so the next craving-linked session hits a
+   *  milestone: set current_streak = N-1, last session = yesterday → playing a
+   *  craving game today makes it N (fires the milestone notification). */
+  const seedGameStreak = async (label: string, target: number) => {
+    if (!user) return;
+    setBusy(label);
+    try {
+      await supabase
+        .from("game_streak")
+        .upsert({
+          user_id: user.id,
+          current_streak: target - 1,
+          longest_streak_ever: target - 1,
+          sessions_this_week: target - 1,
+          last_craving_session_date: daysAgoISO(1),
+        })
+        .throwOnError();
+      await queryClient.invalidateQueries({ queryKey: ["game_streak", user.id] });
+      setLastResult(`game streak set to ${target - 1} (last=yesterday) → a craving game today = ${target} (milestone if 3/7/14/30).`);
+    } catch (e: any) {
+      setLastResult(`ERROR: ${e.message}`);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  /** Set last_craving_session_date 5 days ago at Stage 4 so the re-engagement
+   *  nudge is eligible; clear the nudge log so the cap/cooldown don't block it. */
+  const armGameNudge = async (label: string) => {
+    if (!user) return;
+    setBusy(label);
+    try {
+      await supabase
+        .from("game_streak")
+        .upsert({
+          user_id: user.id,
+          current_streak: 0,
+          longest_streak_ever: 3,
+          sessions_this_week: 0,
+          last_craving_session_date: daysAgoISO(5),
+        })
+        .throwOnError();
+      await supabase.from("streak_nudge_log").delete().eq("user_id", user.id).throwOnError();
+      await queryClient.invalidateQueries({ queryKey: ["game_streak", user.id] });
+      await queryClient.invalidateQueries({ queryKey: ["streak_nudge_log", user.id] });
+      setLastResult("nudge armed: last craving game 5d ago, nudge log cleared. Set Stage 4 + reopen Home.");
+    } catch (e: any) {
+      setLastResult(`ERROR: ${e.message}`);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  /** Wipe all game data for clean re-testing. */
+  const clearGameData = async (label: string) => {
+    if (!user) return;
+    setBusy(label);
+    try {
+      await supabase.from("game_session").delete().eq("user_id", user.id).throwOnError();
+      await supabase.from("game_streak").delete().eq("user_id", user.id).throwOnError();
+      await supabase.from("streak_nudge_log").delete().eq("user_id", user.id).throwOnError();
+      await queryClient.invalidateQueries({ queryKey: ["game_streak", user.id] });
+      await queryClient.invalidateQueries({ queryKey: ["streak_nudge_log", user.id] });
+      setLastResult("game_session + game_streak + streak_nudge_log cleared.");
+    } catch (e: any) {
+      setLastResult(`ERROR: ${e.message}`);
+    } finally {
+      setBusy(null);
+    }
+  };
+
   // ── Step 18 (Giving Up Support) verification ──────────────────────────────
 
   /** Insert N backdated one_off slip logs into the open attempt so Condition A
@@ -817,6 +890,18 @@ export const DevPanel: React.FC<DevPanelProps> = ({ onUnlockReturnGate, onResetC
       <View className="flex-row gap-2 mb-3">
         <View className="flex-1"><Btn label="GU: clear state" onPress={() => clearGuState("GU: clear state")} /></View>
         <View className="flex-1"><Btn label="Clear support person" onPress={() => clearSupportPersonDev("Clear support person")} /></View>
+      </View>
+
+      <Text className="text-muted-foreground text-[11px] mb-1.5">
+        Step 19 — Mini-Games (play a craving-linked game to trigger streak/score)
+      </Text>
+      <View className="flex-row gap-2 mb-2">
+        <View className="flex-1"><Btn label="Streak → 3 next" onPress={() => seedGameStreak("Streak → 3 next", 3)} /></View>
+        <View className="flex-1"><Btn label="Streak → 7 next" onPress={() => seedGameStreak("Streak → 7 next", 7)} /></View>
+      </View>
+      <View className="flex-row gap-2 mb-3">
+        <View className="flex-1"><Btn label="Arm Stage-4 nudge" onPress={() => armGameNudge("Arm Stage-4 nudge")} /></View>
+        <View className="flex-1"><Btn label="Clear game data" onPress={() => clearGameData("Clear game data")} /></View>
       </View>
 
       <Text className="text-muted-foreground text-[11px] mb-1.5">
