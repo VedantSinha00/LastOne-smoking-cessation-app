@@ -52,6 +52,9 @@ export default function GivingUpExperience() {
   const { quitDate } = useStage()
   const { person, configured } = useSupportPerson()
 
+  // Entered from SOS-3's Tier-3 link at the resources screen vs. the full Tier-1
+  // experience from the GU-1 card. (The SOS "Call [Name]" post-call log is
+  // handled inline in the SOS flow, not here — avoids a cross-modal hop.)
   const fromSos = params.screen === 'resources'
   const [screen, setScreen] = useState<Screen>(fromSos ? 'resources' : 'beat1')
   const [callError, setCallError] = useState(false)
@@ -87,7 +90,10 @@ export default function GivingUpExperience() {
     supabase.from('giving_up_event').update(fields).eq('event_id', eventId).then(() => {})
   }
 
-  const close = () => router.back()
+  // From SOS the modal sits on top of the (still-mounted) SOS flow, so a single
+  // back() would reveal SOS again. dismissTo home clears the whole modal stack;
+  // from the GU-1 card a plain back() returns to home as before.
+  const close = () => (fromSos ? router.dismissTo('/(tabs)') : router.back())
 
   const advanceFromBeat1 = () => {
     patch({ beat_1_completed: true })
@@ -204,7 +210,9 @@ export default function GivingUpExperience() {
           <Text className="text-muted-foreground text-sm mt-1">{GU_COPY.talkSubtext[voice]}</Text>
           <View className="mt-5 gap-3">
             {configured && person ? (
-              <Button title={`Call ${person.name}`} onPress={() => setScreen('precall')} />
+              // Labelled "Reach out to" (not "Call") — GU-6 is where the user
+              // picks Call vs WhatsApp; a second "Call" here reads as a dead end.
+              <Button title={`Reach out to ${person.name}`} onPress={() => setScreen('precall')} />
             ) : (
               <Button
                 title="Set up a support person"
