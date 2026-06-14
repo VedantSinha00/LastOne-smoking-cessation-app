@@ -160,6 +160,9 @@ export interface Database {
           // support_person name/number are SecureStore-only — never here.
           last_giving_up_trigger_at: string | null
           giving_up_card_dismissed_count: number
+          // Settings: account creation anchor for the Stage-0 quit-date minimum
+          // (account_created_at + 3 days). Distinct from created_at (Settings B1).
+          account_created_at: string
         }
         Insert: {
           id: string
@@ -817,6 +820,48 @@ export interface Database {
         Update: never
         Relationships: []
       }
+      // cpd_change_log — historical cigarettes_per_day values for prospective
+      // savings calc (Settings B1 / Data Schema §18). Written before PATCHing
+      // profiles.cigarettes_per_day (PROF-04).
+      cpd_change_log: {
+        Row: {
+          log_id: string
+          user_id: string
+          previous_value: number
+          new_value: number
+          changed_at: string
+        }
+        Insert: {
+          log_id?: string
+          user_id: string
+          previous_value: number
+          new_value: number
+          changed_at?: string
+        }
+        Update: never
+        Relationships: []
+      }
+      // price_change_log — historical price_per_cigarette values (Settings B1 /
+      // Data Schema §19). Written before PATCHing profiles.price_per_cigarette
+      // (PROF-05).
+      price_change_log: {
+        Row: {
+          log_id: string
+          user_id: string
+          previous_value: number
+          new_value: number
+          changed_at: string
+        }
+        Insert: {
+          log_id?: string
+          user_id: string
+          previous_value: number
+          new_value: number
+          changed_at?: string
+        }
+        Update: never
+        Relationships: []
+      }
       // giving_up_event — one row per GU activation (Data Schema §20). Created
       // at GU-1 tap with outcome='dismissed_mid_flow' (the mid-flow exit value),
       // PATCHed forward as beats complete. Live column is triggered_at.
@@ -993,6 +1038,12 @@ export interface Database {
           p_delta: number
           p_post_tool_state: PostToolState | null
         }
+        Returns: undefined
+      }
+      // Deletes profiles row (cascades all child tables via ON DELETE CASCADE)
+      // then auth.users. security definer. Deployed via migration (Step 20 DB).
+      delete_user_account: {
+        Args: { p_user_id: string }
         Returns: undefined
       }
     }
