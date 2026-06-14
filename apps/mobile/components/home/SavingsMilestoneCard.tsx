@@ -1,6 +1,6 @@
 import React, { useCallback, useState } from 'react'
 import { View, Text, Pressable } from 'react-native'
-import { useFocusEffect } from 'expo-router'
+import { useFocusEffect, useRouter } from 'expo-router'
 import { useSavingsCard } from '../../hooks/useSavingsCard'
 
 /**
@@ -14,6 +14,7 @@ import { useSavingsCard } from '../../hooks/useSavingsCard'
  * cards at once when multiple thresholds were crossed together (e.g. backfilled).
  */
 export const SavingsMilestoneCard: React.FC = () => {
+  const router = useRouter()
   const { card, markShown } = useSavingsCard()
   const [dismissed, setDismissed] = useState(false)
 
@@ -31,8 +32,14 @@ export const SavingsMilestoneCard: React.FC = () => {
     markShown() // record so this threshold never re-fires (§2.2)
   }
 
+  // Whole card → Progress (savings counter + Personal Goals live there). Dismiss
+  // stops propagation so it doesn't also navigate (§2.2 — dismiss records the
+  // impression so this threshold never re-fires).
   return (
-    <View className="bg-primary/10 border border-primary/30 rounded-3xl p-5">
+    <Pressable
+      onPress={() => router.push('/progress')}
+      className="bg-primary/10 border border-primary/30 rounded-3xl p-5 active:opacity-90"
+    >
       <View className="flex-row justify-between items-start">
         <Text className="text-success text-[11px] font-sans-bold uppercase tracking-wider">
           {card.card.pill_tag}
@@ -45,6 +52,7 @@ export const SavingsMilestoneCard: React.FC = () => {
         {card.card.title}
       </Text>
       <Text className="text-muted-foreground text-sm mt-2 leading-relaxed">{card.body}</Text>
-    </View>
+      <Text className="text-primary font-sans-bold text-sm mt-3">See your savings →</Text>
+    </Pressable>
   )
 }
