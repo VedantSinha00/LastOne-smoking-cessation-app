@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { View, Text, Pressable, Vibration } from 'react-native'
+import { View, Text, Pressable, Vibration, Dimensions } from 'react-native'
 import { useRouter } from 'expo-router'
 import { CravingPrompt } from '../../components/games/CravingPrompt'
 import { Reflection } from '../../components/games/Reflection'
@@ -16,6 +16,9 @@ import type { GameSessionType } from '../../types/database'
 type Phase = 'prompt' | 'entry' | 'showing' | 'input' | 'result' | 'reflection'
 
 const ZONE_COLORS = ['#7FC200', '#F15025', '#4E9A52', '#E19100'] // 4 tap zones
+// Concrete pixel tile size (NOT %-width + aspectRatio — that resolves to height 0
+// inside a flex-wrap row on RN Fabric, making the zones invisible). 2 cols, gap 14.
+const TILE = Math.min(150, Math.floor((Dimensions.get('window').width - 48 - 14) / 2))
 const SESSION_SECONDS = 180 // ~3 min session window (§5 Flow 4)
 
 /**
@@ -222,15 +225,18 @@ export default function EchoTap() {
         {phase === 'showing' ? 'Watch…' : 'Your turn — tap it back'}
       </Text>
 
-      <View className="flex-row flex-wrap justify-center" style={{ gap: 14 }}>
+      <View
+        className="flex-row flex-wrap justify-center self-center"
+        style={{ gap: 14, width: TILE * 2 + 14 }}
+      >
         {Array.from({ length: ECHO_ZONES }).map((_, zone) => (
           <Pressable
             key={zone}
             disabled={phase !== 'input'}
             onPress={() => handleTap(zone)}
             style={{
-              width: '42%',
-              aspectRatio: 1,
+              width: TILE,
+              height: TILE,
               backgroundColor: ZONE_COLORS[zone],
               opacity: activeZone === zone ? 1 : 0.35,
             }}
