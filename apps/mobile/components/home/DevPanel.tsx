@@ -808,6 +808,7 @@ export const DevPanel: React.FC<DevPanelProps> = ({ onUnlockReturnGate, onResetC
         <View className="flex-1"><Btn label="Stage 1 (1d)" onPress={() => setQuitDate("Stage 1 (1d)", daysAgoISO(1))} /></View>
         <View className="flex-1"><Btn label="Stage 2 (5d)" onPress={() => setQuitDate("Stage 2 (5d)", daysAgoISO(5))} /></View>
         <View className="flex-1"><Btn label="Stage 3 (10d)" onPress={() => setQuitDate("Stage 3 (10d)", daysAgoISO(10))} /></View>
+        <View className="flex-1"><Btn label="Stage 4 (30d)" onPress={() => setQuitDate("Stage 4 (30d)", daysAgoISO(30))} /></View>
       </View>
 
       <Text className="text-muted-foreground text-[11px] mb-1.5">Return modal (sets last_confirmed → re-fires)</Text>
