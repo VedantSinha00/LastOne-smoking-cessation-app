@@ -118,7 +118,12 @@ export default function LogC() {
   // ── C2 — Context (slip_type required = commit) ──────────────────────────────
   if (screen === "C2") {
     return (
-      <ScrollView className="flex-1 bg-background px-6 py-8" contentContainerClassName="pb-12">
+      <ScrollView
+        className="flex-1 bg-background px-6 py-8"
+        contentContainerClassName="pb-12"
+        // First-tap buttons while the keyboard is up (chips' "Other" input).
+        keyboardShouldPersistTaps="handled"
+      >
         <Text className="text-foreground font-display text-2xl mb-1">What happened?</Text>
         <Text className="text-muted-foreground text-sm mb-6 leading-relaxed">This shapes how we help next.</Text>
 

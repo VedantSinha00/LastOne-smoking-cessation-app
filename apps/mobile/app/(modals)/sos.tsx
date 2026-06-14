@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
-import { View, Text, ScrollView, Pressable, ActivityIndicator, Dimensions } from "react-native";
+import { View, Text, ScrollView, Pressable, ActivityIndicator, Dimensions, Linking, Platform, ToastAndroid, Alert } from "react-native";
 import { useRouter } from "expo-router";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { subDays } from "date-fns";
 import { Wind, Activity, Puzzle, Shuffle, ChevronRight, ThumbsUp, ThumbsDown, Check } from "lucide-react-native";
 import { useAuth } from "../../hooks/useAuth";
 import { useProfile } from "../../hooks/useProfile";
@@ -21,11 +22,14 @@ import {
   type SosEscalationLevel,
 } from "../../lib/sos";
 import { confirmSmokeFreeDay } from "../../lib/streak";
+import { supabase } from "../../lib/supabase";
+import { useSupportPerson } from "../../hooks/useSupportPerson";
+import { telUrl, RESOURCE_CARDS } from "../../lib/givingUp";
 import type { CravingContext } from "../../lib/sosTool";
 import type { Database, ToolFamily } from "../../types/database";
 
 type CopingTool = Database["public"]["Tables"]["coping_tools"]["Row"];
-type Screen = "GATE" | "SOS1" | "SOS2" | "SOS3" | "SUCCESS";
+type Screen = "GATE" | "SOS1" | "SOS2" | "SOS3" | "SUCCESS" | "POSTCALL";
 
 const CRAVING = "#F15025";
 
@@ -305,7 +309,7 @@ export default function SosModal() {
 
             {/* Escalation level 2 (3+ failures): suspend the waterfall, escalation only (§8.1). */}
             {escalation === 2 ? (
-              <EscalationOnly />
+              <EscalationOnly onCallPerson={() => setScreen("POSTCALL")} />
             ) : isLoading ? (
               <ActivityIndicator color="#F15025" className="mt-8" />
             ) : !tools?.length ? (
@@ -317,7 +321,7 @@ export default function SosModal() {
             ) : (
               <View style={{ gap: 14 }}>
                 {/* Level 1 (2 failures): Call a Friend pinned to slot 1, tools fill 2–3. */}
-                {escalation === 1 && <CallAFriendCard />}
+                {escalation === 1 && <CallAFriendCard onCallPerson={() => setScreen("POSTCALL")} />}
                 {tools.map((t) => (
                   <Pressable
                     key={t.tool_id}
@@ -441,9 +445,46 @@ export default function SosModal() {
     );
   }
 
+  // ── GU-7 post-call log (inline) — after the SOS "Call [Name]" escalation ─────
+  // The escalation call isn't a giving_up_event, so nothing is persisted here;
+  // this is the same "how did that go?" close-out as GU-7, kept in-flow so it
+  // never lands the user on a stale cross-modal screen.
+  if (screen === "POSTCALL") {
+    const finishPostCall = () => {
+      router.back();
+      const msg = "Good that you reached out.";
+      if (Platform.OS === "android") ToastAndroid.show(msg, ToastAndroid.SHORT);
+      else Alert.alert(msg);
+    };
+    return (
+      <View className="flex-1 bg-secondary px-8 justify-center">
+        <Pressable onPress={() => router.back()} hitSlop={12} className="absolute top-14 right-6">
+          <Text className="text-muted-foreground text-base">Skip</Text>
+        </Pressable>
+        <Text className="text-foreground font-display text-2xl mb-8">How did that go?</Text>
+        <View className="gap-3">
+          {["Helped a lot", "Helped a little", "Didn't really help"].map((label) => (
+            <Pressable
+              key={label}
+              onPress={finishPostCall}
+              className="bg-card border-[1.5px] border-border rounded-2xl py-4 items-center active:bg-muted"
+            >
+              <Text className="text-foreground font-sans-bold text-[15px]">{label}</Text>
+            </Pressable>
+          ))}
+        </View>
+      </View>
+    );
+  }
+
   // ── SOS-3 — Post-Tool Check-in (skippable), Lovable two-card layout ───────────
   return (
-    <ScrollView className="flex-1 bg-secondary px-6 py-8" contentContainerClassName="flex-grow">
+    <ScrollView
+      className="flex-1 bg-secondary px-6 py-8"
+      contentContainerClassName="flex-grow"
+      // First-tap buttons while the keyboard is up (chips' "Other" input).
+      keyboardShouldPersistTaps="handled"
+    >
       <View className="flex-row justify-end mb-2">
         <Pressable onPress={skip} className="px-3 py-1.5">
           <Text className="text-muted-foreground text-sm">Skip</Text>
@@ -488,32 +529,132 @@ export default function SosModal() {
       <Pressable disabled={processing} onPress={smoked} className="mt-6 py-3 items-center active:opacity-60">
         <Text className="text-muted-foreground font-sans-medium text-sm">I smoked</Text>
       </Pressable>
+
+      {/* Tier-3 escalation link (GU §B2 SOS integration) — silent conditional. */}
+      <Tier3Link />
     </ScrollView>
   );
 }
 
 /**
- * Escalation tools — Call a Friend + Quit Specialist Line. The escalation LADDER logic
- * lives here (Step 13), but the working dialler + the SecureStore contact number are
- * owned by Step 18 (Giving Up Support). For now these render as "coming soon"
- * placeholders so the surface is correct without inventing Step-18 plumbing.
+ * Escalation tools — Call a Friend + Quit Specialist Line (Step 13 ladder,
+ * wired live in Step 18). Call a Friend dials the SecureStore support person
+ * (or routes to setup when none is configured); the specialist line is the
+ * GU-8 tobacco quitline (⚠ number must be team-verified pre-ship).
  */
-const CallAFriendCard: React.FC = () => (
-  <View className="bg-accent border border-craving/40 rounded-3xl p-4">
-    <Text className="text-craving font-sans-bold">Call a friend</Text>
-    <Text className="text-muted-foreground text-xs mt-0.5">Coming soon — reach someone who gets it.</Text>
-  </View>
-);
+const CallAFriendCard: React.FC<{ onCallPerson: () => void }> = ({ onCallPerson }) => {
+  const router = useRouter();
+  const { person, configured } = useSupportPerson();
 
-const EscalationOnly: React.FC = () => (
-  <View className="gap-2">
-    <Text className="text-muted-foreground text-sm mb-2 leading-relaxed">
-      A few tools haven&apos;t landed it this time. That&apos;s okay — let&apos;s try a person, not a screen.
-    </Text>
-    <CallAFriendCard />
-    <View className="bg-accent border border-craving/40 rounded-3xl p-4">
-      <Text className="text-craving font-sans-bold">Talk to a quit specialist</Text>
-      <Text className="text-muted-foreground text-xs mt-0.5">Coming soon.</Text>
+  if (configured && person) {
+    // Dial, then show the GU-7 post-call log INLINE in the SOS flow (parent
+    // switches to its POSTCALL screen) — same follow-up as GU-6, but without a
+    // cross-modal hop that left the user on a stale giving-up screen.
+    const callPerson = async () => {
+      try {
+        await Linking.openURL(telUrl(person.phone));
+      } catch {
+        // Dial failed — still offer the follow-up rather than stranding the user.
+      }
+      onCallPerson();
+    };
+    return (
+      <Pressable
+        onPress={callPerson}
+        className="bg-accent border border-craving/40 rounded-3xl p-4 active:opacity-80"
+      >
+        <Text className="text-craving font-sans-bold">Call {person.name}</Text>
+        <Text className="text-muted-foreground text-xs mt-0.5">
+          They know you&apos;re trying. Just say the word.
+        </Text>
+      </Pressable>
+    );
+  }
+  return (
+    <Pressable
+      onPress={() => router.push("/(modals)/support-person")}
+      className="bg-accent border border-craving/40 rounded-3xl p-4 active:opacity-80"
+    >
+      <Text className="text-craving font-sans-bold">Call a friend</Text>
+      <Text className="text-muted-foreground text-xs mt-0.5">
+        Set up your support person — one person, two minutes.
+      </Text>
+    </Pressable>
+  );
+};
+
+const EscalationOnly: React.FC<{ onCallPerson: () => void }> = ({ onCallPerson }) => {
+  const router = useRouter();
+  const quitline = RESOURCE_CARDS[0];
+  // Professional resources have no post-call log in the spec (GU-8 has no
+  // follow-up). Dial, then dismiss the SOS flow rather than stranding the user
+  // on the escalation screen.
+  const callQuitline = async () => {
+    try {
+      await Linking.openURL(telUrl(quitline.phone));
+    } catch {
+      // ignore — number unavailable
+    }
+    router.back();
+  };
+  return (
+    <View className="gap-2">
+      <Text className="text-muted-foreground text-sm mb-2 leading-relaxed">
+        A few tools haven&apos;t landed it this time. That&apos;s okay — let&apos;s try a person, not a screen.
+      </Text>
+      <CallAFriendCard onCallPerson={onCallPerson} />
+      <Pressable
+        onPress={callQuitline}
+        className="bg-accent border border-craving/40 rounded-3xl p-4 active:opacity-80"
+      >
+        <Text className="text-craving font-sans-bold">Talk to a quit specialist</Text>
+        <Text className="text-muted-foreground text-xs mt-0.5">
+          {quitline.organisation} — free, confidential. {quitline.phoneDisplay}
+        </Text>
+      </Pressable>
     </View>
-  </View>
-);
+  );
+};
+
+/**
+ * Tier-3 surface on SOS-3 (GU Spec §B2): after 3+ SOS uses in 24h where 2+
+ * ended "same"/"smoked", offer the professional resources route. Independent
+ * of the Tier-1 trigger.
+ */
+const Tier3Link: React.FC = () => {
+  const router = useRouter();
+  const { user } = useAuth();
+  const { data } = useQuery({
+    queryKey: ["sos_tier3", user?.id ?? ""],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("log")
+        .select("post_tool_state")
+        .eq("user_id", user!.id)
+        .eq("log_type", "sos")
+        .gte("timestamp", subDays(new Date(), 1).toISOString())
+        .throwOnError();
+      return (data ?? []) as { post_tool_state: string | null }[];
+    },
+    enabled: !!user,
+  });
+
+  const rows = data ?? [];
+  const struggling = rows.filter(
+    (r) => r.post_tool_state === "same" || r.post_tool_state === "smoked",
+  ).length;
+  if (rows.length < 3 || struggling < 2) return null;
+
+  return (
+    <Pressable
+      onPress={() =>
+        router.push({ pathname: "/(modals)/giving-up", params: { screen: "resources" } })
+      }
+      className="mt-4 py-2 items-center active:opacity-60"
+    >
+      <Text className="text-craving font-sans-bold text-sm">
+        Talk to someone who&apos;s heard this before →
+      </Text>
+    </Pressable>
+  );
+};

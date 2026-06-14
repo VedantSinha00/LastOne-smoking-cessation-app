@@ -63,7 +63,12 @@ export default function LogD() {
   };
 
   return (
-    <ScrollView className="flex-1 bg-background px-6 py-8" contentContainerClassName="pb-12">
+    <ScrollView
+      className="flex-1 bg-background px-6 py-8"
+      contentContainerClassName="pb-12"
+      // First-tap Save while the keyboard is up (note input).
+      keyboardShouldPersistTaps="handled"
+    >
       <View className="flex-row justify-between items-center mb-6">
         <Text className="text-foreground font-display text-2xl">Quick note</Text>
         <Pressable onPress={() => router.back()} className="px-3 py-1.5 bg-card border border-border rounded-lg">

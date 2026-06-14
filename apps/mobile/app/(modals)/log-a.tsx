@@ -109,7 +109,13 @@ export default function LogA() {
   }
 
   return (
-    <ScrollView className="flex-1 bg-background px-6 py-8" contentContainerClassName="pb-12">
+    <ScrollView
+      className="flex-1 bg-background px-6 py-8"
+      contentContainerClassName="pb-12"
+      // Buttons/chips respond on the FIRST tap while the keyboard is up
+      // (the "Other" text input opens it).
+      keyboardShouldPersistTaps="handled"
+    >
       <Header onClose={handleSaveA2} title="What's going on?" />
       <Text className="text-muted-foreground text-sm mb-4 leading-relaxed">
         All optional — this helps spot your patterns.

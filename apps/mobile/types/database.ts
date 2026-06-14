@@ -85,6 +85,25 @@ export type PostToolState = 'better' | 'same' | 'smoked'
 // trigger_type is unconstrained text (cigarette_milestone is the Milestone-Spec value).
 export type ContentSensitivity = 'low' | 'high'
 
+// Personal Goals enums (Personal Goals Spec §B1 / Data Schema §15–17).
+export type GoalSource = 'link' | 'manual'
+export type GoalStatus = 'active' | 'completed' | 'retired'
+export type NgoId = 'CFI' | 'CPAA' | 'CanSupport'
+
+// Giving Up Support enums (GU Spec §B1 / Data Schema §20).
+export type GuTriggerCondition = 'slip_threshold' | 'return_to_smoking' | 'passive_disengagement'
+export type GuOutcome = 'kept_going' | 'routed_to_support' | 'dismissed_mid_flow'
+export type GuSupportAction = 'called_person' | 'whatsapped_person' | 'viewed_resources' | 'dismissed'
+export type GuCallOutcome = 'helped_a_lot' | 'helped_a_little' | 'didnt_help' | 'not_logged'
+
+// Mini-Games enums (MiniGames Spec §B1 / Data Schema §21–23).
+export type GameType = 'memory_1p' | 'echo_tap' | 'memory_2p'
+export type GameSessionType = 'craving_linked' | 'casual'
+export type GameGridSize = '3x4' | '4x4'
+export type GameCardSkin = 'generic' | 'themed'
+export type GameWinner = 'player1' | 'player2' | 'draw'
+export type GameReflection = 'passed' | 'partial' | 'ongoing'
+
 // coping_tools enums (Data Schema §6).
 export type ToolFamily = 'breathing' | 'physical' | 'mini_games'
 export type ToolCategory =
@@ -136,6 +155,14 @@ export interface Database {
           quiet_hours_end: string | null // 'HH:MM:SS' local
           // risk_windows — written by Insights (Step 16); read for alert_level.
           risk_windows: RiskWindow[] | null
+          // Giving Up Support state (GU Spec §B1). NOTE: live column is
+          // last_giving_up_trigger_at (not …_timestamp as the spec doc writes).
+          // support_person name/number are SecureStore-only — never here.
+          last_giving_up_trigger_at: string | null
+          giving_up_card_dismissed_count: number
+          // Settings: account creation anchor for the Stage-0 quit-date minimum
+          // (account_created_at + 3 days). Distinct from created_at (Settings B1).
+          account_created_at: string
         }
         Insert: {
           id: string
@@ -173,6 +200,8 @@ export interface Database {
           quiet_hours_start?: string | null
           quiet_hours_end?: string | null
           risk_windows?: RiskWindow[] | null
+          last_giving_up_trigger_at?: string | null
+          giving_up_card_dismissed_count?: number
         }
         Update: {
           id?: string
@@ -210,6 +239,8 @@ export interface Database {
           quiet_hours_start?: string | null
           quiet_hours_end?: string | null
           risk_windows?: RiskWindow[] | null
+          last_giving_up_trigger_at?: string | null
+          giving_up_card_dismissed_count?: number
         }
         Relationships: []
       }
@@ -721,6 +752,278 @@ export interface Database {
         }
         Relationships: []
       }
+      // goal — user savings goals (Data Schema §15). current_amount is ALWAYS
+      // derived client-side as SUM(top_up_log.amount) — the column itself is never
+      // written after insert (stays at its default 0); see lib/goals.ts.
+      goal: {
+        Row: {
+          goal_id: string
+          user_id: string
+          goal_name: string
+          target_amount: number
+          current_amount: number
+          allocated_amount: number
+          source: GoalSource
+          product_url: string | null
+          product_image_url: string | null
+          emoji: string | null
+          why: string | null
+          status: GoalStatus
+          created_at: string
+          completed_at: string | null
+        }
+        Insert: {
+          goal_id?: string
+          user_id: string
+          goal_name: string
+          target_amount: number
+          allocated_amount?: number
+          source: GoalSource
+          product_url?: string | null
+          product_image_url?: string | null
+          emoji?: string | null
+          why?: string | null
+          status?: GoalStatus
+          created_at?: string
+          completed_at?: string | null
+        }
+        Update: {
+          goal_name?: string
+          target_amount?: number
+          allocated_amount?: number
+          product_url?: string | null
+          product_image_url?: string | null
+          emoji?: string | null
+          why?: string | null
+          status?: GoalStatus
+          completed_at?: string | null
+        }
+        Relationships: []
+      }
+      // top_up_log — manual savings top-ups (Data Schema §16). Source of truth
+      // for a goal's committed amount.
+      top_up_log: {
+        Row: {
+          topup_id: string
+          goal_id: string
+          user_id: string
+          amount: number
+          created_at: string
+        }
+        Insert: {
+          topup_id?: string
+          goal_id: string
+          user_id: string
+          amount: number
+          created_at?: string
+        }
+        Update: never
+        Relationships: []
+      }
+      // cpd_change_log — historical cigarettes_per_day values for prospective
+      // savings calc (Settings B1 / Data Schema §18). Written before PATCHing
+      // profiles.cigarettes_per_day (PROF-04).
+      cpd_change_log: {
+        Row: {
+          log_id: string
+          user_id: string
+          previous_value: number
+          new_value: number
+          changed_at: string
+        }
+        Insert: {
+          log_id?: string
+          user_id: string
+          previous_value: number
+          new_value: number
+          changed_at?: string
+        }
+        Update: never
+        Relationships: []
+      }
+      // price_change_log — historical price_per_cigarette values (Settings B1 /
+      // Data Schema §19). Written before PATCHing profiles.price_per_cigarette
+      // (PROF-05).
+      price_change_log: {
+        Row: {
+          log_id: string
+          user_id: string
+          previous_value: number
+          new_value: number
+          changed_at: string
+        }
+        Insert: {
+          log_id?: string
+          user_id: string
+          previous_value: number
+          new_value: number
+          changed_at?: string
+        }
+        Update: never
+        Relationships: []
+      }
+      // giving_up_event — one row per GU activation (Data Schema §20). Created
+      // at GU-1 tap with outcome='dismissed_mid_flow' (the mid-flow exit value),
+      // PATCHed forward as beats complete. Live column is triggered_at.
+      giving_up_event: {
+        Row: {
+          event_id: string
+          user_id: string
+          triggered_at: string
+          current_stage: number
+          trigger_condition: GuTriggerCondition
+          beat_1_completed: boolean
+          beat_2_completed: boolean
+          resistance_count_shown: number | null
+          outcome: GuOutcome
+          support_action: GuSupportAction | null
+          support_call_outcome: GuCallOutcome | null
+        }
+        Insert: {
+          event_id?: string
+          user_id: string
+          triggered_at?: string
+          current_stage: number
+          trigger_condition: GuTriggerCondition
+          beat_1_completed?: boolean
+          beat_2_completed?: boolean
+          resistance_count_shown?: number | null
+          outcome: GuOutcome
+          support_action?: GuSupportAction | null
+          support_call_outcome?: GuCallOutcome | null
+        }
+        Update: {
+          beat_1_completed?: boolean
+          beat_2_completed?: boolean
+          resistance_count_shown?: number | null
+          outcome?: GuOutcome
+          support_action?: GuSupportAction | null
+          support_call_outcome?: GuCallOutcome | null
+        }
+        Relationships: []
+      }
+      // game_session — one row per mini-game session (Data Schema §21). Sparse
+      // columns by game_type; reflection_response only on craving_linked.
+      game_session: {
+        Row: {
+          session_id: string
+          user_id: string
+          game_type: GameType
+          session_type: GameSessionType
+          started_at: string
+          ended_at: string
+          duration_seconds: number
+          stage_at_session: number
+          grid_size: GameGridSize | null
+          card_skin: GameCardSkin | null
+          pairs_matched: number | null
+          time_taken_seconds: number | null
+          sequences_completed: number | null
+          longest_streak: number | null
+          player1_score: number | null
+          player2_score: number | null
+          winner: GameWinner | null
+          reflection_response: GameReflection | null
+        }
+        Insert: {
+          session_id?: string
+          user_id: string
+          game_type: GameType
+          session_type: GameSessionType
+          started_at: string
+          ended_at: string
+          duration_seconds: number
+          stage_at_session: number
+          grid_size?: GameGridSize | null
+          card_skin?: GameCardSkin | null
+          pairs_matched?: number | null
+          time_taken_seconds?: number | null
+          sequences_completed?: number | null
+          longest_streak?: number | null
+          player1_score?: number | null
+          player2_score?: number | null
+          winner?: GameWinner | null
+          reflection_response?: GameReflection | null
+        }
+        Update: {
+          reflection_response?: GameReflection | null
+        }
+        Relationships: []
+      }
+      // game_streak — one row per user (Data Schema §22). Consecutive-day streak
+      // of craving-linked sessions; longest_streak_ever never decreases.
+      game_streak: {
+        Row: {
+          user_id: string
+          current_streak: number
+          longest_streak_ever: number
+          sessions_this_week: number
+          last_craving_session_date: string
+        }
+        Insert: {
+          user_id: string
+          current_streak?: number
+          longest_streak_ever?: number
+          sessions_this_week?: number
+          last_craving_session_date: string
+        }
+        Update: {
+          current_streak?: number
+          longest_streak_ever?: number
+          sessions_this_week?: number
+          last_craving_session_date?: string
+        }
+        Relationships: []
+      }
+      // streak_nudge_log — one row per user (Data Schema §23). Stage-4 in-app
+      // nudge cap: times_shown ≤ 2, then permanently_suppressed.
+      streak_nudge_log: {
+        Row: {
+          user_id: string
+          times_shown: number
+          last_shown_at: string
+          permanently_suppressed: boolean
+        }
+        Insert: {
+          user_id: string
+          times_shown?: number
+          last_shown_at: string
+          permanently_suppressed?: boolean
+        }
+        Update: {
+          times_shown?: number
+          last_shown_at?: string
+          permanently_suppressed?: boolean
+        }
+        Relationships: []
+      }
+      // causes_card_log — Causes Card impressions (Data Schema §17). 14-day
+      // eligibility from MAX(shown_at); NGO rotation = COUNT(rows) % 3.
+      causes_card_log: {
+        Row: {
+          log_id: string
+          user_id: string
+          ngo_id: NgoId
+          shown_at: string
+          dismissed_at: string | null
+          tapped_learn_more: boolean
+        }
+        Insert: {
+          log_id?: string
+          user_id: string
+          ngo_id: NgoId
+          shown_at?: string
+          dismissed_at?: string | null
+          tapped_learn_more?: boolean
+        }
+        Update: {
+          // shown_at writable for DevPanel interval-backdating only.
+          shown_at?: string
+          dismissed_at?: string | null
+          tapped_learn_more?: boolean
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -735,6 +1038,12 @@ export interface Database {
           p_delta: number
           p_post_tool_state: PostToolState | null
         }
+        Returns: undefined
+      }
+      // Deletes profiles row (cascades all child tables via ON DELETE CASCADE)
+      // then auth.users. security definer. Deployed via migration (Step 20 DB).
+      delete_user_account: {
+        Args: { p_user_id: string }
         Returns: undefined
       }
     }

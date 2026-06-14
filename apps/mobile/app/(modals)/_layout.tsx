@@ -23,6 +23,9 @@ export default function ModalsLayout() {
           the later SOS screens render their own full-bleed background. Transparent
           presentation lets the scrim/dim show through behind SOS-1. */}
       <Stack.Screen name="sos" options={{ presentation: "transparentModal", animation: "fade" }} />
+      {/* Step 18 — Giving Up experience (GU-2→8) + support person setup (GU-9/10). */}
+      <Stack.Screen name="giving-up" />
+      <Stack.Screen name="support-person" />
     </Stack>
   );
 }
