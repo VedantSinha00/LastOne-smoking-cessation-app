@@ -51,7 +51,7 @@ const FamilyCard: React.FC<{ def: FamilyDef; count: number; onPress: () => void 
 }) => (
   <Pressable
     onPress={onPress}
-    style={{ width: '48%', aspectRatio: 1 / 1.05, borderRadius: 28, backgroundColor: def.bg, padding: 18, overflow: 'hidden', justifyContent: 'space-between' }}
+    style={{ width: '48%', aspectRatio: 1 / 1.05, borderRadius: 28, backgroundColor: def.bg, paddingVertical: 18, paddingHorizontal: 16, overflow: 'hidden', justifyContent: 'space-between' }}
     className="active:opacity-90"
   >
     {/* decorative concentric rings (design): anchored to the bottom-left, sweeping
@@ -68,7 +68,13 @@ const FamilyCard: React.FC<{ def: FamilyDef; count: number; onPress: () => void 
         <Circle key={r} cx="40" cy="200" r={r} fill="none" stroke={def.dot} strokeWidth="1" />
       ))}
     </Svg>
-    <Text className="font-display" style={{ fontSize: 26, lineHeight: 28, color: def.fg }}>
+    <Text
+      className="font-display"
+      style={{ fontSize: 24, lineHeight: 27, color: def.fg }}
+      numberOfLines={2}
+      adjustsFontSizeToFit
+      minimumFontScale={0.8}
+    >
       {def.label}
     </Text>
     <Text className="font-sans-medium" style={{ fontSize: 13, color: def.fg, opacity: 0.75 }}>
