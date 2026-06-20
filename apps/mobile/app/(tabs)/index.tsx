@@ -180,12 +180,8 @@ export default function Home() {
       {/* 7c — Stage-4 mini-game re-engagement nudge (MiniGames §B2, max 2 lifetime) */}
       <GameStreakNudgeCard />
 
-      {/* 8 — Health Milestones */}
-      <HealthMilestonesCard
-        stage={stage}
-        quitDate={quitDate}
-        onPress={() => router.push("/progress")}
-      />
+      {/* 8 — Health Milestones (countdown; taps to the full /milestones timeline) */}
+      <HealthMilestonesCard stage={stage} quitDate={quitDate} />
 
       {__DEV__ && (
         <>
