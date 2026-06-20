@@ -78,7 +78,7 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
           onPress={() => router.push("/(modals)/log")}
           className="w-14 h-14 rounded-full bg-foreground items-center justify-center active:scale-95"
           style={{
-            marginTop: -28,
+            marginTop: -32, // design raises the center button -mt-8 (32px)
             shadowColor: "#15110D",
             shadowOpacity: 0.2,
             shadowRadius: 14,
@@ -109,7 +109,9 @@ export default function TabsLayout() {
           headerTitleStyle: { fontFamily: "SpaceGrotesk_700Bold" },
         }}
       >
-        <Tabs.Screen name="index" options={{ title: "Home" }} />
+        {/* Home renders the custom Lovable TopBar in-body, so the native header
+            is hidden here (avoids a double header). */}
+        <Tabs.Screen name="index" options={{ title: "Home", headerShown: false }} />
         <Tabs.Screen name="insights" options={{ title: "Insights" }} />
         <Tabs.Screen name="tools" options={{ title: "Tools" }} />
         <Tabs.Screen name="profile" options={{ title: "Profile" }} />

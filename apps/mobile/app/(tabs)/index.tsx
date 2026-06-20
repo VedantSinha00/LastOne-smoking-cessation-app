@@ -11,6 +11,7 @@ import { queryClient } from "../../lib/queryClient";
 import { queryKeys } from "../../lib/queryKeys";
 import { resolveStk2, resolveStk3 } from "../../lib/returnModal";
 import { checkFreezePeriodAdvance } from "../../lib/streak";
+import { TopBar } from "../../components/home/TopBar";
 import { Greeting } from "../../components/home/Greeting";
 import { StreakBar } from "../../components/home/StreakBar";
 import { SectionLabel } from "../../components/ui/SectionLabel";
@@ -20,6 +21,7 @@ import { InsightsPreview } from "../../components/home/InsightsPreview";
 import { ProgressDashboard } from "../../components/home/ProgressDashboard";
 import { ContentCarousel } from "../../components/home/ContentCarousel";
 import { SavingsMilestoneCard } from "../../components/home/SavingsMilestoneCard";
+import { HomePersonalGoalCard } from "../../components/home/HomePersonalGoalCard";
 import { DailyCheckInCard } from "../../components/home/DailyCheckInCard";
 import { GivingUpCard } from "../../components/home/GivingUpCard";
 import { SupportSetupPromptCard } from "../../components/home/SupportSetupPromptCard";
@@ -117,7 +119,11 @@ export default function Home() {
   const dayCount = stage === 0 ? undefined : daysSinceQuit;
 
   return (
-    <ScrollView className="flex-1 bg-background px-5 pt-6" contentContainerClassName="gap-7 pb-12">
+    <View className="flex-1 bg-background">
+      {/* Top app bar — wordmark + bell + profile (design TopBar) */}
+      <TopBar />
+
+      <ScrollView className="flex-1 bg-background px-5 pt-2" contentContainerClassName="gap-7 pb-12">
       {/* 1 — Greeting */}
       <Greeting firstName={profile?.first_name} dayCount={dayCount} />
 
@@ -138,6 +144,9 @@ export default function Home() {
 
       {/* 4b — Savings milestone celebration (inline, fires once per threshold) */}
       <SavingsMilestoneCard />
+
+      {/* 4c — Personal Goals (design Home section; top active goal, taps to /goals) */}
+      <HomePersonalGoalCard />
 
       {/* 5 — GU-1 trigger card (replaces the check-in this session when due),
             else Daily Check-In (Stage 1+, until satisfied) */}
@@ -182,6 +191,7 @@ export default function Home() {
           </Pressable>
         </>
       )}
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }

@@ -83,25 +83,56 @@ export const StreakBar: React.FC<StreakBarProps> = ({ stage, streak }) => {
   }
 
   // ── STK-1: active (or paused) quit streak ─────────────────────────────────
+  // Two-column Current | Lifetime layout ported from the Lovable `StreaksCard`
+  // (divided by a hairline; 40px Space Grotesk numerals + "days"). The design's
+  // right column reads "Best"; we label it "Lifetime" to match the real number
+  // shown (lifetime_smoke_free_days). Paused state and freeze snowflakes are
+  // preserved beneath the columns — design has neither.
   return (
-    <Card className="flex-row justify-between items-center">
-      <View className="flex-1">
-        <Text className="text-muted-foreground text-sm font-sans-medium uppercase tracking-wider">
-          {isPaused ? 'Streak Paused' : 'Current Streak'}
+    <Card style={{ minHeight: 148 }} className="justify-center">
+      {isPaused && (
+        <Text className="text-muted-foreground text-[11px] font-sans-medium uppercase tracking-wider mb-3">
+          Streak Paused
         </Text>
-        <Text className="text-foreground font-display mt-1" style={{ fontSize: 40, lineHeight: 44 }}>
-          {currentStreak} {currentStreak === 1 ? 'Day' : 'Days'}
-        </Text>
-        <Text className="text-muted-foreground text-xs mt-1">
-          {lifetime} lifetime smoke-free {lifetime === 1 ? 'day' : 'days'}
-        </Text>
-        {!isPaused && <FreezeIcons count={freezeStock} />}
+      )}
+      <View className="flex-row">
+        {/* Current */}
+        <View className="flex-1 pr-4">
+          <Text className="text-muted-foreground text-[11px] font-sans-medium uppercase tracking-wider">
+            Current
+          </Text>
+          <View className="flex-row items-baseline mt-3" style={{ gap: 6 }}>
+            <Text
+              className="text-foreground font-display"
+              style={{ fontSize: 40, lineHeight: 40, letterSpacing: -0.5 }}
+            >
+              {currentStreak}
+            </Text>
+            <Text className="text-muted-foreground text-sm">days</Text>
+          </View>
+        </View>
+
+        {/* hairline divider */}
+        <View className="w-px bg-border" />
+
+        {/* Lifetime (design's right column; labelled to match the real number) */}
+        <View className="flex-1 pl-4">
+          <Text className="text-muted-foreground text-[11px] font-sans-medium uppercase tracking-wider">
+            Lifetime
+          </Text>
+          <View className="flex-row items-baseline mt-3" style={{ gap: 6 }}>
+            <Text
+              className="text-foreground font-display"
+              style={{ fontSize: 40, lineHeight: 40, letterSpacing: -0.5 }}
+            >
+              {lifetime}
+            </Text>
+            <Text className="text-muted-foreground text-sm">days</Text>
+          </View>
+        </View>
       </View>
-      <View className="w-16 h-16 rounded-full bg-primary/10 border border-primary/20 items-center justify-center ml-4">
-        <Text className="text-2xl">
-          {isPaused ? '⏸️' : '🔥'}
-        </Text>
-      </View>
+
+      {!isPaused && freezeStock > 0 && <FreezeIcons count={freezeStock} />}
     </Card>
   )
 }
