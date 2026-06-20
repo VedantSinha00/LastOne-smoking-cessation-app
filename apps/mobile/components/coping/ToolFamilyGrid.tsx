@@ -67,17 +67,18 @@ const FamilyCard: React.FC<{ def: FamilyDef; count: number; onPress: () => void 
     className="active:opacity-90"
   >
     {/* Decorative concentric rings. The SVG fills the WHOLE card via absolute
-        inset:0 (escaping the card's vertical padding) so the arcs reach the actual
-        bottom edge — not just the content area, which cut them off at the text line.
-        viewBox 100×100 stretched (preserveAspectRatio none) for large radii; origin
-        bottom-left just below the edge (cy 110); strokeWidth 2 + 55% opacity. */}
+        inset:0 so the arcs reach the actual bottom edge. viewBox 100×100 stretched
+        (preserveAspectRatio none); origin bottom-left (cx20, cy110). Outermost
+        radius 81 ≈ dist from origin to the bottom-right corner (100,100):
+        √(80²+10²)=80.6 — so the largest ring just touches that corner once.
+        strokeWidth 1.0 (~30% thinner than before). */}
     <Svg
       viewBox="0 0 100 100"
       preserveAspectRatio="none"
       style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
     >
-      {[26, 46, 66, 86, 106].map((r) => (
-        <Circle key={r} cx="20" cy="110" r={r} fill="none" stroke={def.dot} strokeWidth="1.4" opacity={0.55} />
+      {[17, 33, 49, 65, 81].map((r) => (
+        <Circle key={r} cx="20" cy="110" r={r} fill="none" stroke={def.dot} strokeWidth="1" opacity={0.55} />
       ))}
     </Svg>
     {/* Title — Playfair Display 600 @ 26/lineHeight 27 (design exact). Labels with
