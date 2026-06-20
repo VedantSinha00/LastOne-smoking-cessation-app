@@ -7,11 +7,13 @@ import { useProfile } from '../../hooks/useProfile'
 import { useStage } from '../../hooks/useStage'
 import { useStreakRecord } from '../../hooks/useStreakRecord'
 import { useSupportPerson } from '../../hooks/useSupportPerson'
+import { useDashboard } from '../../hooks/useDashboard'
 import { supabase } from '../../lib/supabase'
 import { STAGE_NAMES } from '../../lib/stage'
 import { categoryLabel, formatTime, tierLabel, voiceLabel } from '../../lib/settings'
 import { formatGoalRupees } from '../../lib/goals'
 import { Row, Section } from '../../components/settings/Row'
+import { ProfileHeaderCard } from '../../components/settings/ProfileHeaderCard'
 
 /**
  * PROF-01 — Profile Tab Root. Four sections of rows; editable rows show the
@@ -22,9 +24,10 @@ export default function SettingsRoot() {
   const router = useRouter()
   const { user } = useAuth()
   const { data: profile } = useProfile()
-  const { stage, quitDate } = useStage()
+  const { stage, quitDate, daysSinceQuit } = useStage()
   const { data: streak } = useStreakRecord()
   const { person } = useSupportPerson()
+  const dashboard = useDashboard()
 
   const { data: journalCount } = useQuery({
     queryKey: ['journal_count', user?.id ?? ''],
@@ -61,10 +64,15 @@ export default function SettingsRoot() {
 
   return (
     <ScrollView className="flex-1 bg-background" contentContainerClassName="px-5 pt-8 pb-16 gap-7">
-      <View>
-        <Text className="text-muted-foreground text-sm font-sans-medium">Settings</Text>
-        <Text className="text-foreground font-display text-3xl mt-0.5">Your Profile</Text>
-      </View>
+      {/* Profile header card (design ProfileScreen header) — avatar + name +
+          stage badge + 3 stats, wired to data already loaded here. */}
+      <ProfileHeaderCard
+        name={profile?.display_name?.trim() || profile?.first_name?.trim() || 'You'}
+        stage={stage}
+        daysClean={stage === 0 ? null : daysSinceQuit}
+        attempts={attemptCount ?? 1}
+        savedLabel={dashboard.moneyLabel}
+      />
 
       <Section title="Your Journey">
         <Row
