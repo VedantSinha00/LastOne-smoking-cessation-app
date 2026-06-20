@@ -8,6 +8,7 @@ import { supabase } from "../../lib/supabase";
 import { queryKeys } from "../../lib/queryKeys";
 import { ToolRunner } from "../../components/coping/ToolRunner";
 import { ToolFamilyGrid, FAMILIES, type FamilyKey } from "../../components/coping/ToolFamilyGrid";
+import { ToolListCard } from "../../components/coping/ToolListCard";
 import { updateToolScore } from "../../lib/sos";
 import { Button } from "../../components/ui/button";
 import type { Database } from "../../types/database";
@@ -66,14 +67,15 @@ export default function ToolsLibrary() {
       contentContainerClassName="px-6 gap-6 pb-12"
       contentContainerStyle={{ paddingTop: insets.top + 8 }}
     >
+      {/* "All tools" banner — shown on BOTH the catalog and the drilled-in family
+          view (design keeps it above the "← All categories" link). */}
+      <Text className="text-foreground font-display text-center" style={{ fontSize: 22 }}>
+        All tools
+      </Text>
+
       {family === null ? (
         // ── Catalog: family-card grid (design "All tools") ──────────────────
         <>
-          {/* Centered title — same size/placement as Insights (tab roots have no
-              back arrow). */}
-          <Text className="text-foreground font-display text-center" style={{ fontSize: 22 }}>
-            All tools
-          </Text>
           {isLoading ? (
             <ActivityIndicator color="#7FC200" className="mt-6" />
           ) : (
@@ -88,7 +90,6 @@ export default function ToolsLibrary() {
               ← All categories
             </Text>
           </Pressable>
-          <Text className="text-foreground font-display text-2xl">{selectedDef?.label}</Text>
 
           {selectedDef?.comingSoon ? (
             <View className="bg-muted border border-border rounded-3xl p-5">
@@ -102,19 +103,26 @@ export default function ToolsLibrary() {
               </Text>
             </View>
           ) : (
-            <View className="gap-2">
-              {familyTools.map((t) => (
-                <Pressable
-                  key={t.tool_id}
-                  onPress={() => startTool(t)}
-                  className="bg-card border border-border rounded-3xl p-4 active:bg-muted"
-                >
-                  <Text className="text-foreground font-sans-bold">{t.name}</Text>
-                  <Text className="text-muted-foreground text-xs mt-0.5">
-                    {Math.round(t.duration_seconds / 60) || 1} min · {t.category.replace(/_/g, " ")}
-                  </Text>
-                </Pressable>
-              ))}
+            <View>
+              {/* Section header — "BREATHING · 4" (design) */}
+              <Text
+                className="font-sans-medium"
+                style={{ fontSize: 11, color: "#AAAAAA", letterSpacing: 2, textTransform: "uppercase", marginBottom: 12 }}
+              >
+                {selectedDef?.label} · {familyTools.length}
+              </Text>
+              <View style={{ gap: 10 }}>
+                {familyTools.map((t) => (
+                  <ToolListCard
+                    key={t.tool_id}
+                    tool={t}
+                    bg={selectedDef?.bg ?? "#EEEEEE"}
+                    dot={selectedDef?.dot ?? "#999999"}
+                    fg={selectedDef?.fg ?? "#555555"}
+                    onPress={() => startTool(t)}
+                  />
+                ))}
+              </View>
             </View>
           )}
         </>
