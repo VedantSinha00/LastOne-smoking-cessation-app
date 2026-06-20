@@ -75,10 +75,13 @@ const FamilyCard: React.FC<{ def: FamilyDef; count: number; onPress: () => void 
     <Svg
       viewBox="0 0 100 100"
       preserveAspectRatio="none"
-      style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+      // Opacity on the wrapper (design applies it here, not per-circle) with the
+      // stroke at full c.dot strength. 0.8 (higher than the design's 0.35) to keep
+      // the rings well-defined despite our thinner, stretched-viewBox strokes.
+      style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, opacity: 0.8 }}
     >
       {[17, 33, 49, 65, 81].map((r) => (
-        <Circle key={r} cx="20" cy="110" r={r} fill="none" stroke={def.dot} strokeWidth="1" opacity={0.55} />
+        <Circle key={r} cx="20" cy="110" r={r} fill="none" stroke={def.dot} strokeWidth="1" />
       ))}
     </Svg>
     {/* Title — Playfair Display 600 @ 26/lineHeight 27 (design exact). Labels with
