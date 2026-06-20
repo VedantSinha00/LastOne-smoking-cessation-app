@@ -228,6 +228,22 @@ Build order (CONFIRMED with Vedant 2026-06-20 — onboarding explicitly LAST):
 Onboarding is held until everything else is done, per Vedant. Confirm which item to
 start before each build.
 
+## NEW PLANNED ITEM (added 2026-06-20) — Log (+) flow reskin [AFTER onboarding]
+
+Never in scope (not deferred — just untouched). To be done AFTER onboarding.
+The `+` FAB opens a picker sheet → 4 flows (A/B/C/D) that write real
+craving/slip/note data.
+- **Picker sheet** (`app/(modals)/log.tsx`): design is a 2x2 GRID of clean text
+  cards (no emoji), title "Log", labels "I feel like smoking / I overcame a craving
+  / I smoked / Quick note". Current is a vertical emoji+row list titled "What's
+  happening?". Quick reskin, no data paths.
+- **4 flows** (`app/(modals)/log-a..d.tsx`): design `LoggingFlowA..D` are full
+  multi-step flows (e.g. A: log-menu -> A1 intensity -> A1b -> A2 -> A3-coping ->
+  A4-saved). Substantial reskin on par with Insights/Profile, and these are CORE
+  data-writing paths -> reskin carefully, keep logic. Treat as its own sized item.
+- NOTE: the log-flow back-to-Home bug was already FIXED separately (commit
+  exitToHome, lib/navigation.ts) — that was a nav bug, not the reskin.
+
 - **Insights screen — BIGGEST design↔spec conflict. LEFT UNTOUCHED.** The design's `InsightsScreen` (449 lines, the most-reworked file in the design pass) reimagines the Insights tab as a STATS-AND-EXPLORE HUB: an overview stat grid (total cravings / beaten / success rate / SOS used), a "Cravings This Week" bar chart, and an "Explore" menu (Cravings / Top tools / Journal / Triggers / People / Places / Streaks) — and it even embeds the games (Memory / PhysiologicalSigh / FingerPulse) as sub-views. The app's `insights.tsx` is INS-1 from the Insights spec: a RANKED VERTICAL FEED of generated insight cards derived from the user's own data (expand-in-place, ranking re-runs on focus, "the self-awareness feed / entry point from all navigation"). These are two different products for the same tab. Adopting the design means re-architecting Insights from a generated-feed into an analytics explorer + tool launcher — a major product decision that also absorbs the games + new-tool-families questions. NEEDS YOUR DIRECTION before any work. (The design's stat numbers + bar chart are also all mock; real versions would need new aggregate queries. The bar chart uses recharts → would be react-native-svg.)
 
 - **Games reconciliation** — design ships FingerPulsePress / Memory / PhysiologicalSigh; app already has Echo Tap + Memory 1P/2P. Are the new ones additions or replacements? Needs decision. (Also note: in the design these games are launched from INSIDE the Insights hub — see the Insights conflict above.)
