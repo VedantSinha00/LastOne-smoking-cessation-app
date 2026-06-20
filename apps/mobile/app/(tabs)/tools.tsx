@@ -6,20 +6,12 @@ import { useAuth } from "../../hooks/useAuth";
 import { supabase } from "../../lib/supabase";
 import { queryKeys } from "../../lib/queryKeys";
 import { ToolRunner } from "../../components/coping/ToolRunner";
+import { ToolFamilyGrid, FAMILIES, type FamilyKey } from "../../components/coping/ToolFamilyGrid";
 import { updateToolScore } from "../../lib/sos";
 import { Button } from "../../components/ui/button";
 import type { Database } from "../../types/database";
 
 type CopingTool = Database["public"]["Tables"]["coping_tools"]["Row"];
-
-/** Library display sections (Coping Tools §1.2). Games route to the dedicated
- *  hub (Step 19), so the library only lists breathing + physical as runnable
- *  tools here. AI Bot is a placeholder for now. */
-const SECTIONS: { key: string; title: string; match: (t: CopingTool) => boolean }[] = [
-  { key: "breathing", title: "Breathing Exercises", match: (t) => t.family === "breathing" },
-  { key: "physical", title: "Physical Reset", match: (t) => t.family === "physical" },
-  { key: "reframing", title: "Reframing", match: (t) => t.category === "cognitive_reframe" },
-];
 
 /**
  * Tools hub (Coping Tools §1.2 Layer 2 — explorative library). All 12 tools, browsable
@@ -32,6 +24,15 @@ export default function ToolsLibrary() {
   const router = useRouter();
   const [active, setActive] = useState<CopingTool | null>(null);
   const [checkIn, setCheckIn] = useState(false);
+  const [family, setFamily] = useState<FamilyKey | null>(null);
+
+  const onSelectFamily = (key: FamilyKey) => {
+    if (key === "mini_games") {
+      router.push("/games");
+      return;
+    }
+    setFamily(key); // ai_chat shows its own coming-soon panel below
+  };
 
   const { data: tools, isLoading } = useQuery({
     queryKey: [...queryKeys.copingTools(), "library"],
@@ -53,75 +54,67 @@ export default function ToolsLibrary() {
     setCheckIn(false);
   };
 
+  const selectedDef = family ? FAMILIES.find((f) => f.key === family) ?? null : null;
+  const familyTools =
+    selectedDef && selectedDef.match ? (tools ?? []).filter(selectedDef.match) : [];
+
   return (
     <ScrollView className="flex-1 bg-background" contentContainerClassName="p-6 gap-6 pb-12">
-      <View>
-        <Text className="text-muted-foreground text-sm font-sans-medium">Coping Tools</Text>
-        <Text className="text-foreground font-display text-2xl">Try one anytime</Text>
-        <Text className="text-muted-foreground text-xs mt-1 leading-relaxed">
-          No craving needed. Get familiar with these now so they&apos;re ready when you need them.
-        </Text>
-      </View>
-
-      {isLoading ? (
-        <ActivityIndicator color="#7FC200" className="mt-6" />
-      ) : (
-        SECTIONS.map((section) => {
-          const items = (tools ?? []).filter(section.match);
-          if (!items.length) return null;
-          return (
-            <View key={section.key}>
-              <Text className="text-muted-foreground text-xs font-sans-bold uppercase tracking-wider mb-2">
-                {section.title}
-              </Text>
-              <View className="gap-2">
-                {items.map((t) => (
-                  <Pressable
-                    key={t.tool_id}
-                    onPress={() => startTool(t)}
-                    className="bg-card border border-border rounded-3xl p-4 active:bg-muted"
-                  >
-                    <Text className="text-foreground font-sans-bold">{t.name}</Text>
-                    <Text className="text-muted-foreground text-xs mt-0.5">
-                      {Math.round(t.duration_seconds / 60) || 1} min · {t.category.replace(/_/g, " ")}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
-            </View>
-          );
-        })
-      )}
-
-      {/* Games & Puzzles → dedicated games hub (Step 19). */}
-      <View>
-        <Text className="text-muted-foreground text-xs font-sans-bold uppercase tracking-wider mb-2">
-          Games &amp; Puzzles
-        </Text>
-        <Pressable
-          onPress={() => router.push("/games")}
-          className="bg-card border border-border rounded-3xl p-4 active:bg-muted"
-        >
-          <View className="flex-row items-center justify-between">
-            <View className="flex-1 pr-3">
-              <Text className="text-foreground font-sans-bold">Distraction games</Text>
-              <Text className="text-muted-foreground text-xs mt-0.5">
-                Memory, Echo Tap, and 2-player — ride out a craving.
-              </Text>
-            </View>
-            <Text className="text-primary font-display text-xl">→</Text>
+      {family === null ? (
+        // ── Catalog: family-card grid (design "All tools") ──────────────────
+        <>
+          <View>
+            <Text className="text-muted-foreground text-sm font-sans-medium">Coping Tools</Text>
+            <Text className="text-foreground font-display text-2xl">All tools</Text>
+            <Text className="text-muted-foreground text-xs mt-1 leading-relaxed">
+              No craving needed. Pick a category to explore.
+            </Text>
           </View>
-        </Pressable>
-      </View>
+          {isLoading ? (
+            <ActivityIndicator color="#7FC200" className="mt-6" />
+          ) : (
+            <ToolFamilyGrid tools={tools ?? []} onSelectFamily={onSelectFamily} />
+          )}
+        </>
+      ) : (
+        // ── Drilled into a family: its tool list (or AI coming-soon) ────────
+        <>
+          <Pressable onPress={() => setFamily(null)} hitSlop={8} className="active:opacity-60">
+            <Text className="font-sans-bold" style={{ fontSize: 13, color: "#888888" }}>
+              ← All categories
+            </Text>
+          </Pressable>
+          <Text className="text-foreground font-display text-2xl">{selectedDef?.label}</Text>
 
-      {/* AI Bot — coming soon placeholder (no backend yet). */}
-      <View>
-        <Text className="text-muted-foreground text-xs font-sans-bold uppercase tracking-wider mb-2">AI Bot</Text>
-        <View className="bg-muted border border-border rounded-3xl p-4">
-          <Text className="text-muted-foreground font-sans-bold">Talk it through</Text>
-          <Text className="text-muted-foreground text-xs mt-0.5">Coming soon.</Text>
-        </View>
-      </View>
+          {selectedDef?.comingSoon ? (
+            <View className="bg-muted border border-border rounded-3xl p-5">
+              <Text className="text-muted-foreground font-sans-bold">
+                {family === "ai_chat" ? "Talk it through" : "Bite-size reads"}
+              </Text>
+              <Text className="text-muted-foreground text-xs mt-1">
+                {family === "ai_chat"
+                  ? "A judgment-free AI coach for the moment — coming soon."
+                  : "Short cards on what's happening in your body and mind — coming soon."}
+              </Text>
+            </View>
+          ) : (
+            <View className="gap-2">
+              {familyTools.map((t) => (
+                <Pressable
+                  key={t.tool_id}
+                  onPress={() => startTool(t)}
+                  className="bg-card border border-border rounded-3xl p-4 active:bg-muted"
+                >
+                  <Text className="text-foreground font-sans-bold">{t.name}</Text>
+                  <Text className="text-muted-foreground text-xs mt-0.5">
+                    {Math.round(t.duration_seconds / 60) || 1} min · {t.category.replace(/_/g, " ")}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          )}
+        </>
+      )}
 
       {/* Tool runner overlay — library session (no escalation effects).
           Bespoke tools (Finger Pulse / Physiological Sigh / Reframing) carry the
