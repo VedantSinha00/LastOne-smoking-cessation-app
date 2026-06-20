@@ -164,7 +164,11 @@ const StageCard: React.FC<{
                       <Check size={15} color="#FBFAF9" strokeWidth={3} />
                     </View>
                   ) : (
-                    <View className="h-7 w-7 rounded-full border border-border bg-background" />
+                    // Locked — a clean light empty ring (design), interior pure white.
+                    <View
+                      className="h-7 w-7 rounded-full"
+                      style={{ borderWidth: 1.5, borderColor: '#E2E0DD', backgroundColor: '#FFFFFF' }}
+                    />
                   )}
                   <Text
                     className={unlocked ? 'text-foreground' : 'text-muted-foreground'}
