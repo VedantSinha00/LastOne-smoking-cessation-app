@@ -10,6 +10,35 @@ This log exists so Vedant can review every autonomous decision on return.
 
 ---
 
+## REVIEW — autonomous batch: tool intro screens (2026-06-20, you stepped away)
+
+Built the design's **tool intro/detail step** for ALL real tools, in batches as asked.
+Committed (you were away + asked to complete it fully). Typecheck-clean throughout.
+
+**Commits:** `fe3449b` (safe-area on all tool runners), `6448aa0` (ToolIntroScreen +
+wiring + Breathing content), `355b85a` (Physical/Mini-games/Reframe content).
+
+**What it does:** tapping any tool now opens `ToolIntroScreen` (ported from the design's
+`ToolDetailView`): family-coloured hero (〜 + name + "ID · family · duration") → quick
+stats (Best for / Context / Used by you) → How it works → Steps → "Try it now". "Try it
+now" launches the exercise (game route or ToolRunner). Best-for/Context derive from real
+coping_tools data; Used-by-you from user_tool_scores.total_uses; How-it-works + Steps from
+`lib/toolContent.ts` (design copy ported per data_model_id, all 4 families).
+
+**Decisions made (verify on return):**
+- **Two-step intro is FAITHFUL, not a bug.** Finger Pulse / Physiological Sigh / Reframe
+  (and the mini-games) have their OWN intro screen after "Try it now". Confirmed the
+  DESIGN does the same (its PhysiologicalSighGame/FingerPulsePressGame open on their own
+  "intro" phase after ToolDetailView → Try it now). So: detail page → exercise's own
+  ready-screen → exercise. Left as-is.
+- **Omitted "+ Add to SOS favourites"** link from the intro (design has it) — needs SOS-
+  favourites wiring; additive, deferred.
+- **Cost Reframe** step is currency-neutral ("what that buys") vs the design's "£10".
+- COULD NOT device-verify (you were away). Please reload + check the intro screens look
+  right per family and "Try it now" launches correctly.
+
+---
+
 ## TL;DR for your return (read this first)
 
 **Commits on `UI-Implementations` since you left:** `cdb97ae` (Insights preview),
