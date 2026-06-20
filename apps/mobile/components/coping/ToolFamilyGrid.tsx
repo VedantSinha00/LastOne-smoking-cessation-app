@@ -38,7 +38,8 @@ interface FamilyDef {
 const FAMILIES: FamilyDef[] = [
   { key: 'breathing', label: 'Breathing', unit: 'practices', bg: '#E6F4D6', fg: '#27500A', dot: '#84C524', match: (t) => t.family === 'breathing' },
   { key: 'physical', label: 'Physical', unit: 'resets', bg: '#FFE5DC', fg: '#A32D2D', dot: '#F15025', match: (t) => t.family === 'physical' },
-  { key: 'mini_games', label: 'Mini-games', unit: 'games', bg: '#DCEBFB', fg: '#1F5A9E', dot: '#378ADD', match: (t) => t.family === 'mini_games' },
+  // Explicit line break after the hyphen so "games" never splits mid-word.
+  { key: 'mini_games', label: 'Mini-\ngames', unit: 'games', bg: '#DCEBFB', fg: '#1F5A9E', dot: '#378ADD', match: (t) => t.family === 'mini_games' },
   { key: 'cognitive_reframe', label: 'Reframing', unit: 'exercises', bg: '#F3E8FF', fg: '#5B21B6', dot: '#8B5CF6', match: (t) => t.category === 'cognitive_reframe' },
   { key: 'ai_chat', label: 'AI Chat', unit: 'coming soon', bg: '#FFF3D6', fg: '#7A4F00', dot: '#E0A52B', comingSoon: true },
   { key: 'content_cards', label: 'Content Cards', unit: 'coming soon', bg: '#FFE0EC', fg: '#9D174D', dot: '#EC4899', comingSoon: true },
