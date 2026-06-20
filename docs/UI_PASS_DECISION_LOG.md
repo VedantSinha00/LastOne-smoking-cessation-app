@@ -102,6 +102,22 @@ Full rationale also in memory: `project_home_design_vs_spec.md`.
 
 ---
 
+## BUILD NOTES (session 2 — building the decided list)
+
+- **#1 Progress detail** → DONE (`647b796`): design hero-cards main view → per-counter
+  drill-downs; real scaleLadder + canonical CM-01–08 cards kept; Home deep-links work.
+- **#2 Health Milestones** → DONE (`1f9d4ac`): lean countdown stays on Home (chevron),
+  taps to new `/milestones` staged accordion (real unlocked state from quit date);
+  offsets shared via `lib/healthMilestones.ts`.
+- **#3 Games + tool families — SCOPE REFINED at build:** Physiological Sigh (BRE-03)
+  and Finger Pulse (PHY-01) are ALREADY seeded `coping_tools` rows — so #3a is just
+  building their bespoke animated SCREENS (the generic runner handles them now). For
+  the new "tool families": `ToolFamily` is a FIXED enum (breathing/physical/mini_games)
+  — Reframing/AI Chat/Content Cards are NOT families in the schema. Resolution (Vedant
+  2026-06-20): seed the 4 Reframing tools under the existing `cognitive_reframe`
+  CATEGORY (family stays a real one) + build their screens; SKIP "Content Cards" as a
+  tool family (already a separate system — the content reader); AI Chat = coming soon.
+
 ## DECISIONS MADE on return (2026-06-20 session 2)
 
 1. **Insights screen → ADOPT THE DESIGN HUB.** Vedant chose to re-architect Insights

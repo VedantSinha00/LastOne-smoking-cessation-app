@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from 'react'
 import { View, Text, Pressable } from 'react-native'
 import { X } from 'lucide-react-native'
 import type { Database } from '../../types/database'
+import { PhysiologicalSighTool } from './PhysiologicalSighTool'
+import { FingerPulseTool } from './FingerPulseTool'
 
 type CopingTool = Database['public']['Tables']['coping_tools']['Row']
 
@@ -286,13 +288,18 @@ export const GameStub: React.FC<RunnerProps> = ({ tool, onDone, accent = 'calm' 
   )
 }
 
-/** Route a tool to its runner by family. */
+/** Route a tool to its runner. Two tools have bespoke screens (matching the
+ *  design's Physiological Sigh + Finger Pulse animations), keyed by data_model_id;
+ *  everything else falls back to the generic family runners. */
 export const ToolRunner: React.FC<RunnerProps & { repCount?: number }> = ({
   tool,
   onDone,
   repCount,
   accent = 'calm',
 }) => {
+  if (tool.data_model_id === 'physiological_sigh')
+    return <PhysiologicalSighTool tool={tool} onDone={onDone} />
+  if (tool.data_model_id === 'finger_pulse') return <FingerPulseTool tool={tool} onDone={onDone} />
   if (tool.family === 'breathing') return <BreathingTool tool={tool} onDone={onDone} accent={accent} />
   if (tool.family === 'physical')
     return <PhysicalTool tool={tool} onDone={onDone} repCount={repCount} accent={accent} />
