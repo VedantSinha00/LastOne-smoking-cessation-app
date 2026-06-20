@@ -66,19 +66,21 @@ const FamilyCard: React.FC<{ def: FamilyDef; count: number; onPress: () => void 
     style={{ width: '48%', aspectRatio: 1 / 1.05, borderRadius: 28, backgroundColor: def.bg, paddingVertical: 18, paddingHorizontal: 16, overflow: 'hidden', justifyContent: 'space-between' }}
     className="active:opacity-90"
   >
-    {/* Decorative concentric rings (design): centred off the bottom-left corner,
-        sweeping wide across the card. Kept square (no preserveAspectRatio="none",
-        which thinned the strokes below 1px and squashed circles into ellipses);
-        strokeWidth in viewBox units is sized so it renders ~1.5px on screen. */}
+    {/* Decorative concentric rings — design geometry EXACTLY: viewBox 0 0 200 200,
+        default xMidYMid meet (the design sets no preserveAspectRatio), circles at
+        cx40 cy200 r[40..160]. On the taller-than-wide card, meet fits to the width
+        and centres vertically, putting the origin near the bottom and sweeping the
+        arcs wide — like the design. strokeWidth is bumped to 1.4 (from the design's
+        1) to offset RN rendering the meet-downscaled stroke thinner than the web. */}
     <Svg
       width="100%"
       height="100%"
       viewBox="0 0 200 200"
-      preserveAspectRatio="xMinYMax slice"
-      style={{ position: 'absolute', top: 0, left: 0, opacity: 0.45 }}
+      preserveAspectRatio="xMidYMid meet"
+      style={{ position: 'absolute', top: 0, left: 0, opacity: 0.35 }}
     >
       {[40, 70, 100, 130, 160].map((r) => (
-        <Circle key={r} cx="40" cy="200" r={r} fill="none" stroke={def.dot} strokeWidth="1.6" />
+        <Circle key={r} cx="40" cy="200" r={r} fill="none" stroke={def.dot} strokeWidth="1.4" />
       ))}
     </Svg>
     {/* Title — Playfair Display 600 @ 26/lineHeight 27 (design exact). Labels with
