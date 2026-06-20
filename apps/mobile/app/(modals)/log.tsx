@@ -1,6 +1,7 @@
 import React from "react";
 import { View, Text, Pressable } from "react-native";
 import { useRouter } from "expo-router";
+import { exitToHome } from "../../lib/navigation";
 
 /**
  * Log half-sheet (Architecture Guide §9.1 / Logging Spec §1.1). Opened by the Log
@@ -26,8 +27,8 @@ export default function LogSheet() {
 
   return (
     <View className="flex-1 justify-end bg-black/60">
-      {/* Backdrop — tap to dismiss */}
-      <Pressable className="absolute inset-0" onPress={() => router.back()} />
+      {/* Backdrop — tap to dismiss back to Home (not the tab beneath the modal) */}
+      <Pressable className="absolute inset-0" onPress={exitToHome} />
 
       <View className="bg-card rounded-t-3xl border-t border-border px-5 pt-3 pb-8">
         <View className="self-center w-10 h-1.5 rounded-full bg-border mb-5" />
