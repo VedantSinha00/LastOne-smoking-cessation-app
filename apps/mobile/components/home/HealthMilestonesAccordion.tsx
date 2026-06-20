@@ -147,9 +147,11 @@ const StageCard: React.FC<{
       </Pressable>
 
       {open && (
-        // Left padding (28) centers the 28px checklist circles under the header's
-        // 44px circle (header left 20 + 22 = 42 ≈ 28 + 14), so all ticks line up.
-        <View className="pb-6 -mt-1" style={{ paddingLeft: 28, paddingRight: 24 }}>
+        // Match the header's left padding (px-5 = 20) exactly; each row then uses a
+        // 44px leading column (same as the header's 44px circle) with the 28px
+        // checklist circle centered in it — so every circle lines up vertically with
+        // the header tick regardless of circle size.
+        <View className="pb-6 -mt-1" style={{ paddingLeft: 20, paddingRight: 24 }}>
           {inProgress && (
             <View className="flex-row items-center justify-between mb-4">
               <View className="rounded-full px-2.5 py-1" style={{ backgroundColor: '#0F0D0B' }}>
@@ -167,17 +169,22 @@ const StageCard: React.FC<{
               const unlocked = hoursSinceQuit >= m.offsetHours
               return (
                 <View key={m.name} className="flex-row items-center" style={{ gap: 14 }}>
-                  {unlocked ? (
-                    <View className="h-7 w-7 rounded-full bg-foreground items-center justify-center">
-                      <Check size={15} color="#FBFAF9" strokeWidth={3} />
-                    </View>
-                  ) : (
-                    // Locked — a clean light empty ring (design), interior pure white.
-                    <View
-                      className="h-7 w-7 rounded-full"
-                      style={{ borderWidth: 1.5, borderColor: '#E2E0DD', backgroundColor: '#FFFFFF' }}
-                    />
-                  )}
+                  {/* 44px leading column = the header circle's width, so the 28px
+                      checklist circle centers directly under the header tick. */}
+                  <View className="items-center justify-center" style={{ width: 44 }}>
+                    {unlocked ? (
+                      <View className="h-7 w-7 rounded-full bg-foreground items-center justify-center">
+                        <Check size={15} color="#FBFAF9" strokeWidth={3} />
+                      </View>
+                    ) : (
+                      // Locked — a visible grey empty ring, faint grey fill so it
+                      // reads as an empty checkbox.
+                      <View
+                        className="h-7 w-7 rounded-full"
+                        style={{ borderWidth: 1.5, borderColor: '#D2CFCB', backgroundColor: '#F4F2F0' }}
+                      />
+                    )}
+                  </View>
                   <Text
                     className={unlocked ? 'text-foreground' : 'text-muted-foreground'}
                     style={{ fontSize: 16 }}
