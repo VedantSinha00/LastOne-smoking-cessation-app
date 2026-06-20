@@ -37,19 +37,27 @@ export const HealthMilestonesAccordion: React.FC = () => {
   // 2→1, 3+→2, and pre-quit (stage 0) → 0.
   const defaultOpen = Math.min(Math.max(stage - 1, 0), MILESTONE_STAGES.length - 1)
 
-  // Start at the default; once the persisted choice loads (or the user toggles), use
-  // that instead. null = not loaded yet → render with the default.
-  const [storedIdx, setStoredIdx] = useState<number | null>(null)
+  // Each stage expands/collapses independently — multiple can be open at once.
+  // Tracked as a Set of open indices, persisted (comma-joined) so the user's
+  // open/closed choices survive re-renders and app reopens. null = not loaded yet
+  // → render with the default (just the current-stage card open).
+  const [storedSet, setStoredSet] = useState<Set<number> | null>(null)
   useEffect(() => {
     AsyncStorage.getItem(OPEN_KEY).then((v) => {
-      if (v != null) setStoredIdx(parseInt(v, 10))
+      if (v != null) {
+        const idxs = v.split(',').filter((s) => s !== '').map((s) => parseInt(s, 10))
+        setStoredSet(new Set(idxs))
+      }
     })
   }, [])
 
-  const openIdx = storedIdx ?? defaultOpen
-  const setOpenIdx = (idx: number) => {
-    setStoredIdx(idx)
-    AsyncStorage.setItem(OPEN_KEY, String(idx)).catch(() => {})
+  const openSet = storedSet ?? new Set([defaultOpen])
+  const toggle = (idx: number) => {
+    const next = new Set(openSet)
+    if (next.has(idx)) next.delete(idx)
+    else next.add(idx)
+    setStoredSet(next)
+    AsyncStorage.setItem(OPEN_KEY, [...next].join(',')).catch(() => {})
   }
 
   return (
@@ -67,8 +75,8 @@ export const HealthMilestonesAccordion: React.FC = () => {
             <StageCard
               key={s.stage.name}
               state={s}
-              open={openIdx === i}
-              onToggle={() => setOpenIdx(openIdx === i ? -1 : i)}
+              open={openSet.has(i)}
+              onToggle={() => toggle(i)}
               hoursSinceQuit={hoursSinceQuit}
             />
           ))
