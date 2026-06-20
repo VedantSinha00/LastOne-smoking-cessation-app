@@ -61,9 +61,12 @@ function twoLineLabel(label: string): string {
 //   B = origin RAISED to ~the text line.
 // Both use a viewBox stretched to the card with preserveAspectRatio="none" so the
 // radii/stroke stay big (meet was shrinking them). Pick one, then this is cleaned up.
+// cy=100 is the card's bottom edge (viewBox is 100 tall, stretched to the card).
+// A sits exactly on the bottom edge; B just past it, so the arcs originate right at
+// the card's lower boundary.
 const RING: Record<'A' | 'B', { cy: number; radii: number[]; stroke: number }> = {
-  A: { cy: 100, radii: [22, 40, 58, 76, 94], stroke: 1.1 },
-  B: { cy: 64, radii: [22, 40, 58, 76, 94], stroke: 1.1 },
+  A: { cy: 100, radii: [26, 46, 66, 86, 106], stroke: 1.1 },
+  B: { cy: 110, radii: [26, 46, 66, 86, 106], stroke: 1.1 },
 }
 
 const FamilyCard: React.FC<{ def: FamilyDef; count: number; onPress: () => void; ring?: 'A' | 'B' }> = ({
