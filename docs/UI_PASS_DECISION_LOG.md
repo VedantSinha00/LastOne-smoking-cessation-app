@@ -75,9 +75,15 @@ Full rationale also in memory: `project_home_design_vs_spec.md`.
   the scroll edge. Fixed via contentContainer paddingVertical 8 + the ScrollView
   marginVertical -8 + overflow visible, so shadows render fully while the row stays
   visually flush.
-- New dependency: `expo-linear-gradient@15.0.8` (added via yarn workspace; the
-  npx-expo path bug + a self-unlink EPERM blocked `expo install`, so used
-  `yarn workspace @lastone/mobile add`).
+- ~~New dependency: `expo-linear-gradient@15.0.8`~~ → REMOVED. It ships native
+  Android code, and the dev-build APK on-device was compiled before it existed, so
+  Metro threw `UnableToResolveError` on device. Per Vedant: do Option B now (drop the
+  native dep, unblock on current build) and switch to a true LinearGradient later
+  (Option A) at the next dev-build rebuild. The reader now fakes the gradient with a
+  solid FROM-green base (#67AC5F) + darkening TO-green overlays (#268255) at the
+  bottom — no native module, works on the current build after a Metro `--clear` reload.
+  TODO (later, with a rebuild): re-add expo-linear-gradient + restore the real
+  LinearGradient in ContentCardReader for 100% fidelity.
 
 ### Profile header card (Settings root) — additive, clean win
 - Added `components/settings/ProfileHeaderCard.tsx` to the top of the settings
@@ -149,13 +155,22 @@ Full rationale also in memory: `project_home_design_vs_spec.md`.
     the existing Tools library + tools.ts FAMILY_COLORS already has the 3 family chips.
     NOT YET BUILT.
 
-## QUEUED for Vedant (needs product taste — NOT touched)
-<!-- All five queued decisions are now resolved above. The onboarding flow remains
-     the one large item not yet discussed — see below. -->
+6. **Onboarding → INCREMENTAL RESKIN, screen-group by group.** The app's ~22-screen
+   onboarding (OB01–OB23) is fully working (Supabase, account creation OB05, real
+   persistence, device-verified). The design's 909-line OnboardingFlow is the SAME flow
+   content-wise (collects ~the same 23 steps) but with the design team's visual
+   treatment (static mockup, no persistence). Approach: reskin in SMALL BATCHES
+   (suggest: narrative/buffer screens → question screens → account+cost+quit-date+
+   commitment+confirmation), KEEPING all logic, and VERIFY EACH GROUP ON DEVICE before
+   moving on (high-stakes — first thing every user sees). NOT YET BUILT.
 
-- **Onboarding flow** — design's 909-line OnboardingFlow vs the app's existing working
-  onboarding (Step 7). High-stakes reskin; NOT yet discussed with Vedant. Raise this
-  before building the rest.
+## All product decisions now resolved (none of 1–6 built yet)
+
+Build order (CONFIRMED with Vedant 2026-06-20 — onboarding explicitly LAST):
+  content reader (DONE) → Progress detail → Health Milestones accordion → new games +
+  simple tool families → Profile/Settings rework → Insights hub → **Onboarding (LAST)**.
+Onboarding is held until everything else is done, per Vedant. Confirm which item to
+start before each build.
 
 - **Insights screen — BIGGEST design↔spec conflict. LEFT UNTOUCHED.** The design's `InsightsScreen` (449 lines, the most-reworked file in the design pass) reimagines the Insights tab as a STATS-AND-EXPLORE HUB: an overview stat grid (total cravings / beaten / success rate / SOS used), a "Cravings This Week" bar chart, and an "Explore" menu (Cravings / Top tools / Journal / Triggers / People / Places / Streaks) — and it even embeds the games (Memory / PhysiologicalSigh / FingerPulse) as sub-views. The app's `insights.tsx` is INS-1 from the Insights spec: a RANKED VERTICAL FEED of generated insight cards derived from the user's own data (expand-in-place, ranking re-runs on focus, "the self-awareness feed / entry point from all navigation"). These are two different products for the same tab. Adopting the design means re-architecting Insights from a generated-feed into an analytics explorer + tool launcher — a major product decision that also absorbs the games + new-tool-families questions. NEEDS YOUR DIRECTION before any work. (The design's stat numbers + bar chart are also all mock; real versions would need new aggregate queries. The bar chart uses recharts → would be react-native-svg.)
 

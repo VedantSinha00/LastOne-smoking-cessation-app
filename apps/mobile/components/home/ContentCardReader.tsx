@@ -1,14 +1,13 @@
 import React from "react";
 import { View, Text, ScrollView, Pressable, Modal } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { X } from "lucide-react-native";
 
 /**
  * Full-screen content reader — ported from the Lovable `TodayFullCard`
  * (lovable-design-reference/src/components/lastone/TodayCard.tsx). Opens when a
- * carousel card is tapped: a green surface-accent gradient sheet with a drag
- * handle, the card's pill + title, and the (scrollable) body, plus a close button.
+ * carousel card is tapped: a green surface-accent sheet with a drag handle, the
+ * card's pill + title, and the (scrollable) body, plus a close button.
  *
  * Content note: our content_cards only carry the short `body_copy` we already
  * show on the card face — there is no separate long-form article field. So the
@@ -16,8 +15,12 @@ import { X } from "lucide-react-native";
  * 2026-06-20). The design's "Go deeper with AI" button is omitted while AI Chat
  * is deferred. Read-time is dropped (no field; the design's was mock).
  *
- * Gradient stops come from the design's --gradient-surface-accent
- * (surface-accent.from #67AC5F → surface-accent.to #268255).
+ * Gradient: the design uses a CSS linear-gradient (--gradient-surface-accent,
+ * #67AC5F → #268255). To avoid the native expo-linear-gradient module (which the
+ * current dev build wasn't compiled with), this approximates it with a solid base
+ * (the lighter "from" green) plus a darkening overlay anchored to the bottom —
+ * close enough for now; swap to a true LinearGradient at the next dev-build
+ * rebuild (see UI_PASS_DECISION_LOG). Stops: from #67AC5F, to #268255.
  */
 interface ContentCardReaderProps {
   visible: boolean;
@@ -28,6 +31,8 @@ interface ContentCardReaderProps {
 }
 
 const FG = "#F9FDF6"; // surface-accent-foreground
+const FROM = "#67AC5F"; // gradient start (lighter)
+const TO = "#268255"; // gradient end (darker)
 
 export const ContentCardReader: React.FC<ContentCardReaderProps> = ({
   visible,
@@ -43,13 +48,29 @@ export const ContentCardReader: React.FC<ContentCardReaderProps> = ({
       {/* dim backdrop above the sheet */}
       <Pressable className="flex-1 bg-foreground/40" onPress={onClose} />
 
-      <View className="absolute inset-x-0 bottom-0" style={{ top: 32 }}>
-        <LinearGradient
-          colors={["#67AC5F", "#268255"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 0.4, y: 1 }}
-          style={{ flex: 1, borderTopLeftRadius: 32, borderTopRightRadius: 32, overflow: "hidden" }}
-        >
+      <View
+        className="absolute inset-x-0 bottom-0"
+        style={{
+          top: 32,
+          backgroundColor: FROM,
+          borderTopLeftRadius: 32,
+          borderTopRightRadius: 32,
+          overflow: "hidden",
+        }}
+      >
+        {/* Faux vertical gradient: a darker "to" green fading in over the bottom
+            two-thirds, approximating the design's surface-accent gradient without
+            the native LinearGradient module. */}
+        <View
+          pointerEvents="none"
+          style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: "70%", backgroundColor: TO, opacity: 0.55 }}
+        />
+        <View
+          pointerEvents="none"
+          style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: "35%", backgroundColor: TO, opacity: 0.5 }}
+        />
+
+        <View style={{ flex: 1 }}>
           {/* drag handle */}
           <View className="items-center pt-3">
             <View style={{ height: 5, width: 48, borderRadius: 999, backgroundColor: "rgba(255,255,255,0.3)" }} />
@@ -94,7 +115,7 @@ export const ContentCardReader: React.FC<ContentCardReaderProps> = ({
               {body}
             </Text>
           </ScrollView>
-        </LinearGradient>
+        </View>
       </View>
     </Modal>
   );
