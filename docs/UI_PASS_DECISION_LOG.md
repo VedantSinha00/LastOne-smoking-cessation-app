@@ -10,6 +10,36 @@ This log exists so Vedant can review every autonomous decision on return.
 
 ---
 
+## TL;DR for your return (read this first)
+
+**Commits on `UI-Implementations` since you left:** `cdb97ae` (Insights preview),
+`5deb4ed` (profile header card). Earlier (with you): `4ce63a3`, `3f3642e`.
+Everything typechecks; nothing pushed (you handle PRs/merges).
+
+**What I did autonomously (all additive, no logic touched, no spec conflicts):**
+1. Home Insights preview → design `RecentInsights` layout (icon + headline + body).
+2. Settings root → added a profile header card (avatar + name + stage + 3 stats).
+
+**Key finding:** your app is consistently MORE spec-complete than the design
+mockups. The design mostly differs by (a) introducing V2/social features you've
+excluded, or (b) proposing a different information architecture. Those are product
+decisions, so I queued them instead of porting. The only safe autonomous wins were
+the two additive visual pieces above.
+
+**What needs YOUR decision (queued below, nothing built):**
+- **Insights screen** — design reimagines it as a stats/explore hub; your spec says
+  it's a generated-insight feed. Biggest conflict. Needs direction.
+- **Progress detail** — same structure as design already, but design wants a
+  different nav model (hero cards → drill-down vs your inline switcher). Recommend
+  restyle-only; left for you because it touches Home deep-links.
+- **Health Milestones (Home)** — design puts the full staged accordion on Home; spec
+  says Home shows only the next-milestone countdown (full timeline = STK-8).
+- **Profile IA** — design's two-level category nav + Community/social sections.
+- **Games reconciliation, new tool families (Reframing/AI Chat/Content Cards),
+  onboarding flow** — all product calls, untouched.
+
+---
+
 ## Already reviewed WITH Vedant (committed)
 
 **Commit `4ce63a3` — Batch A (Home chrome + cards):**
@@ -51,7 +81,9 @@ Full rationale also in memory: `project_home_design_vs_spec.md`.
 
 ## QUEUED for Vedant (needs product taste — NOT touched)
 
-- **Games reconciliation** — design ships FingerPulsePress / Memory / PhysiologicalSigh; app already has Echo Tap + Memory 1P/2P. Are the new ones additions or replacements? Needs decision.
+- **Insights screen — BIGGEST design↔spec conflict. LEFT UNTOUCHED.** The design's `InsightsScreen` (449 lines, the most-reworked file in the design pass) reimagines the Insights tab as a STATS-AND-EXPLORE HUB: an overview stat grid (total cravings / beaten / success rate / SOS used), a "Cravings This Week" bar chart, and an "Explore" menu (Cravings / Top tools / Journal / Triggers / People / Places / Streaks) — and it even embeds the games (Memory / PhysiologicalSigh / FingerPulse) as sub-views. The app's `insights.tsx` is INS-1 from the Insights spec: a RANKED VERTICAL FEED of generated insight cards derived from the user's own data (expand-in-place, ranking re-runs on focus, "the self-awareness feed / entry point from all navigation"). These are two different products for the same tab. Adopting the design means re-architecting Insights from a generated-feed into an analytics explorer + tool launcher — a major product decision that also absorbs the games + new-tool-families questions. NEEDS YOUR DIRECTION before any work. (The design's stat numbers + bar chart are also all mock; real versions would need new aggregate queries. The bar chart uses recharts → would be react-native-svg.)
+
+- **Games reconciliation** — design ships FingerPulsePress / Memory / PhysiologicalSigh; app already has Echo Tap + Memory 1P/2P. Are the new ones additions or replacements? Needs decision. (Also note: in the design these games are launched from INSIDE the Insights hub — see the Insights conflict above.)
 - **New tool families** — design's `tools.ts` adds Reframing (REF-01..04), AI Chat (AIC-01..03), Content Cards (CON-01..03). Are these functional screens or visual-only catalog entries? AI Chat especially implies a backend.
 - **Onboarding flow** — design's 909-line OnboardingFlow vs the app's existing working onboarding (Step 7). High-stakes reskin; left for review.
 
