@@ -66,8 +66,10 @@ export const ProgressDashboard: React.FC<{ stage: Stage }> = ({ stage }) => {
   const d = useDashboard()
   const isPreQuit = stage === 0
 
-  const openCounter = (counter: CounterKey) =>
-    router.push({ pathname: '/progress', params: { counter } })
+  // Home progress cards open the Progress "WHAT YOU'VE GAINED" main view (the 3
+  // hero cards), not a specific counter's drill-down — the overview is the natural
+  // landing, and the user taps into a counter from there.
+  const openProgress = () => router.push('/progress')
 
   // ── Onboarding incomplete (§8): no cigarettes/day or price → "—" prompt ──────
   if (!d.isLoading && !d.hasOnboardingInputs) {
@@ -115,14 +117,14 @@ export const ProgressDashboard: React.FC<{ stage: Stage }> = ({ stage }) => {
         value={d.moneyLabel}
         label="saved"
         subline={d.moneyEquivalentLine}
-        onPress={() => openCounter('money')}
+        onPress={openProgress}
       />
       <GridCard
         Icon={CigaretteOff}
         value={d.cigarettesLabel}
         label="not smoked"
         subline={cigsPerDay ? `${cigsPerDay} per day average` : undefined}
-        onPress={() => openCounter('cigarettes')}
+        onPress={openProgress}
       />
     </View>
   )
