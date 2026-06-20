@@ -1,53 +1,51 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { View, Text, Pressable, Animated, Easing } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { X } from 'lucide-react-native'
+import { X, ArrowLeft, Check } from 'lucide-react-native'
 import type { Database } from '../../types/database'
 
 type CopingTool = Database['public']['Tables']['coping_tools']['Row']
 
 /**
- * Physiological Sigh — bespoke runner for BRE-03 (data_model_id physiological_sigh),
- * ported from the Lovable `PhysiologicalSighGame`. A double-inhale + long exhale
- * cycle (the fastest physiological way to down-regulate arousal), guided by an
- * animated orange circle: inhale (grow) → sniff (small extra grow) → exhale
- * (shrink, long) → stillness → repeat ×3.
+ * Physiological Sigh — full flow ported 1:1 from the Lovable `PhysiologicalSighGame`:
+ *   intro ("for intense moments" + "Just do what the screen does" + Begin)
+ *   → active phases ×3 rounds: inhale → sniff → exhale → stillness, each with a
+ *     label + subtext, an animated halo/circle that scales per phase, and round
+ *     progress dots
+ *   → complete ("That craving just lost 90 seconds" → "How's the craving now? →").
  *
- * Replaces the generic BreathingTool for this tool only (routed in ToolRunner).
- * Same RunnerProps contract (onDone hands off to the SOS/library check-in).
+ * The complete screen is our post-tool check-in: its button reports onComplete(true)
+ * (a finished sigh = helped). Falls back to onDone() when no onComplete (e.g. SOS).
  */
 interface Props {
   tool: CopingTool
   onDone: () => void
+  onComplete?: (helped: boolean) => void
 }
 
 type Phase = 'intro' | 'inhale' | 'sniff' | 'exhale' | 'stillness' | 'complete'
 
-const TIMINGS: Record<Exclude<Phase, 'intro' | 'complete'>, number> = {
-  inhale: 2600,
-  sniff: 900,
-  exhale: 9000,
-  stillness: 2000,
-}
+const T = { inhale: 2600, sniff: 900, exhale: 9000, stillness: 2000 }
 const TOTAL_ROUNDS = 3
 
 const ORANGE = '#F15025'
 const ORANGE_HALO = '#FCE0D7'
+const ORANGE_SOFT = '#F8B8A3'
+const DARK = '#0D0D0D'
+const MUTED = '#888888'
 
-const PHASE_LABEL: Record<Phase, string> = {
-  intro: '',
-  inhale: 'Breathe in…',
-  sniff: 'Sip a little more air',
-  exhale: 'Slowly let it all out',
-  stillness: 'Rest',
-  complete: '',
+const PHASE_META: Record<string, { label: string; sub: string; scale: number; dur: number }> = {
+  inhale: { label: 'Inhale', sub: 'Full breath in through your nose', scale: 0.78, dur: T.inhale },
+  sniff: { label: 'One more sip', sub: 'A short extra sniff — top it off', scale: 1, dur: T.sniff },
+  exhale: { label: 'Let it go', sub: 'Long, slow exhale through your mouth', scale: 0.32, dur: T.exhale },
+  stillness: { label: '', sub: '', scale: 0.18, dur: 600 },
 }
 
-export const PhysiologicalSighTool: React.FC<Props> = ({ tool, onDone }) => {
+export const PhysiologicalSighTool: React.FC<Props> = ({ tool, onDone, onComplete }) => {
   const insets = useSafeAreaInsets()
   const [phase, setPhase] = useState<Phase>('intro')
   const [round, setRound] = useState(1)
-  const scale = useRef(new Animated.Value(0.5)).current
+  const scale = useRef(new Animated.Value(0.35)).current
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const clearTimer = () => {
@@ -56,111 +54,155 @@ export const PhysiologicalSighTool: React.FC<Props> = ({ tool, onDone }) => {
   }
   useEffect(() => () => clearTimer(), [])
 
-  // Drive both the circle animation and the phase progression.
   useEffect(() => {
     clearTimer()
-    const animateTo = (toValue: number, duration: number) =>
+    const meta = PHASE_META[phase]
+    if (meta) {
       Animated.timing(scale, {
-        toValue,
-        duration,
-        easing: Easing.inOut(Easing.ease),
+        toValue: meta.scale,
+        duration: meta.dur,
+        easing: phase === 'exhale' ? Easing.bezier(0.4, 0, 0.6, 1) : Easing.inOut(Easing.ease),
         useNativeDriver: true,
       }).start()
-
-    if (phase === 'inhale') {
-      animateTo(0.95, TIMINGS.inhale)
-      timer.current = setTimeout(() => setPhase('sniff'), TIMINGS.inhale)
-    } else if (phase === 'sniff') {
-      animateTo(1.1, TIMINGS.sniff)
-      timer.current = setTimeout(() => setPhase('exhale'), TIMINGS.sniff)
-    } else if (phase === 'exhale') {
-      animateTo(0.5, TIMINGS.exhale)
-      timer.current = setTimeout(() => setPhase('stillness'), TIMINGS.exhale)
-    } else if (phase === 'stillness') {
+    }
+    if (phase === 'inhale') timer.current = setTimeout(() => setPhase('sniff'), T.inhale)
+    else if (phase === 'sniff') timer.current = setTimeout(() => setPhase('exhale'), T.sniff)
+    else if (phase === 'exhale') timer.current = setTimeout(() => setPhase('stillness'), T.exhale)
+    else if (phase === 'stillness')
       timer.current = setTimeout(() => {
         if (round < TOTAL_ROUNDS) {
           setRound((r) => r + 1)
           setPhase('inhale')
-        } else {
-          setPhase('complete')
-        }
-      }, TIMINGS.stillness)
-    }
+        } else setPhase('complete')
+      }, T.stillness)
     return clearTimer
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, round])
 
-  const begin = () => {
-    setRound(1)
-    setPhase('inhale')
-  }
+  const finish = () => (onComplete ? onComplete(true) : onDone())
+
+  const TopBar = ({ title }: { title: string }) => (
+    <View className="h-14 flex-row items-center justify-between px-5">
+      <Pressable onPress={onDone} accessibilityLabel="Back" hitSlop={12} style={{ width: 24 }}>
+        <ArrowLeft size={22} color={DARK} strokeWidth={2} />
+      </Pressable>
+      <Text className="font-display" style={{ fontSize: 16, color: DARK }}>
+        {title}
+      </Text>
+      <Pressable onPress={onDone} accessibilityLabel="Close" hitSlop={12} style={{ width: 24, alignItems: 'flex-end' }}>
+        <X size={18} color={MUTED} strokeWidth={2} />
+      </Pressable>
+    </View>
+  )
+
+  const isStillness = phase === 'stillness'
 
   return (
     <View className="flex-1 bg-secondary" style={{ paddingTop: insets.top }}>
-      {/* top bar */}
-      <View className="h-14 flex-row items-center justify-between px-5">
-        <Text className="text-foreground font-display text-base">{tool.name}</Text>
-        <Pressable onPress={onDone} accessibilityLabel="Close" hitSlop={12}>
-          <X size={20} color="#76706C" strokeWidth={2} />
-        </Pressable>
-      </View>
+      <TopBar
+        title={
+          phase === 'intro' || phase === 'complete'
+            ? phase === 'intro'
+              ? 'Physiological Sigh'
+              : ''
+            : isStillness
+              ? 'Stillness'
+              : `Round ${round} of ${TOTAL_ROUNDS}`
+        }
+      />
 
-      {phase === 'intro' ? (
-        <View className="flex-1 items-center px-8">
-          <View className="rounded-full px-4 py-2 mt-6" style={{ backgroundColor: ORANGE_HALO }}>
-            <Text className="font-sans-bold text-[11px]" style={{ color: ORANGE, letterSpacing: 1.2 }}>
+      {phase === 'intro' && (
+        <View className="items-center px-6" style={{ paddingTop: 12 }}>
+          <View className="rounded-full mt-5" style={{ backgroundColor: ORANGE_HALO, paddingVertical: 8, paddingHorizontal: 16 }}>
+            <Text className="font-sans-bold" style={{ color: ORANGE, fontSize: 11, letterSpacing: 1.2 }}>
               FOR INTENSE MOMENTS
             </Text>
           </View>
-          <Text
-            className="text-foreground font-display text-center mt-7"
-            style={{ fontSize: 26, lineHeight: 32, maxWidth: 280 }}
-          >
+          <Text className="font-display text-center" style={{ fontSize: 26, lineHeight: 32, color: DARK, marginTop: 28, maxWidth: 280 }}>
             Just do what the screen does. Nothing else.
           </Text>
-          <View
-            className="mt-12"
-            style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: ORANGE_HALO, borderWidth: 1.5, borderColor: ORANGE }}
-          />
+          <View style={{ marginTop: 48, width: 80, height: 80, borderRadius: 40, backgroundColor: ORANGE_HALO, borderWidth: 1.5, borderColor: ORANGE }} />
           <Pressable
-            onPress={begin}
-            className="rounded-full mt-auto mb-12 px-8 py-4 active:opacity-90"
-            style={{ backgroundColor: ORANGE }}
-          >
-            <Text className="text-white font-sans-bold text-base">Begin</Text>
-          </Pressable>
-        </View>
-      ) : phase === 'complete' ? (
-        <View className="flex-1 items-center justify-center px-8">
-          <Text className="text-foreground font-display text-2xl text-center">Nicely done.</Text>
-          <Text className="text-muted-foreground text-sm text-center mt-2 leading-relaxed">
-            That double-breath resets your nervous system faster than almost anything else.
-          </Text>
-          <Pressable
-            onPress={onDone}
-            className="rounded-full mt-10 px-8 py-4 active:opacity-90"
-            style={{ backgroundColor: ORANGE }}
-          >
-            <Text className="text-white font-sans-bold text-base">How are you now?</Text>
-          </Pressable>
-        </View>
-      ) : (
-        <View className="flex-1 items-center justify-center">
-          <Animated.View
-            style={{
-              width: 220,
-              height: 220,
-              borderRadius: 110,
-              backgroundColor: ORANGE_HALO,
-              borderWidth: 2,
-              borderColor: ORANGE,
-              transform: [{ scale }],
+            onPress={() => {
+              setRound(1)
+              setPhase('inhale')
             }}
-          />
-          <Text className="text-foreground font-display text-xl mt-12">{PHASE_LABEL[phase]}</Text>
-          <Text className="text-muted-foreground text-sm mt-2">
-            Round {round} of {TOTAL_ROUNDS}
+            className="rounded-full items-center"
+            style={{ marginTop: 56, width: '100%', paddingVertical: 18, backgroundColor: ORANGE }}
+          >
+            <Text className="font-sans-bold text-white" style={{ fontSize: 16 }}>
+              Begin
+            </Text>
+          </Pressable>
+        </View>
+      )}
+
+      {phase === 'complete' && (
+        <View className="items-center px-6" style={{ paddingTop: 60 }}>
+          <View className="items-center justify-center" style={{ width: 88, height: 88, borderRadius: 44, backgroundColor: '#5BAA2E' }}>
+            <Check size={44} color="#FFFFFF" strokeWidth={3} />
+          </View>
+          <Text className="font-display text-center" style={{ fontSize: 24, lineHeight: 31, color: DARK, marginTop: 28, maxWidth: 280 }}>
+            That craving just lost 90 seconds.
           </Text>
+          <Text style={{ marginTop: 10, fontSize: 14, color: MUTED }}>It&apos;s already weaker.</Text>
+          <Pressable
+            onPress={finish}
+            className="rounded-full items-center"
+            style={{ marginTop: 48, width: '100%', paddingVertical: 18, backgroundColor: '#143109' }}
+          >
+            <Text className="font-sans-bold text-white" style={{ fontSize: 16 }}>
+              How&apos;s the craving now? →
+            </Text>
+          </Pressable>
+        </View>
+      )}
+
+      {phase !== 'intro' && phase !== 'complete' && (
+        <View className="flex-1 px-6 items-center">
+          {/* circle area */}
+          <View className="flex-1 w-full items-center justify-center" style={{ minHeight: 300 }}>
+            <View
+              className="items-center justify-center"
+              style={{ width: 260, height: 260, borderRadius: 130, backgroundColor: isStillness ? 'transparent' : ORANGE_HALO }}
+            >
+              <Animated.View
+                style={{
+                  width: 220,
+                  height: 220,
+                  borderRadius: 110,
+                  backgroundColor: isStillness || phase === 'exhale' ? ORANGE_SOFT : ORANGE,
+                  transform: [{ scale }],
+                }}
+              />
+            </View>
+          </View>
+
+          {!isStillness && (
+            <>
+              <Text className="font-display text-center" style={{ fontSize: 28, color: DARK }}>
+                {PHASE_META[phase]?.label}
+              </Text>
+              <Text className="text-center" style={{ marginTop: 8, fontSize: 14, color: MUTED }}>
+                {PHASE_META[phase]?.sub}
+              </Text>
+            </>
+          )}
+
+          {/* round dots */}
+          <View className="flex-row" style={{ gap: 8, marginTop: 28, marginBottom: 24 }}>
+            {Array.from({ length: TOTAL_ROUNDS }).map((_, i) => (
+              <View
+                key={i}
+                style={{
+                  width: i + 1 === round ? 24 : 8,
+                  height: 6,
+                  borderRadius: 999,
+                  backgroundColor: i + 1 === round ? ORANGE : i + 1 < round ? ORANGE_SOFT : '#D9D6D2',
+                }}
+              />
+            ))}
+          </View>
         </View>
       )}
     </View>

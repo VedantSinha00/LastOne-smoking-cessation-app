@@ -65,6 +65,11 @@ interface RunnerProps {
   onDone: () => void
   /** Visual accent — defaults to calm (Tools library); SOS passes "craving". */
   accent?: RunnerAccent
+  /** Bespoke tools (Finger Pulse / Physiological Sigh) end with the design's own
+   *  "how does it feel?" check-in. When provided, that screen reports the result
+   *  here (helped=true → +score) instead of deferring to the caller's generic
+   *  check-in. Falls back to onDone() when absent (e.g. SOS). */
+  onComplete?: (helped: boolean) => void
 }
 
 // ── Breathing pacer ───────────────────────────────────────────────────────────
@@ -295,13 +300,16 @@ export const GameStub: React.FC<RunnerProps> = ({ tool, onDone, accent = 'calm' 
 export const ToolRunner: React.FC<RunnerProps & { repCount?: number }> = ({
   tool,
   onDone,
+  onComplete,
   repCount,
   accent = 'calm',
 }) => {
   if (tool.data_model_id === 'physiological_sigh')
-    return <PhysiologicalSighTool tool={tool} onDone={onDone} />
-  if (tool.data_model_id === 'finger_pulse') return <FingerPulseTool tool={tool} onDone={onDone} />
-  if (tool.category === 'cognitive_reframe') return <ReframeTool tool={tool} onDone={onDone} />
+    return <PhysiologicalSighTool tool={tool} onDone={onDone} onComplete={onComplete} />
+  if (tool.data_model_id === 'finger_pulse')
+    return <FingerPulseTool tool={tool} onDone={onDone} onComplete={onComplete} />
+  if (tool.category === 'cognitive_reframe')
+    return <ReframeTool tool={tool} onDone={onDone} onComplete={onComplete} />
   if (tool.family === 'breathing') return <BreathingTool tool={tool} onDone={onDone} accent={accent} />
   if (tool.family === 'physical')
     return <PhysicalTool tool={tool} onDone={onDone} repCount={repCount} accent={accent} />

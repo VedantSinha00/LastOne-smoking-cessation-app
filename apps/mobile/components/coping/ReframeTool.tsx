@@ -19,6 +19,9 @@ type CopingTool = Database['public']['Tables']['coping_tools']['Row']
 interface Props {
   tool: CopingTool
   onDone: () => void
+  /** Completing the reflection reports here (helped) so it feeds tool_score and
+   *  skips the caller's generic check-in. Falls back to onDone() when absent. */
+  onComplete?: (helped: boolean) => void
 }
 
 interface ReframeContent {
@@ -73,7 +76,8 @@ const CONTENT: Record<string, ReframeContent> = {
 
 const PRIMARY = '#7FC200'
 
-export const ReframeTool: React.FC<Props> = ({ tool, onDone }) => {
+export const ReframeTool: React.FC<Props> = ({ tool, onDone, onComplete }) => {
+  const finish = () => (onComplete ? onComplete(true) : onDone())
   const insets = useSafeAreaInsets()
   const content = CONTENT[tool.data_model_id]
   const [started, setStarted] = useState(false)
@@ -160,7 +164,7 @@ export const ReframeTool: React.FC<Props> = ({ tool, onDone }) => {
 
         <View className="mt-auto pt-10">
           <Pressable
-            onPress={() => (isLastStep ? onDone() : setStepIdx((i) => i + 1))}
+            onPress={() => (isLastStep ? finish() : setStepIdx((i) => i + 1))}
             className="rounded-full py-4 items-center active:opacity-90"
             style={{ backgroundColor: PRIMARY }}
           >

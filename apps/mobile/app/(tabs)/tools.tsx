@@ -123,9 +123,18 @@ export default function ToolsLibrary() {
         </View>
       </View>
 
-      {/* Tool runner overlay — library session (no escalation effects). */}
+      {/* Tool runner overlay — library session (no escalation effects).
+          Bespoke tools (Finger Pulse / Physiological Sigh / Reframing) carry the
+          design's own end check-in → they report via onComplete(helped) straight to
+          score(), skipping the generic "How was that?" screen below. */}
       <Modal visible={!!active} animationType="slide" onRequestClose={() => setActive(null)}>
-        {active && !checkIn && <ToolRunner tool={active} onDone={() => setCheckIn(true)} />}
+        {active && !checkIn && (
+          <ToolRunner
+            tool={active}
+            onDone={() => setCheckIn(true)}
+            onComplete={(helped) => score(helped ? +1 : -1)}
+          />
+        )}
         {active && checkIn && (
           <View className="flex-1 bg-background px-6 py-8 justify-center">
             <Text className="text-foreground font-display text-2xl mb-1">How was that?</Text>
