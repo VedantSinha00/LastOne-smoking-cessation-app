@@ -152,19 +152,22 @@ const StageCard: React.FC<{
               </Text>
             </View>
           )}
-          <View style={{ gap: 12 }}>
+          <View style={{ gap: 16 }}>
             {stage.milestones.map((m) => {
               const unlocked = hoursSinceQuit >= m.offsetHours
               return (
-                <View key={m.name} className="flex-row items-center" style={{ gap: 12 }}>
+                <View key={m.name} className="flex-row items-center" style={{ gap: 14 }}>
                   {unlocked ? (
-                    <View className="h-5 w-5 rounded-full bg-foreground items-center justify-center">
-                      <Check size={12} color="#FBFAF9" strokeWidth={3} />
+                    <View className="h-7 w-7 rounded-full bg-foreground items-center justify-center">
+                      <Check size={15} color="#FBFAF9" strokeWidth={3} />
                     </View>
                   ) : (
-                    <View className="h-5 w-5 rounded-full border border-border bg-background" />
+                    <View className="h-7 w-7 rounded-full border border-border bg-background" />
                   )}
-                  <Text className={`text-sm ${unlocked ? 'text-foreground' : 'text-muted-foreground'}`}>
+                  <Text
+                    className={unlocked ? 'text-foreground' : 'text-muted-foreground'}
+                    style={{ fontSize: 16 }}
+                  >
                     {m.name}
                   </Text>
                 </View>
