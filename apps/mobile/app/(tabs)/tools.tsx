@@ -9,6 +9,7 @@ import { queryKeys } from "../../lib/queryKeys";
 import { ToolRunner } from "../../components/coping/ToolRunner";
 import { ToolFamilyGrid, FAMILIES, type FamilyKey } from "../../components/coping/ToolFamilyGrid";
 import { ToolListCard } from "../../components/coping/ToolListCard";
+import { ToolIntroScreen } from "../../components/coping/ToolIntroScreen";
 import { updateToolScore } from "../../lib/sos";
 import { Button } from "../../components/ui/button";
 import type { Database } from "../../types/database";
@@ -28,23 +29,54 @@ export default function ToolsLibrary() {
   const [active, setActive] = useState<CopingTool | null>(null);
   const [checkIn, setCheckIn] = useState(false);
   const [family, setFamily] = useState<FamilyKey | null>(null);
+  // The tool whose intro screen is showing (before the exercise runs).
+  const [intro, setIntro] = useState<CopingTool | null>(null);
 
   const onSelectFamily = (key: FamilyKey) => {
     setFamily(key); // coming-soon families show their panel; mini_games lists games
   };
 
-  // mini_games tools open their dedicated game screen (not the ToolRunner modal),
-  // keyed by data_model_id. Others run through startTool.
+  // mini_games tools open their dedicated game screen; others run via ToolRunner.
   const GAME_ROUTES: Record<string, string> = {
     echo_tap: "/games/echo-tap",
     memory_1p: "/games/memory-1p",
     memory_2p: "/games/memory-2p",
     find_match_2p: "/games/memory-2p",
   };
-  const openTool = (t: CopingTool) => {
-    const route = GAME_ROUTES[t.data_model_id];
-    if (route) router.push(route as never);
-    else startTool(t);
+
+  // Per-tool total_uses for the intro's "Used by you" line.
+  const { data: toolUses } = useQuery({
+    queryKey: ["tool_uses", user?.id ?? ""],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("user_tool_scores")
+        .select("tool_id, total_uses")
+        .eq("user_id", user!.id)
+        .throwOnError();
+      const map: Record<string, number> = {};
+      (data ?? []).forEach((r) => {
+        map[r.tool_id] = r.total_uses;
+      });
+      return map;
+    },
+    enabled: !!user,
+  });
+
+  // Tapping a tool opens its INTRO screen first (design adds this step).
+  const openTool = (t: CopingTool) => setIntro(t);
+
+  // The intro's "Try it now" runs the actual exercise: route to the game, or open
+  // the ToolRunner modal.
+  const runIntroTool = () => {
+    if (!intro) return;
+    const route = GAME_ROUTES[intro.data_model_id];
+    if (route) {
+      setIntro(null);
+      router.push(route as never);
+    } else {
+      startTool(intro);
+      setIntro(null);
+    }
   };
 
   const { data: tools, isLoading } = useQuery({
@@ -149,6 +181,27 @@ export default function ToolsLibrary() {
           )}
         </>
       )}
+
+      {/* Tool intro / detail screen — the design's extra step before the exercise.
+          Opens on tap; "Try it now" runs the tool (game route or ToolRunner). */}
+      <Modal visible={!!intro} animationType="slide" onRequestClose={() => setIntro(null)}>
+        {intro &&
+          (() => {
+            const fam =
+              FAMILIES.find((f) => (f.match ? f.match(intro) : false)) ?? null;
+            return (
+              <ToolIntroScreen
+                tool={intro}
+                bg={fam?.bg ?? "#EEEEEE"}
+                fg={fam?.fg ?? "#555555"}
+                familyLabel={fam?.label ?? intro.family}
+                totalUses={toolUses?.[intro.tool_id] ?? 0}
+                onTryIt={runIntroTool}
+                onBack={() => setIntro(null)}
+              />
+            );
+          })()}
+      </Modal>
 
       {/* Tool runner overlay — library session (no escalation effects).
           Bespoke tools (Finger Pulse / Physiological Sigh / Reframing) carry the
