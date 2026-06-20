@@ -169,7 +169,10 @@ export default function Home() {
       <HomePersonalGoalCard />
 
       {/* 7 — Insights Preview (spec position: before Health Milestones) */}
-      <InsightsPreview />
+      <View>
+        <SectionLabel>Recent Insights</SectionLabel>
+        <InsightsPreview />
+      </View>
 
       {/* 7b — One-time Stage-2 support person setup prompt (GU §B2, low priority) */}
       <SupportSetupPromptCard />
