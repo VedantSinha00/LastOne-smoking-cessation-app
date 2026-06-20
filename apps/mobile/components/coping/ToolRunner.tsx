@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { View, Text, Pressable } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { X } from 'lucide-react-native'
 import type { Database } from '../../types/database'
 import { PhysiologicalSighTool } from './PhysiologicalSighTool'
@@ -29,13 +30,16 @@ const ACCENT: Record<RunnerAccent, AccentCfg> = {
 }
 
 /** Shared runner chrome (Lovable SOS-2): top ✕ bar, orange badge, primary button. */
-const RunnerTopBar: React.FC<{ onClose: () => void }> = ({ onClose }) => (
-  <View className="h-14 px-5 flex-row items-center justify-end">
-    <Pressable onPress={onClose} hitSlop={12} className="active:opacity-60">
-      <X size={22} color="#76706C" strokeWidth={2} />
-    </Pressable>
-  </View>
-)
+const RunnerTopBar: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+  const insets = useSafeAreaInsets()
+  return (
+    <View className="h-14 px-5 flex-row items-center justify-end" style={{ marginTop: insets.top }}>
+      <Pressable onPress={onClose} hitSlop={12} className="active:opacity-60">
+        <X size={22} color="#76706C" strokeWidth={2} />
+      </Pressable>
+    </View>
+  )
+}
 
 const RunnerBadge: React.FC<{ label: string; accent: AccentCfg }> = ({ label, accent }) => (
   <View className="rounded-full px-4 py-1.5 mb-8" style={{ backgroundColor: accent.tint }}>

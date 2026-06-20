@@ -110,7 +110,7 @@ export const ReframeTool: React.FC<Props> = ({ tool, onDone, onComplete }) => {
 
   if (!started) {
     return (
-      <View className="flex-1 bg-secondary">
+      <View className="flex-1 bg-secondary" style={{ paddingTop: insets.top }}>
         {Header}
         <View className="flex-1 items-center px-8">
           <View className="rounded-full px-4 py-2 mt-6 bg-primary/15">
