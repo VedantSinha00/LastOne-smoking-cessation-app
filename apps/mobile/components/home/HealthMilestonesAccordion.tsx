@@ -139,7 +139,9 @@ const StageCard: React.FC<{
       </Pressable>
 
       {open && (
-        <View className="px-6 pb-6 -mt-1">
+        // Left padding (28) centers the 28px checklist circles under the header's
+        // 44px circle (header left 20 + 22 = 42 ≈ 28 + 14), so all ticks line up.
+        <View className="pb-6 -mt-1" style={{ paddingLeft: 28, paddingRight: 24 }}>
           {inProgress && (
             <View className="flex-row items-center justify-between mb-4">
               <View className="rounded-full px-2.5 py-1" style={{ backgroundColor: '#0F0D0B' }}>
