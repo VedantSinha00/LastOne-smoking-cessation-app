@@ -1,6 +1,6 @@
 import React, { useRef, useState } from "react";
 import { View, Text, ScrollView, Pressable, Alert } from "react-native";
-import { useRouter } from "expo-router";
+import { exitToHome } from "../../lib/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../../hooks/useAuth";
 import { useStage } from "../../hooks/useStage";
@@ -36,7 +36,6 @@ const COUNT_OPTIONS = [
  * return_to_smoking also calls fullRelapse (closes the attempt). C3: support copy.
  */
 export default function LogC() {
-  const router = useRouter();
   const { user } = useAuth();
   const { isPreQuit } = useStage();
   const createLog = useCreateLog();
@@ -108,7 +107,7 @@ export default function LogC() {
           it is exactly the right move. Let&apos;s note what happened.
         </Text>
         <Button title="Continue" onPress={() => setScreen("C2")} />
-        <Pressable onPress={() => router.back()} className="mt-3 py-2 items-center">
+        <Pressable onPress={() => exitToHome()} className="mt-3 py-2 items-center">
           <Text className="text-muted-foreground text-sm">Not now</Text>
         </Pressable>
       </View>
@@ -184,12 +183,12 @@ export default function LogC() {
     const handleRestart = async () => {
       if (user) await restartAttempt(user.id);
       invalidateStreak();
-      router.back();
+      exitToHome();
     };
     const handleBreak = async () => {
       if (user) await pauseStreak(user.id);
       invalidateStreak();
-      router.back();
+      exitToHome();
     };
     return (
       <View className="flex-1 bg-background px-6 justify-center">
@@ -204,7 +203,7 @@ export default function LogC() {
         <View className="gap-3">
           <Button title="Restart — fresh quit date" onPress={handleRestart} />
           <Button title="Take a break" onPress={handleBreak} variant="secondary" />
-          <Pressable onPress={() => router.back()} className="py-3 items-center">
+          <Pressable onPress={() => exitToHome()} className="py-3 items-center">
             <Text className="text-muted-foreground text-sm">Continue as I am</Text>
           </Pressable>
         </View>
@@ -218,7 +217,7 @@ export default function LogC() {
     <View className="flex-1 bg-background px-6 justify-center">
       <Text className="text-foreground font-display text-2xl mb-3">{c3.title}</Text>
       <Text className="text-muted-foreground text-base leading-relaxed mb-10">{c3.body}</Text>
-      <Button title="Back to home" onPress={() => router.back()} />
+      <Button title="Back to home" onPress={() => exitToHome()} />
     </View>
   );
 }

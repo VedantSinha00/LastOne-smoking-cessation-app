@@ -1,6 +1,7 @@
 import React, { useRef, useState } from "react";
 import { View, Text, ScrollView, Pressable, Alert } from "react-native";
 import { useRouter } from "expo-router";
+import { exitToHome } from "../../lib/navigation";
 import { useCreateLog } from "../../hooks/useCreateLog";
 import { useUpdateLog } from "../../hooks/useUpdateLog";
 import { useDailyCheckIn } from "../../hooks/useDailyCheckIn";
@@ -66,7 +67,7 @@ export default function LogA() {
         },
       });
     }
-    router.back();
+    exitToHome();
   };
 
   const handleNeedHelp = async () => {
@@ -80,7 +81,7 @@ export default function LogA() {
   if (screen === "A1") {
     return (
       <ScrollView className="flex-1 bg-background px-6 py-8" contentContainerClassName="flex-grow">
-        <Header onClose={() => router.back()} title="How strong is it?" />
+        <Header onClose={() => exitToHome()} title="How strong is it?" />
         <Text className="text-muted-foreground text-sm mb-8 leading-relaxed">
           Just the intensity for now. You can add detail next, or stop here.
         </Text>

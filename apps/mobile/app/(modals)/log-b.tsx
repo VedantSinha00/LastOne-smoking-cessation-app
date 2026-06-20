@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { View, Text, ScrollView, Pressable } from "react-native";
-import { useRouter } from "expo-router";
+import { exitToHome } from "../../lib/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../../hooks/useAuth";
 import { useCreateLog } from "../../hooks/useCreateLog";
@@ -19,7 +19,6 @@ import { confirmSmokeFreeDay } from "../../lib/streak";
  * Exit after B1 = log committed + streak updated.
  */
 export default function LogB() {
-  const router = useRouter();
   const { user } = useAuth();
   const createLog = useCreateLog();
   const updateLog = useUpdateLog();
@@ -58,7 +57,7 @@ export default function LogB() {
         patch: { what_helped: whatHelped, other_text: otherText.trim() || null },
       });
     }
-    router.back();
+    exitToHome();
   };
 
   return (
@@ -86,7 +85,7 @@ export default function LogB() {
       />
 
       <Button title="Done" onPress={handleSave} loading={!committed} className="mt-6" />
-      <Pressable onPress={() => router.back()} className="mt-3 py-2 items-center">
+      <Pressable onPress={() => exitToHome()} className="mt-3 py-2 items-center">
         <Text className="text-muted-foreground text-sm">Skip</Text>
       </Pressable>
     </ScrollView>

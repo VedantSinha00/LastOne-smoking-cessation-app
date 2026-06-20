@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { View, Text, ScrollView, Pressable, TextInput, ToastAndroid, Platform, Alert } from "react-native";
-import { useRouter } from "expo-router";
+import { exitToHome } from "../../lib/navigation";
 import { useStage } from "../../hooks/useStage";
 import { useCreateLog } from "../../hooks/useCreateLog";
 import { useDailyCheckIn } from "../../hooks/useDailyCheckIn";
@@ -35,7 +35,6 @@ function placeholderFor(stage: number): string {
  * Cancel = no log written.
  */
 export default function LogD() {
-  const router = useRouter();
   const { stage } = useStage();
   const createLog = useCreateLog();
   const { markSatisfied } = useDailyCheckIn();
@@ -56,7 +55,7 @@ export default function LogD() {
       });
       await markSatisfied();
       if (Platform.OS === "android") ToastAndroid.show("Note saved", ToastAndroid.SHORT);
-      router.back();
+      exitToHome();
     } catch (e: any) {
       Alert.alert("Couldn't save", e.message);
     }
@@ -71,7 +70,7 @@ export default function LogD() {
     >
       <View className="flex-row justify-between items-center mb-6">
         <Text className="text-foreground font-display text-2xl">Quick note</Text>
-        <Pressable onPress={() => router.back()} className="px-3 py-1.5 bg-card border border-border rounded-lg">
+        <Pressable onPress={() => exitToHome()} className="px-3 py-1.5 bg-card border border-border rounded-lg">
           <Text className="text-muted-foreground text-sm">Cancel</Text>
         </Pressable>
       </View>
