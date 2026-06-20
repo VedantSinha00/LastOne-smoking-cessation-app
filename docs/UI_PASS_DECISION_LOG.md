@@ -118,6 +118,21 @@ Full rationale also in memory: `project_home_design_vs_spec.md`.
   CATEGORY (family stays a real one) + build their screens; SKIP "Content Cards" as a
   tool family (already a separate system — the content reader); AI Chat = coming soon.
 
+- **#3b Reframing tools — SCREENS DONE, SEED DRAFTED (needs your confirm).**
+  Built `components/coping/ReframeTool.tsx` — one guided reflective flow serving all
+  4 (Urge Surfing, Future Self Letter [has a text box], Cost Reframe, Name the
+  Trigger), keyed by data_model_id. Routed in ToolRunner by category
+  `cognitive_reframe`; added a "Reframing" section to the Tools screen (filters by
+  category, so it shows once rows exist). **BLOCKER:** the 4 tools need DB rows, but
+  `coping_tools.family` is an enum whose valid set I could NOT verify (table CREATE
+  not in VC; anon key can't read the table — RLS). Wrote
+  `supabase/migrations/DRAFT_seed_reframing_tools.sql` with a placeholder `family`
+  ('physical') + a big warning header. **ACTION FOR VEDANT:** confirm whether `family`
+  can take a new value (e.g. 'reflective') or which existing one to use, then rename
+  the file to a real timestamped migration and apply. Until applied, the Reframing
+  section is empty on device (no rows) — screens are ready and will light up the
+  moment the seed lands.
+
 ## DECISIONS MADE on return (2026-06-20 session 2)
 
 1. **Insights screen → ADOPT THE DESIGN HUB.** Vedant chose to re-architect Insights

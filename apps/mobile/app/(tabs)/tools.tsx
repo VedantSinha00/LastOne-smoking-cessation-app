@@ -18,6 +18,7 @@ type CopingTool = Database["public"]["Tables"]["coping_tools"]["Row"];
 const SECTIONS: { key: string; title: string; match: (t: CopingTool) => boolean }[] = [
   { key: "breathing", title: "Breathing Exercises", match: (t) => t.family === "breathing" },
   { key: "physical", title: "Physical Reset", match: (t) => t.family === "physical" },
+  { key: "reframing", title: "Reframing", match: (t) => t.category === "cognitive_reframe" },
 ];
 
 /**

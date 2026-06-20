@@ -4,6 +4,7 @@ import { X } from 'lucide-react-native'
 import type { Database } from '../../types/database'
 import { PhysiologicalSighTool } from './PhysiologicalSighTool'
 import { FingerPulseTool } from './FingerPulseTool'
+import { ReframeTool } from './ReframeTool'
 
 type CopingTool = Database['public']['Tables']['coping_tools']['Row']
 
@@ -300,6 +301,7 @@ export const ToolRunner: React.FC<RunnerProps & { repCount?: number }> = ({
   if (tool.data_model_id === 'physiological_sigh')
     return <PhysiologicalSighTool tool={tool} onDone={onDone} />
   if (tool.data_model_id === 'finger_pulse') return <FingerPulseTool tool={tool} onDone={onDone} />
+  if (tool.category === 'cognitive_reframe') return <ReframeTool tool={tool} onDone={onDone} />
   if (tool.family === 'breathing') return <BreathingTool tool={tool} onDone={onDone} accent={accent} />
   if (tool.family === 'physical')
     return <PhysicalTool tool={tool} onDone={onDone} repCount={repCount} accent={accent} />
