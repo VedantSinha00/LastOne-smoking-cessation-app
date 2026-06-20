@@ -1,11 +1,13 @@
 import React, { useCallback, useState } from 'react'
 import { View, Text, ScrollView, Pressable, ActivityIndicator } from 'react-native'
 import { useFocusEffect } from 'expo-router'
-import { Zap, Wrench, FileText, AlertTriangle, Users, MapPin, Activity, ChevronRight, ArrowLeft } from 'lucide-react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { Zap, Wrench, FileText, AlertTriangle, Users, MapPin, Activity, ChevronRight } from 'lucide-react-native'
 import { useInsights, useInsightActions } from '../../hooks/useInsights'
 import { useStage } from '../../hooks/useStage'
 import { InsightCardView } from '../../components/insights/InsightCardView'
 import { CravingsBarChart } from '../../components/insights/CravingsBarChart'
+import { ScreenHeader } from '../../components/ui/ScreenHeader'
 
 /**
  * INS-1 — Insights, reworked to the Lovable stats/explore HUB (product decision
@@ -34,6 +36,7 @@ const EXPLORE: {
 ]
 
 export default function Insights() {
+  const insets = useSafeAreaInsets()
   const { feed, metrics, hasAnyLog, screenState, isLoading, resnapshotOrder } = useInsights()
   const { stage } = useStage()
   const { expandCard, toggleRiskWindow } = useInsightActions()
@@ -84,13 +87,9 @@ export default function Insights() {
       if (next && item.card.card_state !== 'read') expandCard.mutate(item.card)
     }
     return (
-      <ScrollView className="flex-1 bg-background" contentContainerClassName="p-5 gap-4 pb-12">
-        <View className="h-12 flex-row items-center">
-          <Pressable onPress={() => setView('main')} className="pr-3 active:opacity-60" accessibilityLabel="Back">
-            <ArrowLeft size={22} color="#15110D" strokeWidth={2} />
-          </Pressable>
-          <Text className="text-foreground font-display text-2xl">Cravings</Text>
-        </View>
+      <View className="flex-1 bg-background">
+        <ScreenHeader title="Cravings" onBack={() => setView('main')} />
+        <ScrollView className="flex-1" contentContainerClassName="p-5 gap-4 pb-12">
         {feed.length === 0 ? (
           <View className="bg-card border border-border rounded-3xl p-5">
             <Text className="text-muted-foreground text-sm leading-relaxed">
@@ -117,7 +116,8 @@ export default function Insights() {
             Your Learning Week profile sits at the bottom — tap any card to revisit it.
           </Text>
         )}
-      </ScrollView>
+        </ScrollView>
+      </View>
     )
   }
 
@@ -125,7 +125,11 @@ export default function Insights() {
   const successRate = metrics.resistanceRate != null ? `${Math.round(metrics.resistanceRate)}%` : '—'
 
   return (
-    <ScrollView className="flex-1 bg-background" contentContainerClassName="px-5 pt-8 pb-12 gap-6">
+    <ScrollView
+      className="flex-1 bg-background"
+      contentContainerClassName="px-5 pb-12 gap-6"
+      contentContainerStyle={{ paddingTop: insets.top + 16 }}
+    >
       <Text className="text-foreground font-display text-center" style={{ fontSize: 22 }}>
         Insights
       </Text>

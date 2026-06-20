@@ -1,12 +1,13 @@
 import React, { useCallback, useState } from 'react'
 import { View, Text, ScrollView, Pressable, ActivityIndicator } from 'react-native'
 import { useLocalSearchParams, useFocusEffect, useRouter } from 'expo-router'
-import { ArrowLeft, Wallet, CigaretteOff, Clock } from 'lucide-react-native'
+import { Wallet, CigaretteOff, Clock } from 'lucide-react-native'
 import { useProfile } from '../../hooks/useProfile'
 import { useDashboard } from '../../hooks/useDashboard'
 import { useGoals } from '../../hooks/useGoals'
 import { useMilestoneCards, type MilestoneCard } from '../../hooks/useMilestoneCards'
 import { scaleLadder, formatRupees } from '../../lib/savings'
+import { ScreenHeader } from '../../components/ui/ScreenHeader'
 import type { CounterKey } from '../../components/home/ProgressDashboard'
 
 const COUNTER_META: Record<
@@ -121,16 +122,10 @@ export default function Progress() {
     }
 
     return (
-      <ScrollView className="flex-1 bg-background" contentContainerClassName="px-5 pt-2 pb-12 gap-3">
-        <View className="h-14 flex-row items-center">
-          <Pressable onPress={() => router.back()} accessibilityLabel="Back" className="pr-3 active:opacity-60">
-            <ArrowLeft size={22} color="#15110D" strokeWidth={2} />
-          </Pressable>
-          <Text className="text-foreground font-display" style={{ fontSize: 22, letterSpacing: -0.3 }}>
-            Progress
-          </Text>
-        </View>
-
+      <View className="flex-1 bg-background">
+        {/* Progress is reached from Home — back returns there, not the prior tab. */}
+        <ScreenHeader title="Progress" onBack={() => router.navigate('/(tabs)/')} />
+        <ScrollView className="flex-1" contentContainerClassName="px-5 pt-2 pb-12 gap-3">
         <Text className="text-muted-foreground text-xs font-sans-bold uppercase tracking-wider mb-1 px-1">
           What you&apos;ve gained
         </Text>
@@ -173,7 +168,8 @@ export default function Progress() {
             </Pressable>
           )
         })}
-      </ScrollView>
+        </ScrollView>
+      </View>
     )
   }
 
@@ -182,26 +178,19 @@ export default function Progress() {
   const meta = COUNTER_META[counter]
   const primaryValue = d[meta.primary]
   const ladder = cpd > 0 ? scaleLadder(counter, cpd, price) : []
-  // Back from a deep-linked drill-down should leave Progress entirely; from the
-  // main view it returns to the hero cards.
-  const goBack = () => (deepLinked ? router.back() : setView('main'))
+  // Back from a deep-linked drill-down leaves Progress entirely (returns to Home,
+  // where the deep-link originated); from the hero main view it returns to it.
+  const goBack = () => (deepLinked ? router.navigate('/(tabs)/') : setView('main'))
 
   return (
-    <ScrollView className="flex-1 bg-background" contentContainerClassName="px-5 pt-2 pb-12 gap-6">
-      <View className="h-14 flex-row items-center">
-        <Pressable onPress={goBack} accessibilityLabel="Back" className="pr-3 active:opacity-60">
-          <ArrowLeft size={22} color="#15110D" strokeWidth={2} />
-        </Pressable>
-        <Text className="text-foreground font-display" style={{ fontSize: 22, letterSpacing: -0.3 }}>
-          {meta.title}
-        </Text>
-      </View>
-
-      <View>
-        <Text className="text-primary font-display" style={{ fontSize: 40, letterSpacing: -0.5 }}>
-          {primaryValue}
-        </Text>
-      </View>
+    <View className="flex-1 bg-background">
+      <ScreenHeader title={meta.title} onBack={goBack} />
+      <ScrollView className="flex-1" contentContainerClassName="px-5 pt-2 pb-12 gap-6">
+        <View>
+          <Text className="text-primary font-display" style={{ fontSize: 40, letterSpacing: -0.5 }}>
+            {primaryValue}
+          </Text>
+        </View>
 
       {/* Section 1 — Scale ladder ("AT YOUR RATE") */}
       <View className="bg-card border border-border rounded-3xl p-5">
@@ -278,6 +267,7 @@ export default function Progress() {
           </ScrollView>
         )}
       </View>
-    </ScrollView>
+      </ScrollView>
+    </View>
   )
 }

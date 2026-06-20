@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { View, Text, Pressable, TextInput, ScrollView } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { X } from 'lucide-react-native'
 import type { Database } from '../../types/database'
 
@@ -73,6 +74,7 @@ const CONTENT: Record<string, ReframeContent> = {
 const PRIMARY = '#7FC200'
 
 export const ReframeTool: React.FC<Props> = ({ tool, onDone }) => {
+  const insets = useSafeAreaInsets()
   const content = CONTENT[tool.data_model_id]
   const [started, setStarted] = useState(false)
   const [stepIdx, setStepIdx] = useState(0)
@@ -81,7 +83,7 @@ export const ReframeTool: React.FC<Props> = ({ tool, onDone }) => {
   // Unknown reframe tool (shouldn't happen) — fall back to a gentle done screen.
   if (!content) {
     return (
-      <View className="flex-1 bg-secondary items-center justify-center px-8">
+      <View className="flex-1 bg-secondary items-center justify-center px-8" style={{ paddingTop: insets.top }}>
         <Text className="text-foreground font-display text-xl text-center">{tool.name}</Text>
         <Pressable onPress={onDone} className="rounded-full mt-8 px-8 py-4" style={{ backgroundColor: PRIMARY }}>
           <Text className="text-primary-foreground font-sans-bold">Done</Text>
@@ -131,7 +133,7 @@ export const ReframeTool: React.FC<Props> = ({ tool, onDone }) => {
   }
 
   return (
-    <View className="flex-1 bg-secondary">
+    <View className="flex-1 bg-secondary" style={{ paddingTop: insets.top }}>
       {Header}
       <ScrollView contentContainerClassName="flex-grow px-8 pb-10" keyboardShouldPersistTaps="handled">
         <Text className="text-muted-foreground text-xs font-sans-bold uppercase tracking-wider mt-4">

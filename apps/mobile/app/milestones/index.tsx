@@ -2,9 +2,10 @@ import React, { useState } from 'react'
 import { View, Text, ScrollView, Pressable } from 'react-native'
 import { useRouter } from 'expo-router'
 import { parseISO, differenceInHours } from 'date-fns'
-import { ArrowLeft, Check, ChevronDown } from 'lucide-react-native'
+import { Check, ChevronDown } from 'lucide-react-native'
 import { useStage } from '../../hooks/useStage'
 import { MILESTONE_STAGES, type MilestoneStage } from '../../lib/healthMilestones'
+import { ScreenHeader } from '../../components/ui/ScreenHeader'
 
 /**
  * STK-8 — Health Milestones timeline. The design's multi-stage expandable
@@ -32,16 +33,10 @@ export default function MilestonesTimeline() {
   const [openIdx, setOpenIdx] = useState<number>(defaultOpen >= 0 ? defaultOpen : 0)
 
   return (
-    <ScrollView className="flex-1 bg-background" contentContainerClassName="px-5 pt-2 pb-12 gap-3">
-      <View className="h-14 flex-row items-center">
-        <Pressable onPress={() => router.back()} accessibilityLabel="Back" className="pr-3 active:opacity-60">
-          <ArrowLeft size={22} color="#15110D" strokeWidth={2} />
-        </Pressable>
-        <Text className="text-foreground font-display" style={{ fontSize: 22, letterSpacing: -0.3 }}>
-          Health Milestones
-        </Text>
-      </View>
-
+    <View className="flex-1 bg-background">
+      {/* Explicit back to Home — this screen is pushed from the Home health card. */}
+      <ScreenHeader title="Health Milestones" onBack={() => router.navigate('/(tabs)/')} />
+      <ScrollView className="flex-1" contentContainerClassName="px-5 pt-2 pb-12 gap-3">
       {!quitDate && (
         <View className="bg-card border border-border rounded-3xl p-5">
           <Text className="text-muted-foreground text-sm leading-relaxed">
@@ -60,7 +55,8 @@ export default function MilestonesTimeline() {
             hoursSinceQuit={hoursSinceQuit}
           />
         ))}
-    </ScrollView>
+      </ScrollView>
+    </View>
   )
 }
 

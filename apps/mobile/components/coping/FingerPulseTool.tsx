@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react'
 import { View, Text, Pressable, Animated } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { X } from 'lucide-react-native'
 import type { Database } from '../../types/database'
 
@@ -25,6 +26,7 @@ const ORANGE_HALO = '#FCE0D7'
 const DARK = '#143109'
 
 export const FingerPulseTool: React.FC<Props> = ({ tool, onDone }) => {
+  const insets = useSafeAreaInsets()
   const [phase, setPhase] = useState<Phase>('intro')
   const [beats, setBeats] = useState(0)
   const pulse = useRef(new Animated.Value(1)).current
@@ -43,7 +45,7 @@ export const FingerPulseTool: React.FC<Props> = ({ tool, onDone }) => {
   }
 
   return (
-    <View className="flex-1 bg-secondary">
+    <View className="flex-1 bg-secondary" style={{ paddingTop: insets.top }}>
       <View className="h-14 flex-row items-center justify-between px-5">
         <Text className="text-foreground font-display text-base">{tool.name}</Text>
         <Pressable onPress={onDone} accessibilityLabel="Close" hitSlop={12}>

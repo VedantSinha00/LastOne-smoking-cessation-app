@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { View, Text, Pressable, Animated, Easing } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { X } from 'lucide-react-native'
 import type { Database } from '../../types/database'
 
@@ -43,6 +44,7 @@ const PHASE_LABEL: Record<Phase, string> = {
 }
 
 export const PhysiologicalSighTool: React.FC<Props> = ({ tool, onDone }) => {
+  const insets = useSafeAreaInsets()
   const [phase, setPhase] = useState<Phase>('intro')
   const [round, setRound] = useState(1)
   const scale = useRef(new Animated.Value(0.5)).current
@@ -94,7 +96,7 @@ export const PhysiologicalSighTool: React.FC<Props> = ({ tool, onDone }) => {
   }
 
   return (
-    <View className="flex-1 bg-secondary">
+    <View className="flex-1 bg-secondary" style={{ paddingTop: insets.top }}>
       {/* top bar */}
       <View className="h-14 flex-row items-center justify-between px-5">
         <Text className="text-foreground font-display text-base">{tool.name}</Text>
