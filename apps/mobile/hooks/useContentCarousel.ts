@@ -24,12 +24,13 @@ function todayKey(timezone: string): string {
  * cards (≤2 per category, least-recently-shown, 14-day cooldown relaxing to 7) and
  * records their impressions.
  *
- * Rotation: re-selects on every app open (user preference — fresh cards each
- * visit, not the spec's once-per-day stable set). Because `selectCarousel` sorts
- * by least-recently-shown and each impression bumps last_shown_at/show_count, a
- * reopen naturally surfaces different cards. The date stays in the query key (so
- * separate days are distinct cache entries), but staleTime: 0 + refetchOnMount
- * make each mount re-run the selection.
+ * Rotation: the selected set is cached for the session and refreshed once per day
+ * (the date is in the query key). We deliberately do NOT refetch on every mount:
+ * selection records impressions (last_shown_at) and the engine applies a 14-day
+ * cooldown, so re-running on every re-render — e.g. each time the content reader
+ * modal closes — quickly puts the whole small card pool on cooldown and empties
+ * the carousel. A long staleTime keeps the set stable within the session; React
+ * Query still refetches on a genuine cold app open, which is enough rotation.
  */
 export function useContentCarousel(): { cards: ResolvedCard[]; isLoading: boolean } {
   const { user } = useAuth()
@@ -76,8 +77,11 @@ export function useContentCarousel(): { cards: ResolvedCard[]; isLoading: boolea
       return selected
     },
     enabled: !!user,
-    staleTime: 0, // re-select on every app open (rotation — user preference)
-    refetchOnMount: 'always',
+    // Stable within the session; the date in the query key busts it daily, and a
+    // cold app open refetches anyway. NOT refetchOnMount — see the note above
+    // (re-selecting on every render starves the carousel via the cooldown).
+    staleTime: 12 * 60 * 60 * 1000,
+    refetchOnMount: false,
   })
 
   return { cards: query.data ?? [], isLoading: query.isLoading }
