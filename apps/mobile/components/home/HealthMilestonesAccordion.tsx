@@ -173,15 +173,25 @@ const StageCard: React.FC<{
                       checklist circle centers directly under the header tick. */}
                   <View className="items-center justify-center" style={{ width: 44 }}>
                     {unlocked ? (
-                      <View className="h-7 w-7 rounded-full bg-foreground items-center justify-center">
+                      <View
+                        className="rounded-full bg-foreground items-center justify-center"
+                        style={{ width: 28, height: 28 }}
+                      >
                         <Check size={15} color="#FBFAF9" strokeWidth={3} />
                       </View>
                     ) : (
-                      // Locked — a visible grey empty ring, faint grey fill so it
-                      // reads as an empty checkbox.
+                      // Locked — a visible grey empty ring. Explicit width/height (not
+                      // just the className) so it always renders as a full 28px circle
+                      // instead of collapsing to a dot.
                       <View
-                        className="h-7 w-7 rounded-full"
-                        style={{ borderWidth: 1.5, borderColor: '#D2CFCB', backgroundColor: '#F4F2F0' }}
+                        className="rounded-full"
+                        style={{
+                          width: 28,
+                          height: 28,
+                          borderWidth: 1.5,
+                          borderColor: '#C8C5C1',
+                          backgroundColor: '#FFFFFF',
+                        }}
                       />
                     )}
                   </View>
