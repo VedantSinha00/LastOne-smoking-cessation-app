@@ -178,13 +178,16 @@ Full rationale also in memory: `project_home_design_vs_spec.md`.
    cards (NOT the design's mock copy). Must update Home's progress-card deep-links
    (currently `?counter=`) to land on the right drill-down. NOT YET BUILT.
 
-3. **Health Milestones (Home) → COUNTDOWN ON HOME + ACCORDION ON TAP.** Keep the lean
-   single-line "Next: X in N days" countdown on Home (honors Home spec §G), restyled to
-   the design card look. Tapping it opens the design's full multi-stage expandable
-   accordion (Stage 1/2/3, unlocked/locked checklists, in-progress badge) as the next
-   screen — needs building as a real screen wired to actual unlocked-milestone state
-   (design's stage data is mock). Currently Home card taps to /progress; will repoint
-   to the new milestone-timeline screen. NOT YET BUILT.
+3. **Health Milestones (Home) → ~~COUNTDOWN + SEPARATE SCREEN~~ → REVERSED to FULL
+   ACCORDION INLINE ON HOME (2026-06-20).** Originally decided countdown-on-Home +
+   accordion-on-a-separate-/milestones-screen (built as `1f9d4ac`). Vedant then asked
+   to match the DESIGN EXACTLY: the full staged accordion renders INLINE on Home and
+   expands in place (the design has no separate route). Now: `HealthMilestonesAccordion`
+   component on Home (Stage 1/2/3, expand-in-place, unlocked ✓ / locked checklist,
+   "In progress" badge, opens in-progress stage by default), wired to REAL quit-date
+   unlock state. Removed the `/milestones` screen + `HealthMilestonesCard` countdown +
+   the "View more" affordance (nothing further to navigate to). This is one place the
+   DESIGN wins over Home spec §G's "countdown only on Home". Commit: see below.
 
 4. **Profile/Settings → FULL DESIGN incl. Community section.** Rework the flat
    one-level Settings into the design's two-level category nav (category rows → category

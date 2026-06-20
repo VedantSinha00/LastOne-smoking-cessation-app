@@ -1,29 +1,25 @@
 import React, { useState } from 'react'
-import { View, Text, ScrollView, Pressable } from 'react-native'
-import { useRouter } from 'expo-router'
+import { View, Text, Pressable } from 'react-native'
 import { parseISO, differenceInHours } from 'date-fns'
 import { Check, ChevronDown } from 'lucide-react-native'
 import { useStage } from '../../hooks/useStage'
+import { SectionLabel } from '../ui/SectionLabel'
 import { MILESTONE_STAGES, type MilestoneStage } from '../../lib/healthMilestones'
-import { ScreenHeader } from '../../components/ui/ScreenHeader'
 
 /**
- * STK-8 — Health Milestones timeline. The design's multi-stage expandable
- * accordion (Stage 1/2/3, each with an unlocked/locked checklist + "In progress"
- * badge). Reached from the Home Health Milestones countdown card.
+ * Health Milestones — the full staged accordion, rendered INLINE on Home, ported
+ * 1:1 from the Lovable `HealthMilestones`: Stage 1/2/3 cards that expand in place
+ * to show an unlocked (filled ✓) / locked (empty circle) checklist, with an
+ * "In progress" badge and a "View more" affordance on the in-progress stage.
  *
  * Unlocked/locked is DERIVED from the user's real quit date (hours since quit vs
- * each milestone's offset) — not mock. A stage is "in progress" when some but not
- * all of its milestones are unlocked; it opens expanded by default.
+ * each milestone offset) — not the design's mock data. The in-progress stage opens
+ * expanded by default (matching the design's default-open index).
  */
-export default function MilestonesTimeline() {
-  const router = useRouter()
+export const HealthMilestonesAccordion: React.FC = () => {
   const { quitDate } = useStage()
-
   const hoursSinceQuit = quitDate ? differenceInHours(new Date(), parseISO(quitDate)) : -1
 
-  // Compute per-stage unlocked counts to find the "in progress" stage (first one
-  // not fully unlocked) — it opens expanded by default.
   const stageStates = MILESTONE_STAGES.map((stage) => {
     const total = stage.milestones.length
     const done = stage.milestones.filter((m) => hoursSinceQuit >= m.offsetHours).length
@@ -33,29 +29,27 @@ export default function MilestonesTimeline() {
   const [openIdx, setOpenIdx] = useState<number>(defaultOpen >= 0 ? defaultOpen : 0)
 
   return (
-    <View className="flex-1 bg-background">
-      {/* Explicit back to Home — this screen is pushed from the Home health card. */}
-      <ScreenHeader title="Health Milestones" onBack={() => router.navigate('/(tabs)/')} />
-      <ScrollView className="flex-1" contentContainerClassName="px-5 pt-2 pb-12 gap-3">
-      {!quitDate && (
-        <View className="bg-card border border-border rounded-3xl p-5">
-          <Text className="text-muted-foreground text-sm leading-relaxed">
-            Set a quit date to start unlocking your recovery milestones.
-          </Text>
-        </View>
-      )}
-
-      {quitDate &&
-        stageStates.map((s, i) => (
-          <StageCard
-            key={s.stage.name}
-            state={s}
-            open={openIdx === i}
-            onToggle={() => setOpenIdx(openIdx === i ? -1 : i)}
-            hoursSinceQuit={hoursSinceQuit}
-          />
-        ))}
-      </ScrollView>
+    <View>
+      <SectionLabel>Health Milestones</SectionLabel>
+      <View style={{ gap: 12 }}>
+        {!quitDate ? (
+          <View className="bg-card border border-border rounded-3xl p-5">
+            <Text className="text-muted-foreground text-sm leading-relaxed">
+              Set a quit date to start unlocking your recovery milestones.
+            </Text>
+          </View>
+        ) : (
+          stageStates.map((s, i) => (
+            <StageCard
+              key={s.stage.name}
+              state={s}
+              open={openIdx === i}
+              onToggle={() => setOpenIdx(openIdx === i ? -1 : i)}
+              hoursSinceQuit={hoursSinceQuit}
+            />
+          ))
+        )}
+      </View>
     </View>
   )
 }
@@ -91,7 +85,7 @@ const StageCard: React.FC<{
         <View
           className={`h-8 w-8 rounded-full items-center justify-center ${complete ? 'bg-foreground' : 'bg-secondary'}`}
         >
-          <Check size={16} color={complete ? '#FBFAF9' : '#76706C66'} strokeWidth={3} />
+          <Check size={16} color={complete ? '#FBFAF9' : '#15110D66'} strokeWidth={3} />
         </View>
         <View className="flex-1">
           <Text className="text-foreground font-display" style={{ fontSize: 14, letterSpacing: -0.2 }}>

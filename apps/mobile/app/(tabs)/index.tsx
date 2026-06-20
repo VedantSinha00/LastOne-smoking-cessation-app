@@ -15,7 +15,7 @@ import { TopBar } from "../../components/home/TopBar";
 import { Greeting } from "../../components/home/Greeting";
 import { StreakBar } from "../../components/home/StreakBar";
 import { SectionLabel } from "../../components/ui/SectionLabel";
-import { HealthMilestonesCard } from "../../components/home/HealthMilestonesCard";
+import { HealthMilestonesAccordion } from "../../components/home/HealthMilestonesAccordion";
 import { CopingSurfaceCard } from "../../components/home/CopingSurfaceCard";
 import { InsightsPreview } from "../../components/home/InsightsPreview";
 import { ProgressDashboard } from "../../components/home/ProgressDashboard";
@@ -180,8 +180,8 @@ export default function Home() {
       {/* 7c — Stage-4 mini-game re-engagement nudge (MiniGames §B2, max 2 lifetime) */}
       <GameStreakNudgeCard />
 
-      {/* 8 — Health Milestones (countdown; taps to the full /milestones timeline) */}
-      <HealthMilestonesCard stage={stage} quitDate={quitDate} />
+      {/* 8 — Health Milestones — full staged accordion inline on Home (design 1:1) */}
+      <HealthMilestonesAccordion />
 
       {__DEV__ && (
         <>
