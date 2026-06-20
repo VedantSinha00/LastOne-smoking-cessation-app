@@ -1,20 +1,27 @@
 import React, { useCallback, useState } from 'react'
 import { View, Text, ScrollView, Pressable, ActivityIndicator } from 'react-native'
 import { useLocalSearchParams, useFocusEffect, useRouter } from 'expo-router'
+import { ArrowLeft, Wallet, CigaretteOff, Clock } from 'lucide-react-native'
 import { useProfile } from '../../hooks/useProfile'
 import { useDashboard } from '../../hooks/useDashboard'
 import { useGoals } from '../../hooks/useGoals'
 import { useMilestoneCards, type MilestoneCard } from '../../hooks/useMilestoneCards'
-import { scaleLadder } from '../../lib/savings'
+import { scaleLadder, formatRupees } from '../../lib/savings'
 import type { CounterKey } from '../../components/home/ProgressDashboard'
 
-const COUNTER_META: Record<CounterKey, { title: string; primary: string }> = {
-  money: { title: 'Money Saved', primary: 'moneyLabel' },
-  time: { title: 'Time Reclaimed', primary: 'timeLabel' },
-  cigarettes: { title: 'Cigarettes Not Smoked', primary: 'cigarettesLabel' },
+const COUNTER_META: Record<
+  CounterKey,
+  { title: string; primary: 'moneyLabel' | 'timeLabel' | 'cigarettesLabel'; Icon: typeof Wallet }
+> = {
+  cigarettes: { title: 'Cigs Avoided', primary: 'cigarettesLabel', Icon: CigaretteOff },
+  money: { title: 'Money Saved', primary: 'moneyLabel', Icon: Wallet },
+  time: { title: 'Time Reclaimed', primary: 'timeLabel', Icon: Clock },
 }
 
-const COUNTER_ORDER: CounterKey[] = ['cigarettes', 'money', 'time']
+// Main-view order matches the design's "WHAT YOU'VE GAINED" stack.
+const HERO_ORDER: CounterKey[] = ['money', 'cigarettes', 'time']
+
+type ProgressView = 'main' | CounterKey
 
 /** One reference card in the DASH-2 horizontal scroll (Milestone Spec §3, §4). */
 const ReferenceCard: React.FC<{
@@ -53,26 +60,29 @@ const ReferenceCard: React.FC<{
 
 /**
  * DASH-2 — Expanded Counter View (ProgressDashboard_Spec §5 Flow 2). Doubles as the
- * Progress tab landing screen. Two sections: the personalised scale ladder for the
- * selected counter, and the shared milestone reference-card scroll (CM-01–08), whose
- * active/inactive state is derived from cigarettes_not_smoked (Milestone Spec §2).
+ * Progress tab landing screen.
  *
- * Entry: a counter-card tap deep-links with ?counter=…; the tab bar enters with none,
- * defaulting to the cigarettes counter (the spec's emotional anchor, §2.3).
+ * Navigation model ported from the Lovable ProgressDashboard (design decision
+ * 2026-06-20): a main "WHAT YOU'VE GAINED" view with three hero cards (Money / Cigs
+ * / Time) that tap into a per-counter drill-down (scale ladder + milestone reference
+ * cards + Personal Goals entry). All data + content are the app's real ones —
+ * `scaleLadder()` math and the canonical CM-01–08 Milestone System cards — NOT the
+ * design's mock copy.
+ *
+ * Entry: a counter-card tap on Home deep-links with ?counter=… → opens directly in
+ * that drill-down; the tab bar enters with none → the hero main view.
  */
 export default function Progress() {
   const router = useRouter()
   const params = useLocalSearchParams<{ counter?: string }>()
-  const initial = (params.counter as CounterKey) ?? 'cigarettes'
-  const [counter, setCounter] = useState<CounterKey>(
-    COUNTER_ORDER.includes(initial) ? initial : 'cigarettes',
+  const deepLinked = (params.counter as CounterKey) ?? null
+  const [view, setView] = useState<ProgressView>(
+    deepLinked && HERO_ORDER.includes(deepLinked) ? deepLinked : 'main',
   )
   const [expandedCard, setExpandedCard] = useState<string | null>(null)
 
   // Collapse any expanded reference card whenever the screen regains focus, so the
-  // DASH-2 view always opens fresh (cards default closed until tapped). This tab stays
-  // mounted in the background, so without this the expanded state would persist across
-  // navigations. Mirrors the spec's DASH-2 back behaviour (cards collapse on exit).
+  // DASH-2 view always opens fresh. This tab stays mounted in the background.
   useFocusEffect(
     useCallback(() => {
       return () => setExpandedCard(null)
@@ -88,64 +98,142 @@ export default function Progress() {
 
   const cpd = profile?.cigarettes_per_day ?? 0
   const price = profile?.price_per_cigarette ?? 0
-  const ladder = cpd > 0 ? scaleLadder(counter, cpd, price) : []
+
+  // ── Main view — "WHAT YOU'VE GAINED": three hero cards ──────────────────────
+  if (view === 'main') {
+    const perDay = d.preview
+    const heroMeta: Record<CounterKey, { value: string; equiv: string; perDay: string }> = {
+      money: {
+        value: d.moneyLabel,
+        equiv: d.moneyEquivalentLine,
+        perDay: perDay ? `${formatRupees(perDay.moneyPaisePerDay)} per day` : '',
+      },
+      cigarettes: {
+        value: d.cigarettesLabel,
+        equiv: "cigarettes you didn't smoke",
+        perDay: perDay ? `${perDay.cigarettesPerDay} per day` : '',
+      },
+      time: {
+        value: d.timeLabel,
+        equiv: d.timeEquivalentLine,
+        perDay: perDay ? `${perDay.minutesPerDay} min per day` : '',
+      },
+    }
+
+    return (
+      <ScrollView className="flex-1 bg-background" contentContainerClassName="px-5 pt-2 pb-12 gap-3">
+        <View className="h-14 flex-row items-center">
+          <Pressable onPress={() => router.back()} accessibilityLabel="Back" className="pr-3 active:opacity-60">
+            <ArrowLeft size={22} color="#15110D" strokeWidth={2} />
+          </Pressable>
+          <Text className="text-foreground font-display" style={{ fontSize: 22, letterSpacing: -0.3 }}>
+            Progress
+          </Text>
+        </View>
+
+        <Text className="text-muted-foreground text-xs font-sans-bold uppercase tracking-wider mb-1 px-1">
+          What you&apos;ve gained
+        </Text>
+
+        {HERO_ORDER.map((key) => {
+          const { Icon, title } = COUNTER_META[key]
+          const m = heroMeta[key]
+          return (
+            <Pressable
+              key={key}
+              onPress={() => setView(key)}
+              className="rounded-3xl bg-card border border-border p-5 active:scale-[0.99]"
+              style={{
+                shadowColor: '#15110D',
+                shadowOpacity: 0.06,
+                shadowRadius: 16,
+                shadowOffset: { width: 0, height: 6 },
+                elevation: 3,
+              }}
+            >
+              <View className="flex-row items-center justify-between">
+                <Icon size={20} color="#7FC200" strokeWidth={1.9} />
+                <Text className="text-muted-foreground text-[11px] font-sans-medium uppercase tracking-wider">
+                  {title}
+                </Text>
+              </View>
+              <Text
+                className="text-foreground font-display mt-3"
+                style={{ fontSize: 40, lineHeight: 44, letterSpacing: -0.5 }}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+              >
+                {m.value}
+              </Text>
+              <Text className="text-muted-foreground text-sm mt-1">{m.equiv}</Text>
+              <View className="flex-row items-center justify-between mt-4">
+                <Text className="text-muted-foreground/70 text-xs">{m.perDay}</Text>
+                <Text className="text-primary text-xs font-sans-medium">Tap to explore →</Text>
+              </View>
+            </Pressable>
+          )
+        })}
+      </ScrollView>
+    )
+  }
+
+  // ── Drill-down — scale ladder + milestone reference cards + goals ───────────
+  const counter = view
   const meta = COUNTER_META[counter]
-  const primaryValue = d[meta.primary as 'moneyLabel' | 'timeLabel' | 'cigarettesLabel']
+  const primaryValue = d[meta.primary]
+  const ladder = cpd > 0 ? scaleLadder(counter, cpd, price) : []
+  // Back from a deep-linked drill-down should leave Progress entirely; from the
+  // main view it returns to the hero cards.
+  const goBack = () => (deepLinked ? router.back() : setView('main'))
 
   return (
-    <ScrollView className="flex-1 bg-background" contentContainerClassName="p-6 gap-6 pb-12">
-      {/* Header + current total */}
+    <ScrollView className="flex-1 bg-background" contentContainerClassName="px-5 pt-2 pb-12 gap-6">
+      <View className="h-14 flex-row items-center">
+        <Pressable onPress={goBack} accessibilityLabel="Back" className="pr-3 active:opacity-60">
+          <ArrowLeft size={22} color="#15110D" strokeWidth={2} />
+        </Pressable>
+        <Text className="text-foreground font-display" style={{ fontSize: 22, letterSpacing: -0.3 }}>
+          {meta.title}
+        </Text>
+      </View>
+
       <View>
-        <Text className="text-muted-foreground text-sm font-sans-medium">Your Progress</Text>
-        <Text className="text-foreground font-display text-2xl mt-0.5">{meta.title}</Text>
-        <Text className="text-primary font-display text-4xl mt-2">{primaryValue}</Text>
+        <Text className="text-primary font-display" style={{ fontSize: 40, letterSpacing: -0.5 }}>
+          {primaryValue}
+        </Text>
       </View>
 
-      {/* Counter switcher (tab-entry convenience; deep-link sets the initial one) */}
-      <View className="flex-row gap-2">
-        {COUNTER_ORDER.map((key) => (
-          <Pressable
-            key={key}
-            onPress={() => setCounter(key)}
-            className={`px-3 py-2 rounded-full border ${
-              counter === key ? 'bg-primary/15 border-primary/40' : 'border-border'
-            }`}
-          >
-            <Text
-              className={`text-xs font-sans-bold ${
-                counter === key ? 'text-primary' : 'text-muted-foreground'
-              }`}
-            >
-              {COUNTER_META[key].title}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
-
-      {/* Section 1 — Scale ladder (§5 Section 1) */}
+      {/* Section 1 — Scale ladder ("AT YOUR RATE") */}
       <View className="bg-card border border-border rounded-3xl p-5">
         <Text className="text-muted-foreground text-xs font-sans-bold uppercase tracking-wider mb-3">
-          At this rate
+          At your rate
         </Text>
         {ladder.length === 0 ? (
           <Text className="text-muted-foreground text-sm">
             Set your daily cigarettes and cost to see your scale.
           </Text>
         ) : (
-          ladder.map((row) => (
+          ladder.map((row, i) => (
             <View
               key={row.label}
-              className="flex-row justify-between items-center py-2 border-b border-border last:border-0"
+              className={`flex-row justify-between items-center py-3.5 ${
+                i === 0 ? '' : 'border-t border-border'
+              }`}
             >
               <Text className="text-muted-foreground text-sm">{row.label}</Text>
-              <Text className="text-foreground text-base font-sans-bold">{row.value}</Text>
+              <Text
+                className={`${
+                  row.label === 'per year' ? 'text-primary text-xl' : 'text-foreground text-base'
+                } font-sans-bold`}
+              >
+                {row.value}
+              </Text>
             </View>
           ))
         )}
       </View>
 
-      {/* Personal Goals entry (Step 17) — Goals live inside the Progress/Savings
-          section, not a tab of their own (Personal Goals Spec §2.2). */}
+      {/* Personal Goals entry (Goals live inside Progress/Savings, Spec §2.2) */}
       <Pressable
         onPress={() => router.push('/goals')}
         className="bg-card border border-border rounded-3xl p-5 active:opacity-80"
@@ -165,7 +253,7 @@ export default function Progress() {
         </View>
       </Pressable>
 
-      {/* Section 2 — Milestone reference cards (§5 Section 2, Milestone Spec §3) */}
+      {/* Section 2 — Milestone reference cards (Milestone Spec §3) */}
       <View>
         <Text className="text-muted-foreground text-xs font-sans-bold uppercase tracking-wider mb-3">
           Milestones

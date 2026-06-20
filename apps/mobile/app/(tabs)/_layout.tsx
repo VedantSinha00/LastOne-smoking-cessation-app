@@ -125,8 +125,9 @@ export default function TabsLayout() {
             tab. Kept as a route with href: null so navigation still resolves. */}
         <Tabs.Screen name="profile" options={{ href: null, title: "Profile" }} />
         {/* Progress Dashboard (DASH-2) — reachable from Home's counter/health cards
-            via /progress, not a tab (Insights took the slot; surfaces are distinct). */}
-        <Tabs.Screen name="progress" options={{ href: null, title: "Progress" }} />
+            via /progress, not a tab (Insights took the slot; surfaces are distinct).
+            Renders its own in-body header (back + title), so the native one is hidden. */}
+        <Tabs.Screen name="progress" options={{ href: null, title: "Progress", headerShown: false }} />
         {/* No-op slot intercepted by the center Log button; never shown as a tab. */}
         <Tabs.Screen name="log-dummy" options={{ href: null }} />
       </Tabs>
