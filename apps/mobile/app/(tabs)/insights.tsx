@@ -1,31 +1,54 @@
 import React, { useCallback, useState } from 'react'
-import { View, Text, ScrollView, ActivityIndicator } from 'react-native'
+import { View, Text, ScrollView, Pressable, ActivityIndicator } from 'react-native'
 import { useFocusEffect } from 'expo-router'
+import { Zap, Wrench, FileText, AlertTriangle, Users, MapPin, Activity, ChevronRight, ArrowLeft } from 'lucide-react-native'
 import { useInsights, useInsightActions } from '../../hooks/useInsights'
 import { useStage } from '../../hooks/useStage'
 import { InsightCardView } from '../../components/insights/InsightCardView'
+import { CravingsBarChart } from '../../components/insights/CravingsBarChart'
 
 /**
- * INS-1 — Insights Feed (Insights Spec §5.2). A ranked vertical feed of insight
- * cards derived from the user's own data. Cards expand in-place (INS-2 ↔ INS-3);
- * first expansion marks the card read + logs engagement. The Learning Week profile
- * cards (profile_*) are part of the same feed — they lead in early stages and rank
- * to the bottom from Stage 3 (feed ranking §B2.2).
- *
- * INS-1a empty state (Stage 0, before the first log) shows the single log prompt.
+ * INS-1 — Insights, reworked to the Lovable stats/explore HUB (product decision
+ * 2026-06-20): an overview stat grid + "Cravings This Week" bar chart + an
+ * Explore menu. All stats are REAL (computeMetrics). The original ranked insight
+ * FEED is preserved as the "Patterns" Explore destination (no logic lost); other
+ * sub-views that have no backing data yet are "coming soon".
  */
+type HubView = 'main' | 'patterns'
+
+const EXPLORE: {
+  key: HubView | 'soon'
+  label: string
+  sub: string
+  Icon: typeof Zap
+  tint: string
+  bg: string
+}[] = [
+  { key: 'patterns', label: 'Cravings', sub: 'Patterns, intensity, timing', Icon: Zap, tint: '#F15025', bg: '#FFE5DC' },
+  { key: 'soon', label: 'Top tools', sub: "What's working for you", Icon: Wrench, tint: '#4E9A52', bg: '#E6F4D6' },
+  { key: 'soon', label: 'Journal', sub: 'Your notes over time', Icon: FileText, tint: '#378ADD', bg: '#DCEBFB' },
+  { key: 'soon', label: 'Triggers', sub: 'What sets off cravings', Icon: AlertTriangle, tint: '#E0A52B', bg: '#FFF3D6' },
+  { key: 'soon', label: 'People', sub: 'Who you were with', Icon: Users, tint: '#8B5CF6', bg: '#F3E8FF' },
+  { key: 'soon', label: 'Places', sub: 'Where cravings hit', Icon: MapPin, tint: '#268255', bg: '#D6F0E2' },
+  { key: 'soon', label: 'Streaks', sub: 'Your quit history', Icon: Activity, tint: '#E0A52B', bg: '#FFF3D6' },
+]
+
 export default function Insights() {
-  const { feed, hasAnyLog, screenState, isLoading, resnapshotOrder } = useInsights()
+  const { feed, metrics, hasAnyLog, screenState, isLoading, resnapshotOrder } = useInsights()
   const { stage } = useStage()
   const { expandCard, toggleRiskWindow } = useInsightActions()
+  const [view, setView] = useState<HubView>('main')
   const [expandedKey, setExpandedKey] = useState<string | null>(null)
+  const [soon, setSoon] = useState<string | null>(null)
 
-  // On each focus: re-rank the feed order (so cards read last visit settle lower
-  // now — ranking "runs on screen open", §5.2). On blur: collapse any expanded card.
   useFocusEffect(
     useCallback(() => {
       resnapshotOrder()
-      return () => setExpandedKey(null)
+      return () => {
+        setExpandedKey(null)
+        setView('main')
+        setSoon(null)
+      }
     }, [resnapshotOrder]),
   )
 
@@ -37,7 +60,7 @@ export default function Insights() {
     )
   }
 
-  // INS-1a — Stage 0, no logs yet. Single prompt; replaced permanently on first log.
+  // INS-1a — Stage 0, no logs yet.
   if (!hasAnyLog) {
     return (
       <View className="flex-1 bg-background items-center justify-center px-8">
@@ -45,57 +68,141 @@ export default function Insights() {
           Log your first cigarette to start seeing your patterns.
         </Text>
         <Text className="text-muted-foreground text-sm text-center mt-3 leading-relaxed">
-          The more you log, the clearer the picture of what's really driving it.
+          The more you log, the clearer the picture of what&apos;s really driving it.
         </Text>
       </View>
     )
   }
 
-  const handleToggle = (key: string) => {
-    const item = feed.find((f) => f.card.insight_key === key)
-    if (!item) return
-    const next = expandedKey === key ? null : key
-    setExpandedKey(next)
-    // First expansion → mark read + engagement (idempotent thereafter).
-    if (next && item.card.card_state !== 'read') expandCard.mutate(item.card)
+  // ── Patterns sub-view — the original ranked insight feed ────────────────────
+  if (view === 'patterns') {
+    const handleToggle = (key: string) => {
+      const item = feed.find((f) => f.card.insight_key === key)
+      if (!item) return
+      const next = expandedKey === key ? null : key
+      setExpandedKey(next)
+      if (next && item.card.card_state !== 'read') expandCard.mutate(item.card)
+    }
+    return (
+      <ScrollView className="flex-1 bg-background" contentContainerClassName="p-5 gap-4 pb-12">
+        <View className="h-12 flex-row items-center">
+          <Pressable onPress={() => setView('main')} className="pr-3 active:opacity-60" accessibilityLabel="Back">
+            <ArrowLeft size={22} color="#15110D" strokeWidth={2} />
+          </Pressable>
+          <Text className="text-foreground font-display text-2xl">Cravings</Text>
+        </View>
+        {feed.length === 0 ? (
+          <View className="bg-card border border-border rounded-3xl p-5">
+            <Text className="text-muted-foreground text-sm leading-relaxed">
+              Your quit patterns will start appearing here as you go. Check back after a few days.
+            </Text>
+          </View>
+        ) : (
+          feed.map((item) => (
+            <InsightCardView
+              key={item.card.insight_key}
+              item={item}
+              expanded={expandedKey === item.card.insight_key}
+              onToggle={() => handleToggle(item.card.insight_key)}
+              onToggleRiskWindow={
+                item.content.riskWindowStartHour != null
+                  ? () => toggleRiskWindow.mutate(item.content.riskWindowStartHour!)
+                  : undefined
+              }
+            />
+          ))
+        )}
+        {(screenState === 'feed_led' || screenState === 'feed_continues') && stage >= 3 && (
+          <Text className="text-muted-foreground text-xs text-center mt-2 leading-relaxed">
+            Your Learning Week profile sits at the bottom — tap any card to revisit it.
+          </Text>
+        )}
+      </ScrollView>
+    )
   }
 
+  // ── Main hub view ───────────────────────────────────────────────────────────
+  const successRate = metrics.resistanceRate != null ? `${Math.round(metrics.resistanceRate)}%` : '—'
+
   return (
-    <ScrollView className="flex-1 bg-background" contentContainerClassName="p-5 gap-4 pb-12">
+    <ScrollView className="flex-1 bg-background" contentContainerClassName="px-5 pt-8 pb-12 gap-6">
+      <Text className="text-foreground font-display text-center" style={{ fontSize: 22 }}>
+        Insights
+      </Text>
+
+      {/* Overview 2×2 stat grid */}
       <View>
-        <Text className="text-muted-foreground text-sm font-sans-medium">Your patterns</Text>
-        <Text className="text-foreground font-display text-2xl mt-0.5">Insights</Text>
+        <Text className="text-muted-foreground text-xs font-sans-bold uppercase tracking-wider mb-3 px-1">
+          Overview
+        </Text>
+        <View style={{ gap: 12 }}>
+          <View className="flex-row" style={{ gap: 12 }}>
+            <StatCell value={String(metrics.cravingCount)} label="total cravings" />
+            <StatCell value={String(metrics.overcomeCount)} label="cravings beaten" highlight />
+          </View>
+          <View className="flex-row" style={{ gap: 12 }}>
+            <StatCell value={successRate} label="success rate" highlight />
+            <StatCell value={String(metrics.slipCount)} label="slips logged" />
+          </View>
+        </View>
       </View>
 
-      {feed.length === 0 ? (
-        <View className="bg-card border border-border rounded-3xl p-5">
-          <Text className="text-muted-foreground text-sm leading-relaxed">
-            Your quit patterns will start appearing here as you go. Check back after a few days.
-          </Text>
-        </View>
-      ) : (
-        feed.map((item) => (
-          <InsightCardView
-            key={item.card.insight_key}
-            item={item}
-            expanded={expandedKey === item.card.insight_key}
-            onToggle={() => handleToggle(item.card.insight_key)}
-            onToggleRiskWindow={
-              item.content.riskWindowStartHour != null
-                ? () => toggleRiskWindow.mutate(item.content.riskWindowStartHour!)
-                : undefined
-            }
-          />
-        ))
-      )}
-
-      {/* Stage 3+ context: the Learning Week profile cards have ranked to the bottom
-          of the feed above (feed_led/feed_continues). No separate route needed. */}
-      {(screenState === 'feed_led' || screenState === 'feed_continues') && stage >= 3 && (
-        <Text className="text-muted-foreground text-xs text-center mt-2 leading-relaxed">
-          Your Learning Week profile sits at the bottom — tap any card to revisit it.
+      {/* Cravings this week */}
+      <View>
+        <Text className="text-muted-foreground text-xs font-sans-bold uppercase tracking-wider mb-3 px-1">
+          Cravings this week
         </Text>
-      )}
+        <CravingsBarChart data={metrics.weeklyCravings} />
+      </View>
+
+      {/* Explore */}
+      <View>
+        <Text className="text-muted-foreground text-xs font-sans-bold uppercase tracking-wider mb-3 px-1">
+          Explore
+        </Text>
+        <View style={{ gap: 12 }}>
+          {EXPLORE.map((e) => (
+            <Pressable
+              key={e.label}
+              onPress={() => (e.key === 'patterns' ? setView('patterns') : setSoon(e.label))}
+              className="bg-card border border-border rounded-3xl p-5 flex-row items-center active:scale-[0.99]"
+              style={{ gap: 16 }}
+            >
+              <View className="h-10 w-10 rounded-full items-center justify-center" style={{ backgroundColor: e.bg }}>
+                <e.Icon size={16} color={e.tint} strokeWidth={2} />
+              </View>
+              <View className="flex-1">
+                <Text className="text-foreground font-display" style={{ fontSize: 16 }}>
+                  {e.label}
+                </Text>
+                <Text className="text-muted-foreground text-[13px] mt-0.5">{e.sub}</Text>
+              </View>
+              <ChevronRight size={18} color="#76706C" strokeWidth={2} />
+            </Pressable>
+          ))}
+        </View>
+        {soon && (
+          <Text className="text-muted-foreground text-xs text-center mt-3">
+            {soon} insights are coming soon.
+          </Text>
+        )}
+      </View>
     </ScrollView>
   )
 }
+
+const StatCell: React.FC<{ value: string; label: string; highlight?: boolean }> = ({
+  value,
+  label,
+  highlight,
+}) => (
+  <View className="flex-1 bg-card border border-border rounded-3xl p-5" style={{ minHeight: 96 }}>
+    <Text
+      className={`font-display ${highlight ? 'text-primary' : 'text-foreground'}`}
+      style={{ fontSize: 32, letterSpacing: -0.5 }}
+    >
+      {value}
+    </Text>
+    <Text className="text-muted-foreground text-sm mt-1">{label}</Text>
+  </View>
+)

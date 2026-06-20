@@ -119,7 +119,8 @@ export default function TabsLayout() {
         <Tabs.Screen name="index" options={{ title: "Home", headerShown: false }} />
         {/* Community (V2) — real tab opening a "coming soon" page (design slot 2). */}
         <Tabs.Screen name="community" options={{ title: "Community" }} />
-        <Tabs.Screen name="insights" options={{ title: "Insights" }} />
+        {/* Insights renders its own in-body header (hub title / sub-view back). */}
+        <Tabs.Screen name="insights" options={{ title: "Insights", headerShown: false }} />
         <Tabs.Screen name="tools" options={{ title: "Tools" }} />
         {/* Profile — reached via the Home TopBar icon (design nav model), not a
             tab. Kept as a route with href: null so navigation still resolves. */}

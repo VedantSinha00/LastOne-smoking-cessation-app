@@ -68,6 +68,28 @@ export interface InsightMetrics {
   cravingPerDayCurrent: number
   cravingPerDayPrior: number
   riskWindows: RiskWindow[]
+  /** Cravings logged on each of the last 7 days (oldest→newest), for the
+   *  "Cravings This Week" bar chart on the Insights hub. */
+  weeklyCravings: { dayLabel: string; count: number }[]
+}
+
+/** Per-day craving counts for the last 7 days (oldest→newest). */
+function weeklyCravingBuckets(cravings: LogRow[]): { dayLabel: string; count: number }[] {
+  const DAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
+  const day = 86_400_000
+  const startOfToday = new Date()
+  startOfToday.setHours(0, 0, 0, 0)
+  const buckets: { dayLabel: string; count: number }[] = []
+  for (let i = 6; i >= 0; i--) {
+    const dayStart = startOfToday.getTime() - i * day
+    const dayEnd = dayStart + day
+    const count = cravings.filter((c) => {
+      const t = new Date(c.timestamp).getTime()
+      return t >= dayStart && t < dayEnd
+    }).length
+    buckets.push({ dayLabel: DAY_LABELS[new Date(dayStart).getDay()], count })
+  }
+  return buckets
 }
 
 /** MODE of all triggers[] across craving logs (current attempt). */
@@ -154,6 +176,7 @@ export function computeMetrics(logs: LogRow[]): InsightMetrics {
     cravingPerDayCurrent,
     cravingPerDayPrior,
     riskWindows: calculateRiskWindows(cravings),
+    weeklyCravings: weeklyCravingBuckets(cravings),
   }
 }
 
