@@ -4,10 +4,11 @@ import { useContentCarousel } from '../../hooks/useContentCarousel'
 import { Card } from '../ui/Card'
 import { Chip } from '../ui/Chip'
 
-// Home wraps content in p-6 (24px each side). Size each card so one fills the screen
+// Home wraps content in px-5 (20px each side). Size each card so one fills the screen
 // with the next peeking out — the peek signals the row is horizontally scrollable.
-const HOME_PADDING = 24
-const PEEK = 36
+// A smaller peek = wider card (cards bumped ~20% larger per design feedback).
+const HOME_PADDING = 20
+const PEEK = 24
 const CARD_WIDTH = Dimensions.get('window').width - HOME_PADDING * 2 - PEEK
 
 /**
@@ -43,12 +44,20 @@ export const ContentCarousel: React.FC = () => {
         contentContainerClassName="gap-3 pr-2"
       >
         {cards.map(({ card, body }) => (
-          <Card key={card.card_id} style={{ width: CARD_WIDTH }}>
+          <Card
+            key={card.card_id}
+            elevation="soft"
+            style={{ width: CARD_WIDTH, minHeight: 188 }}
+            className="p-6"
+          >
             <Chip label={card.pill_tag} variant="muted" />
-            <Text className="text-foreground font-display text-base mt-1.5 leading-snug">
+            <Text
+              className="text-foreground font-display mt-4 tracking-tight"
+              style={{ fontSize: 20, lineHeight: 24 }}
+            >
               {card.title}
             </Text>
-            <Text className="text-muted-foreground text-sm mt-2 leading-relaxed">{body}</Text>
+            <Text className="text-muted-foreground text-[15px] mt-3 leading-relaxed">{body}</Text>
           </Card>
         ))}
       </ScrollView>

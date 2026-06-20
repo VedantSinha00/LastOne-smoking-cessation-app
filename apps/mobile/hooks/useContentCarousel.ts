@@ -20,10 +20,16 @@ function todayKey(timezone: string): string {
 }
 
 /**
- * Daily Home carousel of `scheduled` content cards (Content Cards §3.1). Picks 3–5
+ * Home carousel of `scheduled` content cards (Content Cards §3.1). Picks 3–5
  * cards (≤2 per category, least-recently-shown, 14-day cooldown relaxing to 7) and
- * records their impressions. The query key includes today's date so the set refreshes
- * once per day automatically (no timer). Re-shows the same set within a day from cache.
+ * records their impressions.
+ *
+ * Rotation: re-selects on every app open (user preference — fresh cards each
+ * visit, not the spec's once-per-day stable set). Because `selectCarousel` sorts
+ * by least-recently-shown and each impression bumps last_shown_at/show_count, a
+ * reopen naturally surfaces different cards. The date stays in the query key (so
+ * separate days are distinct cache entries), but staleTime: 0 + refetchOnMount
+ * make each mount re-run the selection.
  */
 export function useContentCarousel(): { cards: ResolvedCard[]; isLoading: boolean } {
   const { user } = useAuth()
@@ -70,7 +76,8 @@ export function useContentCarousel(): { cards: ResolvedCard[]; isLoading: boolea
       return selected
     },
     enabled: !!user,
-    staleTime: 12 * 60 * 60 * 1000, // stable within a day; key change busts at midnight
+    staleTime: 0, // re-select on every app open (rotation — user preference)
+    refetchOnMount: 'always',
   })
 
   return { cards: query.data ?? [], isLoading: query.isLoading }

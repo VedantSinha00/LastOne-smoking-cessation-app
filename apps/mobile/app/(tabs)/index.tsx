@@ -124,41 +124,51 @@ export default function Home() {
       <TopBar />
 
       <ScrollView className="flex-1 bg-background px-5 pt-2" contentContainerClassName="gap-7 pb-12">
-      {/* 1 — Greeting */}
-      <Greeting firstName={profile?.first_name} dayCount={dayCount} />
+      {/*
+        Home scroll order — design-led, reconciled with the Home Spec per-section
+        (user calls 2026-06-20, see [[project_home_design_vs_spec]]):
+          1 Greeting · 2 Content (Today) · 3 Streak Bar · 4 Coping (cond.) ·
+          5 Daily Check-In · 6 Progress (+savings, goals) · 7 Insights Preview ·
+          8 Health Milestones.
+        Design wins on: content-first (Today above Streak), Check-In before
+        Progress. Spec wins on: Insights at 7 (before Health Milestones).
+      */}
 
-      {/* 2 — Streak Bar */}
+      {/* 1 — Greeting (subline intentionally omitted — design preference) */}
+      <Greeting firstName={profile?.first_name} />
+
+      {/* 2 — Content Carousel (design leads with today's content above the streak) */}
+      <ContentCarousel />
+
+      {/* 3 — Streak Bar */}
       <View>
         <SectionLabel>Streaks</SectionLabel>
         <StreakBar stage={stage} streak={streak} />
       </View>
 
-      {/* 3 — Coping Surface Card: renders only at alert_level=2 (Insights §B2.8) */}
+      {/* 4 — Coping Surface Card: renders only at alert_level=2 (Insights §B2.8) */}
       <CopingSurfaceCard />
 
-      {/* 4 — Progress Dashboard */}
-      <View>
-        <SectionLabel>Progress</SectionLabel>
-        <ProgressDashboard stage={stage} />
-      </View>
-
-      {/* 4b — Savings milestone celebration (inline, fires once per threshold) */}
-      <SavingsMilestoneCard />
-
-      {/* 4c — Personal Goals (design Home section; top active goal, taps to /goals) */}
-      <HomePersonalGoalCard />
-
-      {/* 5 — GU-1 trigger card (replaces the check-in this session when due),
-            else Daily Check-In (Stage 1+, until satisfied) */}
+      {/* 5 — Daily Check-In (design places it before Progress). GU-1 trigger card
+            takes priority and replaces the check-in this session when due. */}
       <GivingUpCard />
       {showDailyCheckIn && (
         <DailyCheckInCard dayCount={dayCount} onSatisfied={refreshCheckIn} />
       )}
 
-      {/* 6 — Content Carousel */}
-      <ContentCarousel />
+      {/* 6 — Progress Dashboard */}
+      <View>
+        <SectionLabel>Progress</SectionLabel>
+        <ProgressDashboard stage={stage} />
+      </View>
 
-      {/* 7 — Insights Preview */}
+      {/* 6b — Savings milestone celebration (inline, fires once per threshold) */}
+      <SavingsMilestoneCard />
+
+      {/* 6c — Personal Goals (design Home section; top active goal, taps to /goals) */}
+      <HomePersonalGoalCard />
+
+      {/* 7 — Insights Preview (spec position: before Health Milestones) */}
       <InsightsPreview />
 
       {/* 7b — One-time Stage-2 support person setup prompt (GU §B2, low priority) */}
