@@ -121,7 +121,8 @@ export default function TabsLayout() {
         <Tabs.Screen name="community" options={{ title: "Community" }} />
         {/* Insights renders its own in-body header (hub title / sub-view back). */}
         <Tabs.Screen name="insights" options={{ title: "Insights", headerShown: false }} />
-        <Tabs.Screen name="tools" options={{ title: "Tools" }} />
+        {/* Tools renders its own in-body "All tools" TopBar — hide the native one. */}
+        <Tabs.Screen name="tools" options={{ title: "Tools", headerShown: false }} />
         {/* Profile — reached via the Home TopBar icon (design nav model), not a
             tab. Kept as a route with href: null so navigation still resolves. */}
         <Tabs.Screen name="profile" options={{ href: null, title: "Profile" }} />

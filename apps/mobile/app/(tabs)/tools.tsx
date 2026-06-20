@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { View, Text, ScrollView, Pressable, ActivityIndicator, Modal } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import { useAuth } from "../../hooks/useAuth";
@@ -22,6 +23,7 @@ type CopingTool = Database["public"]["Tables"]["coping_tools"]["Row"];
 export default function ToolsLibrary() {
   const { user } = useAuth();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [active, setActive] = useState<CopingTool | null>(null);
   const [checkIn, setCheckIn] = useState(false);
   const [family, setFamily] = useState<FamilyKey | null>(null);
@@ -59,7 +61,11 @@ export default function ToolsLibrary() {
     selectedDef && selectedDef.match ? (tools ?? []).filter(selectedDef.match) : [];
 
   return (
-    <ScrollView className="flex-1 bg-background" contentContainerClassName="p-6 gap-6 pb-12">
+    <ScrollView
+      className="flex-1 bg-background"
+      contentContainerClassName="px-6 gap-6 pb-12"
+      contentContainerStyle={{ paddingTop: insets.top + 8 }}
+    >
       {family === null ? (
         // ── Catalog: family-card grid (design "All tools") ──────────────────
         <>
