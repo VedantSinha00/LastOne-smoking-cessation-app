@@ -72,26 +72,25 @@ const FamilyCard: React.FC<{ def: FamilyDef; count: number; onPress: () => void 
         radius 81 ≈ dist from origin to the bottom-right corner (100,100):
         √(80²+10²)=80.6 — so the largest ring just touches that corner once.
         strokeWidth 1.0 (~30% thinner than before). */}
-    {/* Absolute inset:0 (NO width/height — adding those constrains it to the content
-        box and the rings stop at the text line). This is the version that reached
-        the card bottom. Opacity on the wrapper (design method). */}
-    <Svg
-      viewBox="0 0 100 100"
-      preserveAspectRatio="none"
-      style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, opacity: 0.6 }}
-    >
-      {[17, 33, 49, 65, 81].map((r) => (
-        <Circle key={r} cx="20" cy="110" r={r} fill="none" stroke={def.dot} strokeWidth="1" />
-      ))}
-    </Svg>
+    {/* Rings. ROBUST sizing: an absolutely-positioned View fills the whole card
+        (View inset:0 is deterministic, unlike a bare <Svg> with no width/height,
+        which sizes unreliably and collapsed to the content box on some reloads).
+        The SVG then takes width/height 100% of THAT wrapper = the full card,
+        escaping the card's padding so the rings always reach the edges. */}
+    <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, opacity: 0.4 }} pointerEvents="none">
+      <Svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none">
+        {[17, 33, 49, 65, 81].map((r) => (
+          <Circle key={r} cx="20" cy="110" r={r} fill="none" stroke={def.dot} strokeWidth="0.8" />
+        ))}
+      </Svg>
+    </View>
     {/* Title — Playfair Display 600 @ 26/lineHeight 27 (design exact). Labels with
         a natural break (hyphen/space) are split into explicit lines at that point
         so a token never breaks mid-word; single long words (Breathing/Reframing)
         shrink via adjustsFontSizeToFit on narrow screens. Fixed 2-line box. */}
     <View style={{ height: 56, justifyContent: 'flex-start' }}>
       <Text
-        className="font-serif"
-        style={{ fontSize: 26, lineHeight: 27, color: def.fg }}
+        style={{ fontFamily: 'PlayfairDisplay_700Bold', fontSize: 26, lineHeight: 27, color: def.fg }}
         numberOfLines={2}
         adjustsFontSizeToFit
         minimumFontScale={0.7}
@@ -104,7 +103,7 @@ const FamilyCard: React.FC<{ def: FamilyDef; count: number; onPress: () => void 
         dense origin point — keeps the rings visible behind/around it. */}
     <Text
       className="font-sans-medium"
-      style={{ fontSize: 13, color: def.fg, opacity: 0.75, marginBottom: 10 }}
+      style={{ fontSize: 14, color: def.fg, opacity: 0.75, marginBottom: 10 }}
     >
       {def.comingSoon ? def.unit : `${count} ${def.unit}`}
     </Text>

@@ -99,9 +99,9 @@ module.exports = {
         sans: ["DMSans_400Regular"],
         "sans-medium": ["DMSans_500Medium"],
         "sans-bold": ["DMSans_700Bold"],
-        // Playfair Display (serif) — tool-family card titles, matching the design's
-        // `fontFamily: "Playfair Display"; fontWeight: 600`.
+        // Playfair Display (serif) — tool-family card titles.
         serif: ["PlayfairDisplay_600SemiBold"],
+        "serif-bold": ["PlayfairDisplay_700Bold"],
       },
     },
   },
