@@ -23,14 +23,19 @@ export default function GamesHub() {
 
   return (
     <ScrollView className="flex-1 bg-background" contentContainerClassName="p-6 gap-4 pb-12">
-      <View className="flex-row items-center gap-3">
-        <Pressable onPress={() => router.back()} hitSlop={12}>
-          <Text className="text-foreground text-2xl">←</Text>
+      {/* Header — design TopBar pattern (back ← + centered title + close) */}
+      <View className="h-14 flex-row items-center justify-between">
+        <Pressable onPress={() => router.back()} hitSlop={12} style={{ width: 24 }}>
+          <Text className="text-2xl" style={{ color: '#0D0D0D' }}>
+            ←
+          </Text>
         </Pressable>
-        <View className="flex-1">
-          <Text className="text-muted-foreground text-sm font-sans-medium">Need a distraction?</Text>
-          <Text className="text-foreground font-display text-2xl">Pick a game</Text>
-        </View>
+        <Text className="font-display" style={{ fontSize: 16, color: '#0D0D0D' }}>
+          Mini-games
+        </Text>
+        <Pressable onPress={() => router.back()} hitSlop={12} style={{ width: 24, alignItems: 'flex-end' }}>
+          <Text style={{ fontSize: 18, color: '#888888' }}>✕</Text>
+        </Pressable>
       </View>
 
       {/* Streak summary + shortcut to MG-STREAK-1 */}
@@ -52,16 +57,23 @@ export default function GamesHub() {
 
       {TILES.map((tile) => (
         <Card key={tile.type} onPress={() => router.push(tile.route)}>
-          <View className="flex-row items-center gap-3">
-            <Text className="text-3xl">{tile.emoji}</Text>
+          <View className="flex-row items-center" style={{ gap: 16 }}>
+            {/* Family-coloured (Games blue) round icon chip, design style */}
+            <View
+              className="items-center justify-center"
+              style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: '#DCEBFB' }}
+            >
+              <Text style={{ fontSize: 24 }}>{tile.emoji}</Text>
+            </View>
             <View className="flex-1">
-              <Text className="text-foreground font-sans-bold text-base">
+              <Text className="text-foreground font-display text-base">
                 {GAME_LABELS[tile.type].name}
               </Text>
               <Text className="text-muted-foreground text-xs mt-0.5">
                 {GAME_LABELS[tile.type].blurb}
               </Text>
             </View>
+            <Text style={{ fontSize: 18, color: '#76706C' }}>›</Text>
           </View>
         </Card>
       ))}
