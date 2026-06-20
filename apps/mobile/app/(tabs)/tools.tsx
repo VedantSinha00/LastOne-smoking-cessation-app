@@ -30,11 +30,21 @@ export default function ToolsLibrary() {
   const [family, setFamily] = useState<FamilyKey | null>(null);
 
   const onSelectFamily = (key: FamilyKey) => {
-    if (key === "mini_games") {
-      router.push("/games");
-      return;
-    }
-    setFamily(key); // ai_chat shows its own coming-soon panel below
+    setFamily(key); // coming-soon families show their panel; mini_games lists games
+  };
+
+  // mini_games tools open their dedicated game screen (not the ToolRunner modal),
+  // keyed by data_model_id. Others run through startTool.
+  const GAME_ROUTES: Record<string, string> = {
+    echo_tap: "/games/echo-tap",
+    memory_1p: "/games/memory-1p",
+    memory_2p: "/games/memory-2p",
+    find_match_2p: "/games/memory-2p",
+  };
+  const openTool = (t: CopingTool) => {
+    const route = GAME_ROUTES[t.data_model_id];
+    if (route) router.push(route as never);
+    else startTool(t);
   };
 
   const { data: tools, isLoading } = useQuery({
@@ -68,10 +78,22 @@ export default function ToolsLibrary() {
       contentContainerStyle={{ paddingTop: insets.top + 8 }}
     >
       {/* "All tools" banner — shown on BOTH the catalog and the drilled-in family
-          view (design keeps it above the "← All categories" link). */}
-      <Text className="text-foreground font-display text-center" style={{ fontSize: 22 }}>
-        All tools
-      </Text>
+          view. Back arrow (←) at the top-left goes straight to Home (design TopBar). */}
+      <View className="h-8 flex-row items-center justify-center">
+        <Pressable
+          onPress={() => router.navigate("/(tabs)/")}
+          hitSlop={12}
+          accessibilityLabel="Back to home"
+          style={{ position: "absolute", left: 0 }}
+        >
+          <Text className="text-2xl" style={{ color: "#0D0D0D" }}>
+            ←
+          </Text>
+        </Pressable>
+        <Text className="text-foreground font-display" style={{ fontSize: 22 }}>
+          All tools
+        </Text>
+      </View>
 
       {family === null ? (
         // ── Catalog: family-card grid (design "All tools") ──────────────────
@@ -119,7 +141,7 @@ export default function ToolsLibrary() {
                     bg={selectedDef?.bg ?? "#EEEEEE"}
                     dot={selectedDef?.dot ?? "#999999"}
                     fg={selectedDef?.fg ?? "#555555"}
-                    onPress={() => startTool(t)}
+                    onPress={() => openTool(t)}
                   />
                 ))}
               </View>
