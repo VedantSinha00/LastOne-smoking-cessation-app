@@ -169,15 +169,30 @@ export default function Memory1P() {
 
   if (phase === 'playing') {
     return (
-      <View className="flex-1 bg-background px-4 pt-14">
-        <View className="flex-row items-center justify-between px-2 mb-6">
-          <Pressable onPress={() => router.back()} hitSlop={12}>
-            <Text className="text-foreground text-2xl">✕</Text>
+      <View className="flex-1 bg-background px-5 pt-14">
+        {/* Header — "Memory" title + close, design-styled */}
+        <View className="h-14 flex-row items-center justify-between">
+          <Pressable onPress={() => router.back()} hitSlop={12} style={{ width: 24 }}>
+            <Text className="text-2xl" style={{ color: '#0D0D0D' }}>
+              ←
+            </Text>
           </Pressable>
-          <Text className="text-muted-foreground text-sm font-sans-bold">
-            {pairsMatched} / {pairsTotal} pairs
+          <Text className="font-display" style={{ fontSize: 16, color: '#0D0D0D' }}>
+            Memory
           </Text>
+          <Pressable onPress={() => router.back()} hitSlop={12} style={{ width: 24, alignItems: 'flex-end' }}>
+            <Text style={{ fontSize: 18, color: '#888888' }}>✕</Text>
+          </Pressable>
         </View>
+
+        {/* "X / N pairs" — centered bold green (design) */}
+        <Text
+          className="font-sans-bold text-center"
+          style={{ fontSize: 18, color: '#84C524', marginTop: 6, marginBottom: 18 }}
+        >
+          {pairsMatched} / {pairsTotal} pairs
+        </Text>
+
         <MemoryBoard
           cards={cards}
           grid={grid}
@@ -186,6 +201,10 @@ export default function Memory1P() {
           matched={matched}
           onFlip={flip}
         />
+
+        <Text className="text-center" style={{ marginTop: 22, fontSize: 13, color: '#888888' }}>
+          Tap a card to flip it
+        </Text>
       </View>
     )
   }

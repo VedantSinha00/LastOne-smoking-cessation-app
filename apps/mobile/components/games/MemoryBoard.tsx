@@ -17,10 +17,17 @@ interface Props {
   covered?: boolean
 }
 
+// Design card colours (Lovable MemoryGame): matched/flipped use the game green,
+// default is a clean white card with a soft grey border, face shown when up.
+const GREEN = '#84C524'
+const GREEN_BG = 'rgba(132,197,36,0.18)'
+const GREY_BORDER = '#E8E8E8'
+
 /**
- * Shared Memory card grid (Memory 1P + 2P). 3×4 = 3 cols, 4×4 = 4 cols.
- * A card shows its face when flipped or matched; matched cards dim slightly.
- * Match is by faceId but identity is the position id (§8 image-bug fallback).
+ * Shared Memory card grid (Memory 1P + 2P), reskinned to the Lovable design:
+ * square cards, rounded-14, matched/flipped = green, default = white + grey
+ * border. 3×4 = 3 cols, 4×4 = 4 cols. Logic unchanged — a card shows its face
+ * when flipped or matched; match is by faceId, identity is the position id.
  */
 export const MemoryBoard: React.FC<Props> = ({
   cards,
@@ -33,31 +40,30 @@ export const MemoryBoard: React.FC<Props> = ({
 }) => {
   const cols = grid === '4x4' ? 4 : 3
   const lockTurn = flipped.length >= 2
+  const basis = cols === 4 ? '22%' : '29%'
 
   return (
-    <View className="flex-row flex-wrap justify-center" style={{ gap: 10 }}>
+    <View className="flex-row flex-wrap justify-center" style={{ gap: 12 }}>
       {cards.map((card) => {
         const isUp = !covered && (flipped.includes(card.id) || matched.includes(card.id))
         const isMatched = matched.includes(card.id)
-        // Square cells sized to fit the column count within a phone width.
-        const basis = cols === 4 ? '21%' : '28%'
+        const isFlipped = !isMatched && isUp
         return (
           <Pressable
             key={card.id}
             disabled={covered || isUp || lockTurn}
             onPress={() => onFlip(card.id)}
-            style={{ width: basis, aspectRatio: 0.78 }}
-            className={`rounded-2xl items-center justify-center border ${
-              isUp
-                ? isMatched
-                  ? 'bg-primary/10 border-primary/40'
-                  : 'bg-card border-primary'
-                : 'bg-primary border-primary/30 active:opacity-80'
-            }`}
+            style={{
+              width: basis,
+              aspectRatio: 1,
+              borderRadius: 14,
+              borderWidth: 2,
+              backgroundColor: isMatched || isFlipped ? GREEN_BG : '#FFFFFF',
+              borderColor: isMatched || isFlipped ? GREEN : GREY_BORDER,
+            }}
+            className="items-center justify-center active:opacity-90"
           >
-            <Text className="text-3xl">
-              {isUp ? faceGlyph(card.faceId, skin) : ''}
-            </Text>
+            <Text style={{ fontSize: 30 }}>{isUp ? faceGlyph(card.faceId, skin) : ''}</Text>
           </Pressable>
         )
       })}
