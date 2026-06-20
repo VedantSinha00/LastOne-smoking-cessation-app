@@ -54,8 +54,16 @@ const FamilyCard: React.FC<{ def: FamilyDef; count: number; onPress: () => void 
     style={{ width: '48%', aspectRatio: 1 / 1.05, borderRadius: 28, backgroundColor: def.bg, padding: 18, overflow: 'hidden', justifyContent: 'space-between' }}
     className="active:opacity-90"
   >
-    {/* decorative concentric rings (design) */}
-    <Svg width="100%" height="100%" viewBox="0 0 200 200" style={{ position: 'absolute', top: 0, left: 0, opacity: 0.35 }}>
+    {/* decorative concentric rings (design): anchored to the bottom-left, sweeping
+        wide across the card. preserveAspectRatio="none" stretches the square viewBox
+        to the card's full (non-square) size, matching the web SVG. */}
+    <Svg
+      width="100%"
+      height="100%"
+      viewBox="0 0 200 200"
+      preserveAspectRatio="none"
+      style={{ position: 'absolute', top: 0, left: 0, opacity: 0.35 }}
+    >
       {[40, 70, 100, 130, 160].map((r) => (
         <Circle key={r} cx="40" cy="200" r={r} fill="none" stroke={def.dot} strokeWidth="1" />
       ))}
