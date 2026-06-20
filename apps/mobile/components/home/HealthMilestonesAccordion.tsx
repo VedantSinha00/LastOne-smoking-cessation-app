@@ -103,8 +103,11 @@ const StageCard: React.FC<{
   const { stage, total, done, complete, inProgress } = state
 
   return (
-    <View
-      className="rounded-3xl bg-card border border-border overflow-hidden"
+    // The whole card is the tap target — tapping the header OR the expanded
+    // checklist toggles it open/closed.
+    <Pressable
+      onPress={onToggle}
+      className="rounded-3xl bg-card border border-border overflow-hidden active:scale-[0.99]"
       style={{
         shadowColor: '#15110D',
         shadowOpacity: open ? 0.1 : 0.06,
@@ -113,9 +116,8 @@ const StageCard: React.FC<{
         elevation: open ? 5 : 3,
       }}
     >
-      <Pressable
-        onPress={onToggle}
-        className="px-5 flex-row items-center active:scale-[0.99]"
+      <View
+        className="px-5 flex-row items-center"
         style={{ gap: 14, paddingVertical: 22 }}
       >
         <View
@@ -144,7 +146,7 @@ const StageCard: React.FC<{
           strokeWidth={2}
           style={{ transform: [{ rotate: open ? '180deg' : '0deg' }] }}
         />
-      </Pressable>
+      </View>
 
       {open && (
         // Match the header's left padding (px-5 = 20) exactly; each row then uses a
@@ -206,6 +208,6 @@ const StageCard: React.FC<{
           </View>
         </View>
       )}
-    </View>
+    </Pressable>
   )
 }
