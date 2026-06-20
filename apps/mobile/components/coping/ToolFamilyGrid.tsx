@@ -56,31 +56,39 @@ function twoLineLabel(label: string): string {
   return label
 }
 
-const FamilyCard: React.FC<{ def: FamilyDef; count: number; onPress: () => void }> = ({
+// TEMP A/B: two ring geometries to compare on device.
+//   A = origin at the card BOTTOM-left (design math, but bigger/thicker).
+//   B = origin RAISED to ~the text line.
+// Both use a viewBox stretched to the card with preserveAspectRatio="none" so the
+// radii/stroke stay big (meet was shrinking them). Pick one, then this is cleaned up.
+const RING: Record<'A' | 'B', { cy: number; radii: number[]; stroke: number }> = {
+  A: { cy: 100, radii: [22, 40, 58, 76, 94], stroke: 1.1 },
+  B: { cy: 64, radii: [22, 40, 58, 76, 94], stroke: 1.1 },
+}
+
+const FamilyCard: React.FC<{ def: FamilyDef; count: number; onPress: () => void; ring?: 'A' | 'B' }> = ({
   def,
   count,
   onPress,
+  ring = 'A',
 }) => (
   <Pressable
     onPress={onPress}
     style={{ width: '48%', aspectRatio: 1 / 1.05, borderRadius: 28, backgroundColor: def.bg, paddingVertical: 18, paddingHorizontal: 16, overflow: 'hidden', justifyContent: 'space-between' }}
     className="active:opacity-90"
   >
-    {/* Decorative concentric rings — design geometry EXACTLY: viewBox 0 0 200 200,
-        default xMidYMid meet (the design sets no preserveAspectRatio), circles at
-        cx40 cy200 r[40..160]. On the taller-than-wide card, meet fits to the width
-        and centres vertically, putting the origin near the bottom and sweeping the
-        arcs wide — like the design. strokeWidth is bumped to 1.4 (from the design's
-        1) to offset RN rendering the meet-downscaled stroke thinner than the web. */}
+    {/* Decorative concentric rings (TEMP A/B — see RING above). viewBox is 100×100
+        stretched to the card (preserveAspectRatio none) so radii render large and
+        the 1.1 stroke stays a visible ~2px; origin at cx=20 (left), cy per variant. */}
     <Svg
       width="100%"
       height="100%"
-      viewBox="0 0 200 200"
-      preserveAspectRatio="xMidYMid meet"
-      style={{ position: 'absolute', top: 0, left: 0, opacity: 0.35 }}
+      viewBox="0 0 100 100"
+      preserveAspectRatio="none"
+      style={{ position: 'absolute', top: 0, left: 0, opacity: 0.4 }}
     >
-      {[40, 70, 100, 130, 160].map((r) => (
-        <Circle key={r} cx="40" cy="200" r={r} fill="none" stroke={def.dot} strokeWidth="1.4" />
+      {RING[ring].radii.map((r) => (
+        <Circle key={r} cx="20" cy={RING[ring].cy} r={r} fill="none" stroke={def.dot} strokeWidth={RING[ring].stroke} />
       ))}
     </Svg>
     {/* Title — Playfair Display 600 @ 26/lineHeight 27 (design exact). Labels with
@@ -109,21 +117,35 @@ interface Props {
   onSelectFamily: (key: FamilyKey) => void
 }
 
-export const ToolFamilyGrid: React.FC<Props> = ({ tools, onSelectFamily }) => (
-  <View className="flex-row flex-wrap justify-between" style={{ rowGap: 12 }}>
-    {FAMILIES.map((def) => {
-      const count = def.match ? tools.filter(def.match).length : 0
-      return (
-        <FamilyCard
-          key={def.key}
-          def={def}
-          count={count}
-          onPress={() => onSelectFamily(def.key)}
-        />
-      )
-    })}
-  </View>
-)
+export const ToolFamilyGrid: React.FC<Props> = ({ tools, onSelectFamily }) => {
+  const sample = FAMILIES[1] // Physical (the one in your screenshots)
+  return (
+    <View style={{ gap: 12 }}>
+      {/* TEMP A/B comparison — pick a ring origin, then this block is removed. */}
+      <Text className="text-muted-foreground text-xs font-sans-bold uppercase tracking-wider">
+        A = bottom origin · B = raised origin
+      </Text>
+      <View className="flex-row justify-between">
+        <FamilyCard def={sample} count={8} onPress={() => {}} ring="A" />
+        <FamilyCard def={sample} count={8} onPress={() => {}} ring="B" />
+      </View>
+
+      <View className="flex-row flex-wrap justify-between" style={{ rowGap: 12 }}>
+        {FAMILIES.map((def) => {
+          const count = def.match ? tools.filter(def.match).length : 0
+          return (
+            <FamilyCard
+              key={def.key}
+              def={def}
+              count={count}
+              onPress={() => onSelectFamily(def.key)}
+            />
+          )
+        })}
+      </View>
+    </View>
+  )
+}
 
 export { FAMILIES }
 export type { FamilyDef }
