@@ -795,6 +795,11 @@
   resolved "https://registry.yarnpkg.com/@expo-google-fonts/dm-sans/-/dm-sans-0.4.2.tgz#76b73ba806c24f5b4188127485162603fb67de62"
   integrity sha512-e/fLH5aCJzkEenz7axvEn8N7IJAKhUwNjIxS75h9j+Ip1M9S7d22M19gJN3A7QW4egVkBJRyQh1hQFhngQn9yA==
 
+"@expo-google-fonts/playfair-display@^0.4.2":
+  version "0.4.2"
+  resolved "https://registry.yarnpkg.com/@expo-google-fonts/playfair-display/-/playfair-display-0.4.2.tgz#a2ce52b803eebf5e8fa62cdbb26e85b08f0665b7"
+  integrity sha512-mWhBV59RUjSS3aYpytUb7UyHHTnXcHh7epAn7gq+M4XAEh5PuMKUrP8eiUfkJLb6UwHZCi7EhQpUzxHu5OL96w==
+
 "@expo-google-fonts/space-grotesk@^0.4.1":
   version "0.4.1"
   resolved "https://registry.yarnpkg.com/@expo-google-fonts/space-grotesk/-/space-grotesk-0.4.1.tgz#cb1f58e17e9bc91d2b87270d37cb26cd6b6773ac"

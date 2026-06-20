@@ -68,14 +68,14 @@ const FamilyCard: React.FC<{ def: FamilyDef; count: number; onPress: () => void 
         <Circle key={r} cx="40" cy="200" r={r} fill="none" stroke={def.dot} strokeWidth="1" />
       ))}
     </Svg>
-    {/* Fixed 2-line title box (54 ≈ 2×27 line-height) gives adjustsFontSizeToFit a
-        bounded area to shrink within, so titles fit cleanly at any card width.
-        The hyphen in "Mini-games" is swapped to a non-breaking hyphen (‑) so
-        the word wraps as a whole unit instead of splitting as "Mini-ga / mes". */}
-    <View style={{ height: 54, justifyContent: 'flex-start' }}>
+    {/* Title — Playfair Display 600 @ 26/lineHeight 27 (design exact). Fixed
+        2-line box gives adjustsFontSizeToFit a bounded area so titles fit cleanly
+        at any width; the hyphen in "Mini-games" is a non-breaking hyphen (‑) so
+        the word wraps whole instead of splitting as "Mini-ga / mes". */}
+    <View style={{ height: 56, justifyContent: 'flex-start' }}>
       <Text
-        className="font-display"
-        style={{ fontSize: 24, lineHeight: 27, color: def.fg }}
+        className="font-serif"
+        style={{ fontSize: 26, lineHeight: 27, color: def.fg }}
         numberOfLines={2}
         adjustsFontSizeToFit
         minimumFontScale={0.7}

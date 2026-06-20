@@ -12,6 +12,10 @@ import {
   DMSans_500Medium,
   DMSans_700Bold,
 } from "@expo-google-fonts/dm-sans";
+import {
+  PlayfairDisplay_600SemiBold,
+  PlayfairDisplay_700Bold,
+} from "@expo-google-fonts/playfair-display";
 import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { AuthProvider } from "../lib/auth-context";
 import { useAuth } from "../hooks/useAuth";
@@ -123,6 +127,8 @@ export default function RootLayout() {
     DMSans_400Regular,
     DMSans_500Medium,
     DMSans_700Bold,
+    PlayfairDisplay_600SemiBold,
+    PlayfairDisplay_700Bold,
   });
 
   if (!fontsLoaded) {
