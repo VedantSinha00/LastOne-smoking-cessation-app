@@ -133,6 +133,26 @@ Full rationale also in memory: `project_home_design_vs_spec.md`.
   section is empty on device (no rows) — screens are ready and will light up the
   moment the seed lands.
 
+- **#4 Profile/Settings rework — DONE (`9f7a7ee`).** Two-level model: root (profile
+  header + category rows: Your Journey/Preferences/Find Support/Privacy & Account +
+  Community section) → 4 new category sub-screens (journey/preferences/support/privacy)
+  → EXISTING leaf edit screens (cpd/price/voice/quiet-hours/account/export/delete),
+  all preserved unchanged. Community screens (refer, cheerleaders) = V2 "coming soon".
+  NOTE: kept leaf edit screens as-is rather than rebuilding each as inline toggles/
+  pills (the design's inline-control style) — preserves verified flows while device
+  verification is pending. Could do the inline-control polish later if wanted. The
+  flagged content conflicts (Best→Lifetime, dark-mode toggle, helpline verification)
+  live in those leaf screens and were left untouched.
+
+- **#5 Insights hub — DONE (`a3e331c`), with REAL data.** Overview stat grid (total
+  cravings / beaten / success rate / slips — all from computeMetrics), a
+  react-native-svg "Cravings This Week" bar chart (new metrics.weeklyCravings 7-day
+  buckets; design used recharts/web), and an Explore menu. "Cravings" opens the
+  ORIGINAL ranked insight feed preserved as a sub-view (no INS-1 logic lost); the
+  other Explore items (Top tools/Journal/Triggers/People/Places/Streaks) are "coming
+  soon". Substituted the design's mock "SOS used" stat with the real slipCount.
+  Possible follow-ups: build the other Explore sub-views; wire a real SOS-used count.
+
 ## DECISIONS MADE on return (2026-06-20 session 2)
 
 1. **Insights screen → ADOPT THE DESIGN HUB.** Vedant chose to re-architect Insights
