@@ -132,6 +132,11 @@ Full rationale also in memory: `project_home_design_vs_spec.md`.
   the file to a real timestamped migration and apply. Until applied, the Reframing
   section is empty on device (no rows) — screens are ready and will light up the
   moment the seed lands.
+  RESOLVED 2026-06-20: family enum CONFIRMED (breathing|physical|mini_games, fixed) —
+  placeholder `physical` is correct since listing is by category. DRAFT promoted to
+  real migration `20260620000001_seed_reframing_tools.sql`; run it in the Supabase SQL
+  Editor to populate the 4 tools. (Gotcha: the SQL Editor's "Primary Database" selector
+  can point at the wrong DB and falsely report the table missing.)
 
 - **#4 Profile/Settings rework — DONE (`9f7a7ee`).** Two-level model: root (profile
   header + category rows: Your Journey/Preferences/Find Support/Privacy & Account +
