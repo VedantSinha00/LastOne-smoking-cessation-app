@@ -69,19 +69,11 @@ export default function ToolsLibrary() {
       {family === null ? (
         // ── Catalog: family-card grid (design "All tools") ──────────────────
         <>
-          {/* Design TopBar — back ← on the left, centered title. (Tools is a tab,
-              so back returns to the previous screen / Home.) */}
-          <View className="h-14 flex-row items-center justify-between">
-            <Pressable onPress={() => router.navigate("/(tabs)/")} hitSlop={12} style={{ width: 24 }}>
-              <Text className="text-2xl" style={{ color: "#0D0D0D" }}>
-                ←
-              </Text>
-            </Pressable>
-            <Text className="font-display" style={{ fontSize: 16, color: "#0D0D0D" }}>
-              All tools
-            </Text>
-            <View style={{ width: 24 }} />
-          </View>
+          {/* Centered title — same size/placement as Insights (tab roots have no
+              back arrow). */}
+          <Text className="text-foreground font-display text-center" style={{ fontSize: 22 }}>
+            All tools
+          </Text>
           {isLoading ? (
             <ActivityIndicator color="#7FC200" className="mt-6" />
           ) : (

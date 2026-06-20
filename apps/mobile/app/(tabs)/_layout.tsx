@@ -118,7 +118,8 @@ export default function TabsLayout() {
             is hidden here (avoids a double header). */}
         <Tabs.Screen name="index" options={{ title: "Home", headerShown: false }} />
         {/* Community (V2) — real tab opening a "coming soon" page (design slot 2). */}
-        <Tabs.Screen name="community" options={{ title: "Community" }} />
+        {/* Community renders its own in-body TabHeader — hide the native one. */}
+        <Tabs.Screen name="community" options={{ title: "Community", headerShown: false }} />
         {/* Insights renders its own in-body header (hub title / sub-view back). */}
         <Tabs.Screen name="insights" options={{ title: "Insights", headerShown: false }} />
         {/* Tools renders its own in-body "All tools" TopBar — hide the native one. */}
