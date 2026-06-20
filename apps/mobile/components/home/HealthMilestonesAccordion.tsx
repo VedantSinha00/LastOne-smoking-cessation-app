@@ -1,10 +1,16 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { View, Text, Pressable } from 'react-native'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { parseISO, differenceInHours } from 'date-fns'
 import { Check, ChevronDown } from 'lucide-react-native'
 import { useStage } from '../../hooks/useStage'
 import { SectionLabel } from '../ui/SectionLabel'
 import { MILESTONE_STAGES, type MilestoneStage } from '../../lib/healthMilestones'
+
+// Persists which stage card the user has open so it survives re-renders / app
+// reopens. -1 = all collapsed. Until the user interacts, the default is the stage
+// matching their current quit stage.
+const OPEN_KEY = 'health_milestones_open_idx'
 
 /**
  * Health Milestones — the full staged accordion, rendered INLINE on Home, ported
@@ -17,16 +23,34 @@ import { MILESTONE_STAGES, type MilestoneStage } from '../../lib/healthMilestone
  * expanded by default (matching the design's default-open index).
  */
 export const HealthMilestonesAccordion: React.FC = () => {
-  const { quitDate } = useStage()
+  const { stage, quitDate } = useStage()
   const hoursSinceQuit = quitDate ? differenceInHours(new Date(), parseISO(quitDate)) : -1
 
-  const stageStates = MILESTONE_STAGES.map((stage) => {
-    const total = stage.milestones.length
-    const done = stage.milestones.filter((m) => hoursSinceQuit >= m.offsetHours).length
-    return { stage, total, done, complete: done === total, inProgress: done > 0 && done < total }
+  const stageStates = MILESTONE_STAGES.map((s) => {
+    const total = s.milestones.length
+    const done = s.milestones.filter((m) => hoursSinceQuit >= m.offsetHours).length
+    return { stage: s, total, done, complete: done === total, inProgress: done > 0 && done < total }
   })
-  const defaultOpen = stageStates.findIndex((s) => s.inProgress)
-  const [openIdx, setOpenIdx] = useState<number>(defaultOpen >= 0 ? defaultOpen : 0)
+
+  // Default open = the card matching the user's current quit stage. The accordion
+  // has 3 stages (indices 0–2) while the app's stage runs 0–5, so clamp: stage 1→0,
+  // 2→1, 3+→2, and pre-quit (stage 0) → 0.
+  const defaultOpen = Math.min(Math.max(stage - 1, 0), MILESTONE_STAGES.length - 1)
+
+  // Start at the default; once the persisted choice loads (or the user toggles), use
+  // that instead. null = not loaded yet → render with the default.
+  const [storedIdx, setStoredIdx] = useState<number | null>(null)
+  useEffect(() => {
+    AsyncStorage.getItem(OPEN_KEY).then((v) => {
+      if (v != null) setStoredIdx(parseInt(v, 10))
+    })
+  }, [])
+
+  const openIdx = storedIdx ?? defaultOpen
+  const setOpenIdx = (idx: number) => {
+    setStoredIdx(idx)
+    AsyncStorage.setItem(OPEN_KEY, String(idx)).catch(() => {})
+  }
 
   return (
     <View>
