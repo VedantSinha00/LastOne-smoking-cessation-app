@@ -175,19 +175,18 @@ const StageCard: React.FC<{
                     {unlocked ? (
                       <View
                         className="rounded-full bg-foreground items-center justify-center"
-                        style={{ width: 28, height: 28 }}
+                        style={{ width: 20, height: 20 }}
                       >
-                        <Check size={15} color="#FBFAF9" strokeWidth={3} />
+                        <Check size={11} color="#FBFAF9" strokeWidth={3} />
                       </View>
                     ) : (
-                      // Locked — a visible grey empty ring. Explicit width/height (not
-                      // just the className) so it always renders as a full 28px circle
-                      // instead of collapsing to a dot.
+                      // Locked — a visible grey empty ring. Explicit width/height so it
+                      // always renders as a full circle instead of collapsing to a dot.
                       <View
                         className="rounded-full"
                         style={{
-                          width: 28,
-                          height: 28,
+                          width: 20,
+                          height: 20,
                           borderWidth: 1.5,
                           borderColor: '#C8C5C1',
                           backgroundColor: '#FFFFFF',
