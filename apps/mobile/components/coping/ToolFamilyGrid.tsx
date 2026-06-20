@@ -72,15 +72,13 @@ const FamilyCard: React.FC<{ def: FamilyDef; count: number; onPress: () => void 
         radius 81 ≈ dist from origin to the bottom-right corner (100,100):
         √(80²+10²)=80.6 — so the largest ring just touches that corner once.
         strokeWidth 1.0 (~30% thinner than before). */}
+    {/* Absolute inset:0 (NO width/height — adding those constrains it to the content
+        box and the rings stop at the text line). This is the version that reached
+        the card bottom. Opacity on the wrapper (design method). */}
     <Svg
-      width="100%"
-      height="100%"
       viewBox="0 0 100 100"
       preserveAspectRatio="none"
-      // Negative inset = the card's padding (18 vert / 16 horiz) so the SVG covers
-      // the WHOLE card to its edges (react-native-svg needs explicit width/height;
-      // absolute inset alone collapses it). Opacity on the wrapper (design method).
-      style={{ position: 'absolute', top: -18, bottom: -18, left: -16, right: -16, opacity: 0.6 }}
+      style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, opacity: 0.6 }}
     >
       {[17, 33, 49, 65, 81].map((r) => (
         <Circle key={r} cx="20" cy="110" r={r} fill="none" stroke={def.dot} strokeWidth="1" />
