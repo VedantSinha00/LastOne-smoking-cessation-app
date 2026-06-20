@@ -62,6 +62,23 @@ Full rationale also in memory: `project_home_design_vs_spec.md`.
 
 ## Autonomous work (DONE while Vedant away) — REVIEW THESE
 
+### Content cards — tap-to-expand reader + shadow-clip fix (session 2)
+- Carousel cards are now TAPPABLE → open a full-screen `ContentCardReader`
+  (`components/home/ContentCardReader.tsx`): green surface-accent gradient sheet
+  (expo-linear-gradient, stops #67AC5F→#268255), drag handle, "Your body"-style
+  pill, title, scrollable body, close button. Ported from the design's TodayFullCard.
+- **Content decision:** reader shows the SAME resolved `body_copy` we already display
+  (our content_cards have no long-form article field). Read-time line dropped (no
+  field; design's was mock). "Go deeper with AI" button OMITTED (AI Chat deferred).
+- Card face gained a "TAP TO READ MORE" affordance + body clamped to 3 lines.
+- **Shadow-clip fix:** the horizontal ScrollView was clipping the soft card shadow at
+  the scroll edge. Fixed via contentContainer paddingVertical 8 + the ScrollView
+  marginVertical -8 + overflow visible, so shadows render fully while the row stays
+  visually flush.
+- New dependency: `expo-linear-gradient@15.0.8` (added via yarn workspace; the
+  npx-expo path bug + a self-unlink EPERM blocked `expo install`, so used
+  `yarn workspace @lastone/mobile add`).
+
 ### Profile header card (Settings root) — additive, clean win
 - Added `components/settings/ProfileHeaderCard.tsx` to the top of the settings
   root: avatar initial + name + stage badge + 3-stat row (days clean / attempts
@@ -79,7 +96,66 @@ Full rationale also in memory: `project_home_design_vs_spec.md`.
 
 ---
 
+## DECISIONS MADE on return (2026-06-20 session 2)
+
+1. **Insights screen → ADOPT THE DESIGN HUB.** Vedant chose to re-architect Insights
+   from the INS-1 generated-feed into the design's stats/explore hub (overview stat
+   grid + "Cravings This Week" bar chart + Explore menu + game launchers). Implications
+   to scope at build time: new aggregate queries for real stats (design numbers are
+   mock); rebuild bar chart in react-native-svg (design used recharts/web); decide
+   which Explore sub-views (Cravings/Top tools/Journal/Triggers/People/Places/Streaks)
+   are real vs "coming soon"; this absorbs the games + new-tool-families questions
+   (design launches games from here). The existing INS-1 feed logic may be preserved
+   as one sub-view or retired — TBD at build. NOT YET BUILT.
+
+2. **Progress detail (/progress) → DESIGN NAV MODEL + STYLING, keep real data.** Adopt
+   the design's main "WHAT YOU'VE GAINED" view (3 hero cards: Money/Cigs/Time, icon +
+   big number + relatable line + "Tap to explore") → tap into per-counter drill-downs
+   with the scale ladder ("AT YOUR RATE", green year row) + reference cards. KEEP the
+   app's real `scaleLadder()` math + canonical CM-01–08 Milestone System reference
+   cards (NOT the design's mock copy). Must update Home's progress-card deep-links
+   (currently `?counter=`) to land on the right drill-down. NOT YET BUILT.
+
+3. **Health Milestones (Home) → COUNTDOWN ON HOME + ACCORDION ON TAP.** Keep the lean
+   single-line "Next: X in N days" countdown on Home (honors Home spec §G), restyled to
+   the design card look. Tapping it opens the design's full multi-stage expandable
+   accordion (Stage 1/2/3, unlocked/locked checklists, in-progress badge) as the next
+   screen — needs building as a real screen wired to actual unlocked-milestone state
+   (design's stage data is mock). Currently Home card taps to /progress; will repoint
+   to the new milestone-timeline screen. NOT YET BUILT.
+
+4. **Profile/Settings → FULL DESIGN incl. Community section.** Rework the flat
+   one-level Settings into the design's two-level category nav (category rows → category
+   sub-screens with inline toggles/pills/text-input), AND add the Community section
+   (Refer & Invite, Your Cheerleaders) as "coming soon" placeholders (consistent with
+   the Community nav tab). KEEP all existing real data + edit logic underneath. Open
+   sub-decisions to resolve AT BUILD: (a) "Best streak" → use "Lifetime" (consistent
+   w/ Home StreakBar decision); (b) Dark mode toggle — confirm if it toggles anything
+   or is a disabled placeholder; (c) Quit helplines (iCall/NIMHANS) — security
+   constraints require verified NGO numbers/URLs before shipping, so use verified
+   contacts or hold those rows. NOT YET BUILT.
+
+5a. **Games → ADD design's new ones, KEEP yours.** Keep Echo Tap + Memory 1P/2P (and
+    hub/streaks). ADD Physiological Sigh + Finger Pulse Press as new games (port from
+    design's FingerPulsePressGame/PhysiologicalSighGame, rebuild for RN). For the
+    overlapping "Memory", keep the app's existing working version. Net: bigger library.
+    NOT YET BUILT.
+
+5b. **New tool families → BUILD SIMPLE ONES, DEFER AI.** Add to the tool catalog:
+    Reframing (Urge Surfing, Future Self Letter, Cost Reframe, Name the Trigger) and
+    Content Cards (First 5 minutes, The 3-minute peak, Nicotine + dopamine) as REAL
+    tools — mostly text/reflection/read flows. AI Chat (Talk it out / Why am I craving
+    / Pep talk) = "coming soon" placeholder (needs LLM backend — deferred). Wire into
+    the existing Tools library + tools.ts FAMILY_COLORS already has the 3 family chips.
+    NOT YET BUILT.
+
 ## QUEUED for Vedant (needs product taste — NOT touched)
+<!-- All five queued decisions are now resolved above. The onboarding flow remains
+     the one large item not yet discussed — see below. -->
+
+- **Onboarding flow** — design's 909-line OnboardingFlow vs the app's existing working
+  onboarding (Step 7). High-stakes reskin; NOT yet discussed with Vedant. Raise this
+  before building the rest.
 
 - **Insights screen — BIGGEST design↔spec conflict. LEFT UNTOUCHED.** The design's `InsightsScreen` (449 lines, the most-reworked file in the design pass) reimagines the Insights tab as a STATS-AND-EXPLORE HUB: an overview stat grid (total cravings / beaten / success rate / SOS used), a "Cravings This Week" bar chart, and an "Explore" menu (Cravings / Top tools / Journal / Triggers / People / Places / Streaks) — and it even embeds the games (Memory / PhysiologicalSigh / FingerPulse) as sub-views. The app's `insights.tsx` is INS-1 from the Insights spec: a RANKED VERTICAL FEED of generated insight cards derived from the user's own data (expand-in-place, ranking re-runs on focus, "the self-awareness feed / entry point from all navigation"). These are two different products for the same tab. Adopting the design means re-architecting Insights from a generated-feed into an analytics explorer + tool launcher — a major product decision that also absorbs the games + new-tool-families questions. NEEDS YOUR DIRECTION before any work. (The design's stat numbers + bar chart are also all mock; real versions would need new aggregate queries. The bar chart uses recharts → would be react-native-svg.)
 
