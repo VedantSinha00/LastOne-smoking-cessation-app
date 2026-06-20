@@ -81,17 +81,21 @@ const StageCard: React.FC<{
         elevation: open ? 5 : 3,
       }}
     >
-      <Pressable onPress={onToggle} className="p-5 flex-row items-center active:scale-[0.99]" style={{ gap: 12 }}>
+      <Pressable
+        onPress={onToggle}
+        className="px-5 flex-row items-center active:scale-[0.99]"
+        style={{ gap: 14, paddingVertical: 22 }}
+      >
         <View
-          className={`h-8 w-8 rounded-full items-center justify-center ${complete ? 'bg-foreground' : 'bg-secondary'}`}
+          className={`h-11 w-11 rounded-full items-center justify-center ${complete ? 'bg-foreground' : 'bg-secondary'}`}
         >
-          <Check size={16} color={complete ? '#FBFAF9' : '#15110D66'} strokeWidth={3} />
+          <Check size={20} color={complete ? '#FBFAF9' : '#15110D66'} strokeWidth={3} />
         </View>
         <View className="flex-1">
-          <Text className="text-foreground font-display" style={{ fontSize: 14, letterSpacing: -0.2 }}>
+          <Text className="text-foreground font-display" style={{ fontSize: 16, letterSpacing: -0.2 }}>
             {stage.name} — {stage.range}
           </Text>
-          <Text className="text-muted-foreground text-xs mt-0.5">
+          <Text className="text-muted-foreground text-[13px] mt-1">
             {complete ? 'All milestones unlocked' : `${done} / ${total} unlocked`}
           </Text>
         </View>
