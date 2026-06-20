@@ -109,7 +109,13 @@ const FamilyCard: React.FC<{ def: FamilyDef; count: number; onPress: () => void;
         {twoLineLabel(def.label)}
       </Text>
     </View>
-    <Text className="font-sans-medium" style={{ fontSize: 13, color: def.fg, opacity: 0.75 }}>
+    {/* Count text sits OVER the rings (transparent bg) but lifted off the very
+        bottom (marginBottom) so it overlays the spread-out arcs rather than the
+        dense origin point — keeps the rings visible behind/around it. */}
+    <Text
+      className="font-sans-medium"
+      style={{ fontSize: 13, color: def.fg, opacity: 0.75, marginBottom: 10 }}
+    >
       {def.comingSoon ? def.unit : `${count} ${def.unit}`}
     </Text>
   </Pressable>
