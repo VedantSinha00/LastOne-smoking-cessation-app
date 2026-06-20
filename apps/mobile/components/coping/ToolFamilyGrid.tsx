@@ -44,6 +44,18 @@ const FAMILIES: FamilyDef[] = [
   { key: 'content_cards', label: 'Content Cards', unit: 'coming soon', bg: '#FFE0EC', fg: '#9D174D', dot: '#EC4899', comingSoon: true },
 ]
 
+/**
+ * Format a family label onto two lines at its natural break (hyphen or space),
+ * keeping each token whole — "Mini-games" → "Mini-\ngames", "Content Cards" →
+ * "Content\nCards". Single-word labels pass through (they can't break mid-word and
+ * shrink to fit via adjustsFontSizeToFit on narrow screens).
+ */
+function twoLineLabel(label: string): string {
+  if (label.includes('-')) return label.replace('-', '-\n')
+  if (label.includes(' ')) return label.replace(' ', '\n')
+  return label
+}
+
 const FamilyCard: React.FC<{ def: FamilyDef; count: number; onPress: () => void }> = ({
   def,
   count,
@@ -54,24 +66,25 @@ const FamilyCard: React.FC<{ def: FamilyDef; count: number; onPress: () => void 
     style={{ width: '48%', aspectRatio: 1 / 1.05, borderRadius: 28, backgroundColor: def.bg, paddingVertical: 18, paddingHorizontal: 16, overflow: 'hidden', justifyContent: 'space-between' }}
     className="active:opacity-90"
   >
-    {/* decorative concentric rings (design): anchored to the bottom-left, sweeping
-        wide across the card. preserveAspectRatio="none" stretches the square viewBox
-        to the card's full (non-square) size, matching the web SVG. */}
+    {/* Decorative concentric rings (design): centred off the bottom-left corner,
+        sweeping wide across the card. Kept square (no preserveAspectRatio="none",
+        which thinned the strokes below 1px and squashed circles into ellipses);
+        strokeWidth in viewBox units is sized so it renders ~1.5px on screen. */}
     <Svg
       width="100%"
       height="100%"
       viewBox="0 0 200 200"
-      preserveAspectRatio="none"
-      style={{ position: 'absolute', top: 0, left: 0, opacity: 0.35 }}
+      preserveAspectRatio="xMinYMax slice"
+      style={{ position: 'absolute', top: 0, left: 0, opacity: 0.45 }}
     >
       {[40, 70, 100, 130, 160].map((r) => (
-        <Circle key={r} cx="40" cy="200" r={r} fill="none" stroke={def.dot} strokeWidth="1" />
+        <Circle key={r} cx="40" cy="200" r={r} fill="none" stroke={def.dot} strokeWidth="1.6" />
       ))}
     </Svg>
-    {/* Title — Playfair Display 600 @ 26/lineHeight 27 (design exact). Fixed
-        2-line box gives adjustsFontSizeToFit a bounded area so titles fit cleanly
-        at any width; the hyphen in "Mini-games" is a non-breaking hyphen (‑) so
-        the word wraps whole instead of splitting as "Mini-ga / mes". */}
+    {/* Title — Playfair Display 600 @ 26/lineHeight 27 (design exact). Labels with
+        a natural break (hyphen/space) are split into explicit lines at that point
+        so a token never breaks mid-word; single long words (Breathing/Reframing)
+        shrink via adjustsFontSizeToFit on narrow screens. Fixed 2-line box. */}
     <View style={{ height: 56, justifyContent: 'flex-start' }}>
       <Text
         className="font-serif"
@@ -80,7 +93,7 @@ const FamilyCard: React.FC<{ def: FamilyDef; count: number; onPress: () => void 
         adjustsFontSizeToFit
         minimumFontScale={0.7}
       >
-        {def.label.replace(/-/g, '‑')}
+        {twoLineLabel(def.label)}
       </Text>
     </View>
     <Text className="font-sans-medium" style={{ fontSize: 13, color: def.fg, opacity: 0.75 }}>
