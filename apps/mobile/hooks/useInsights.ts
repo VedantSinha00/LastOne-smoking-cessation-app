@@ -55,7 +55,7 @@ export function useInsights(): InsightsData {
     queryFn: async () => {
       const { data } = await supabase
         .from('log')
-        .select('log_type, timestamp, triggers, attempt_id, social_context, location, mood, tool_selected, tool_helpful, what_helped, note_text')
+        .select('log_id, log_type, timestamp, triggers, attempt_id, social_context, location, mood, tool_selected, tool_helpful, what_helped, note_text')
         .eq('user_id', user!.id)
         .eq('attempt_id', attemptId!)
         .throwOnError()

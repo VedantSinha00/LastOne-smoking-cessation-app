@@ -35,6 +35,7 @@ export function insightKey(userId: string, type: InsightType, attemptId: number)
 
 // ── Log shape (unified `log` table — Logging Spec §B1) ───────────────────────
 export interface LogRow {
+  log_id?: string
   log_type: string
   timestamp: string
   triggers: string[] | null
@@ -52,6 +53,7 @@ export interface LogRow {
 }
 
 export interface JournalEntry {
+  logId: string
   timestamp: string
   text: string
   mood: number | null
@@ -67,7 +69,7 @@ export function journalEntries(logs: LogRow[], filter: 'all' | 'week' | 'month' 
     .filter((l) => l.log_type === 'note' && (l.note_text ?? '').trim().length > 0)
     .filter((l) => new Date(l.timestamp).getTime() >= cutoff)
     .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-    .map((l) => ({ timestamp: l.timestamp, text: l.note_text!.trim(), mood: l.mood ?? null }))
+    .map((l) => ({ logId: l.log_id!, timestamp: l.timestamp, text: l.note_text!.trim(), mood: l.mood ?? null }))
 }
 
 /** trigger_tag (singular) = MODE of triggers[] for a row; first element fallback. */

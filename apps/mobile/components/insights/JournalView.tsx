@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react'
-import { View, Text, ScrollView, Pressable, TextInput } from 'react-native'
-import { Search, X } from 'lucide-react-native'
+import { View, Text, ScrollView, Pressable, TextInput, Alert } from 'react-native'
+import { Search, X, Trash2 } from 'lucide-react-native'
 import { ScreenHeader } from '../ui/ScreenHeader'
 import { journalEntries, type LogRow } from '../../lib/insights'
 
@@ -14,6 +14,8 @@ interface Props {
   logs: LogRow[]
   onBack: () => void
   onAddNote: () => void
+  /** Delete a journal note by its log_id (via the delete_note_log RPC). */
+  onDelete: (logId: string) => void
 }
 
 type Filter = 'all' | 'week' | 'month'
@@ -82,9 +84,15 @@ function relativeDate(ts: string): string {
   return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
 }
 
-export const JournalView: React.FC<Props> = ({ logs, onBack, onAddNote }) => {
+export const JournalView: React.FC<Props> = ({ logs, onBack, onAddNote, onDelete }) => {
   const [filter, setFilter] = useState<Filter>('all')
   const [searchQuery, setSearchQuery] = useState('')
+
+  const confirmDelete = (logId: string) =>
+    Alert.alert('Delete note?', 'This note will be permanently removed.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: () => onDelete(logId) },
+    ])
 
   const entries = useMemo(() => journalEntries(logs, filter), [logs, filter])
 
@@ -173,11 +181,16 @@ export const JournalView: React.FC<Props> = ({ logs, onBack, onAddNote }) => {
           </View>
         ) : (
           <View style={{ gap: 12 }}>
-            {filteredEntries.map((e, i) => (
-              <View key={i} style={cardStyle}>
+            {filteredEntries.map((e) => (
+              <View key={e.logId} style={cardStyle}>
                 <View className="flex-row items-center justify-between" style={{ marginBottom: 6 }}>
                   <Text style={{ fontSize: 11, color: '#BBBBBB' }}>{relativeDate(e.timestamp)}</Text>
-                  {e.mood != null && e.mood >= 1 && e.mood <= 5 && getMoodBadge(e.mood)}
+                  <View className="flex-row items-center" style={{ gap: 10 }}>
+                    {e.mood != null && e.mood >= 1 && e.mood <= 5 && getMoodBadge(e.mood)}
+                    <Pressable onPress={() => confirmDelete(e.logId)} hitSlop={10} className="active:opacity-60">
+                      <Trash2 size={16} color="#BBBBBB" strokeWidth={2} />
+                    </Pressable>
+                  </View>
                 </View>
                 <Text style={{ fontSize: 14, lineHeight: 22, color: '#0D0D0D' }}>{e.text}</Text>
               </View>
