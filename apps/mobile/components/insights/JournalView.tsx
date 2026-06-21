@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react'
-import { View, Text, ScrollView, Pressable, TextInput, Alert } from 'react-native'
+import React, { useMemo, useState, useRef } from 'react'
+import { View, Text, ScrollView, Pressable, TextInput, Alert, Animated, PanResponder, StyleSheet } from 'react-native'
 import { Search, X, Trash2 } from 'lucide-react-native'
 import { ScreenHeader } from '../ui/ScreenHeader'
 import { journalEntries, type LogRow } from '../../lib/insights'
@@ -65,6 +65,77 @@ const getMoodBadge = (mood: number) => {
       <Text className="font-sans-medium" style={{ fontSize: 10, color: config.color, textTransform: 'uppercase', letterSpacing: 0.5, lineHeight: 14 }}>
         {config.text}
       </Text>
+    </View>
+  )
+}
+
+interface SwipeableCardProps {
+  children: React.ReactNode
+  onSwipeLeft: () => void
+}
+
+const SwipeableCard: React.FC<SwipeableCardProps> = ({ children, onSwipeLeft }) => {
+  const translateX = useRef(new Animated.Value(0)).current
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        return Math.abs(gestureState.dx) > 10 && Math.abs(gestureState.dy) < 8
+      },
+      onPanResponderMove: (_, gestureState) => {
+        if (gestureState.dx < 0) {
+          translateX.setValue(gestureState.dx)
+        }
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dx < -80) {
+          onSwipeLeft()
+          Animated.spring(translateX, {
+            toValue: 0,
+            useNativeDriver: true,
+            bounciness: 8,
+          }).start()
+        } else {
+          Animated.spring(translateX, {
+            toValue: 0,
+            useNativeDriver: true,
+          }).start()
+        }
+      },
+      onPanResponderTerminate: () => {
+        Animated.spring(translateX, {
+          toValue: 0,
+          useNativeDriver: true,
+        }).start()
+      },
+    })
+  ).current
+
+  return (
+    <View style={{ overflow: 'hidden', borderRadius: 16 }}>
+      <View
+        style={[
+          StyleSheet.absoluteFillObject,
+          {
+            backgroundColor: '#FFECEC',
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'flex-end',
+            paddingRight: 24,
+            borderRadius: 16,
+          },
+        ]}
+      >
+        <Trash2 size={22} color="#F51B3D" strokeWidth={2} />
+      </View>
+      <Animated.View
+        style={{
+          transform: [{ translateX }],
+        }}
+        {...panResponder.panHandlers}
+      >
+        {children}
+      </Animated.View>
     </View>
   )
 }
@@ -182,18 +253,15 @@ export const JournalView: React.FC<Props> = ({ logs, onBack, onAddNote, onDelete
         ) : (
           <View style={{ gap: 12 }}>
             {filteredEntries.map((e) => (
-              <View key={e.logId} style={cardStyle}>
-                <View className="flex-row items-center justify-between" style={{ marginBottom: 6 }}>
-                  <Text style={{ fontSize: 11, color: '#BBBBBB' }}>{relativeDate(e.timestamp)}</Text>
-                  <View className="flex-row items-center" style={{ gap: 10 }}>
+              <SwipeableCard key={e.logId} onSwipeLeft={() => confirmDelete(e.logId)}>
+                <View style={cardStyle}>
+                  <View className="flex-row items-center justify-between" style={{ marginBottom: 6 }}>
+                    <Text style={{ fontSize: 11, color: '#BBBBBB' }}>{relativeDate(e.timestamp)}</Text>
                     {e.mood != null && e.mood >= 1 && e.mood <= 5 && getMoodBadge(e.mood)}
-                    <Pressable onPress={() => confirmDelete(e.logId)} hitSlop={10} className="active:opacity-60">
-                      <Trash2 size={16} color="#BBBBBB" strokeWidth={2} />
-                    </Pressable>
                   </View>
+                  <Text style={{ fontSize: 14, lineHeight: 22, color: '#0D0D0D' }}>{e.text}</Text>
                 </View>
-                <Text style={{ fontSize: 14, lineHeight: 22, color: '#0D0D0D' }}>{e.text}</Text>
-              </View>
+              </SwipeableCard>
             ))}
           </View>
         )}
