@@ -1,6 +1,5 @@
 import type { InsightType } from '../types/database'
 import type { InsightMetrics } from './insights'
-import { TRIGGER_TOKENS, SOCIAL_TOKENS } from './logOptions'
 
 /**
  * Generic infographic layer for insight cards.
@@ -45,34 +44,10 @@ export type InfographicSpec =
   | { kind: 'windows'; title: string; rows: InfographicWindowRow[] }
   | { kind: 'split'; title: string; left: InfographicSplitSide; right: InfographicSplitSide }
 
-// ── label helpers ────────────────────────────────────────────────────────────
-const labelMap = (tokens: { value: string; label: string }[]) =>
-  Object.fromEntries(tokens.map((t) => [t.value, t.label])) as Record<string, string>
-const TRIGGER_LABELS = labelMap(TRIGGER_TOKENS)
-const SOCIAL_LABELS = labelMap(SOCIAL_TOKENS)
-const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
-
 function fmtHour(h: number): string {
   const period = h < 12 ? 'am' : 'pm'
   const hr = h % 12 === 0 ? 12 : h % 12
   return `${hr}${period}`
-}
-
-function distributionBars(
-  rows: { key: string; pct: number }[],
-  label: (k: string) => string,
-  title: string,
-): InfographicSpec | null {
-  if (rows.length === 0) return null
-  return {
-    kind: 'bars',
-    title,
-    rows: rows.slice(0, 5).map((r) => ({
-      label: label(r.key),
-      value: r.pct,
-      display: `${Math.round(r.pct * 100)}%`,
-    })),
-  }
 }
 
 /** Resolve the infographic for a card type, or null if it has none. */
@@ -81,24 +56,13 @@ export function insightInfographic(
   metrics: InsightMetrics,
 ): InfographicSpec | null {
   switch (type) {
-    // ── trigger distribution bars ─────────────────────────────────────────────
-    case 'top_trigger':
-    case 'profile_trigger_category':
-      return distributionBars(
-        metrics.triggerDistribution,
-        (k) => TRIGGER_LABELS[k] ?? cap(k),
-        'What sets off your cravings',
-      )
+    // NOTE: trigger / social / resistance infographics were intentionally removed
+    // here — they duplicated the hub stat grid (Outcomes) and the Explore inline
+    // breakdowns (Triggers, People). Cards keep their narrative headline+body; the
+    // distributions live in one place (Explore/hub). Only card-UNIQUE graphics
+    // remain below (peak time windows, craving-drop trend).
 
-    // ── social-context distribution bars ──────────────────────────────────────
-    case 'profile_social_context':
-      return distributionBars(
-        metrics.socialDistribution,
-        (k) => SOCIAL_LABELS[k] ?? cap(k),
-        'Who you were with',
-      )
-
-    // ── peak time windows ─────────────────────────────────────────────────────
+    // ── peak time windows (unique to cards) ───────────────────────────────────
     case 'peak_risk_window':
     case 'profile_peak_windows': {
       const wins = metrics.riskWindows
@@ -112,18 +76,7 @@ export function insightInfographic(
       return { kind: 'windows', title: 'When cravings hit', rows }
     }
 
-    // ── resistance: beaten vs smoked ──────────────────────────────────────────
-    case 'resistance_rate': {
-      if (metrics.overcomeCount === 0 && metrics.slipCount === 0) return null
-      return {
-        kind: 'split',
-        title: 'Outcomes',
-        left: { value: metrics.overcomeCount, label: 'beaten', color: '#84C524' },
-        right: { value: metrics.slipCount, label: 'smoked', color: '#F15025' },
-      }
-    }
-
-    // ── craving drop: prior week vs this week ─────────────────────────────────
+    // ── craving drop: prior week vs this week (unique to cards) ───────────────
     case 'craving_drop': {
       const prior = metrics.cravingPerDayPrior
       const current = metrics.cravingPerDayCurrent

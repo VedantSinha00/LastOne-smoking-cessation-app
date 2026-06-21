@@ -242,6 +242,19 @@ export function socialBreakdown(logs: LogRow[]): { rows: BreakdownRow[]; total: 
   return { rows: rankCounts(counts, total), total }
 }
 
+/** Calendar days (local yyyy-MM-dd) that had at least one slip log. Backs the
+ *  Streaks calendar's red "slip" markers. */
+export function slipDaySet(logs: LogRow[]): Set<string> {
+  const days = new Set<string>()
+  for (const l of logs) {
+    if (l.log_type !== 'slip') continue
+    const d = new Date(l.timestamp)
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    days.add(key)
+  }
+  return days
+}
+
 /** Location breakdown — every element of location[] across cravings, ranked.
  *  Backs the Explore "Places" view (where cravings hit). */
 export function locationBreakdown(logs: LogRow[]): { rows: BreakdownRow[]; total: number } {

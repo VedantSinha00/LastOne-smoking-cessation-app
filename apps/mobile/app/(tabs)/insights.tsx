@@ -3,9 +3,10 @@ import { View, Text, ScrollView, Pressable, ActivityIndicator } from 'react-nati
 import { useQuery } from '@tanstack/react-query'
 import { useFocusEffect } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Zap, Wrench, FileText, AlertTriangle, Users, MapPin, Activity, ChevronRight } from 'lucide-react-native'
+import { Zap, Wrench, FileText, AlertTriangle, Users, MapPin, Activity, ChevronRight, ChevronDown } from 'lucide-react-native'
 import { useInsights, useInsightActions } from '../../hooks/useInsights'
 import { useStage } from '../../hooks/useStage'
+import { useStreakRecord } from '../../hooks/useStreakRecord'
 import { supabase } from '../../lib/supabase'
 import { queryKeys } from '../../lib/queryKeys'
 import {
@@ -13,12 +14,14 @@ import {
   socialBreakdown,
   locationBreakdown,
   toolStats,
+  slipDaySet,
 } from '../../lib/insights'
 import { TRIGGER_TOKENS, SOCIAL_TOKENS, LOCATION_TOKENS } from '../../lib/logOptions'
 import { InsightCardView } from '../../components/insights/InsightCardView'
 import { CravingsBarChart } from '../../components/insights/CravingsBarChart'
-import { BreakdownView } from '../../components/insights/BreakdownView'
+import { BreakdownInline } from '../../components/insights/BreakdownView'
 import { TopToolsView } from '../../components/insights/TopToolsView'
+import { StreaksView } from '../../components/insights/StreaksView'
 import { ScreenHeader } from '../../components/ui/ScreenHeader'
 
 // token -> display label maps (reuse the canonical logging tokens)
@@ -39,29 +42,38 @@ const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
  * FEED is preserved as the "Patterns" Explore destination (no logic lost); other
  * sub-views that have no backing data yet are "coming soon".
  */
-type HubView = 'main' | 'patterns' | 'tools' | 'triggers' | 'people' | 'places'
+// Full-page Explore destinations (rich multi-section screens).
+type HubView = 'main' | 'patterns' | 'tools' | 'streaks'
+// Inline expandable Explore destinations (breakdown shows in place on the hub).
+type ExpandKey = 'triggers' | 'people' | 'places'
 
-const EXPLORE: {
-  key: HubView | 'soon'
+type ExploreItem = {
   label: string
   sub: string
   Icon: typeof Zap
   tint: string
   bg: string
-}[] = [
-  { key: 'patterns', label: 'Cravings', sub: 'Patterns, intensity, timing', Icon: Zap, tint: '#F15025', bg: '#FFE5DC' },
-  { key: 'tools', label: 'Top tools', sub: "What's working for you", Icon: Wrench, tint: '#4E9A52', bg: '#E6F4D6' },
-  { key: 'soon', label: 'Journal', sub: 'Your notes over time', Icon: FileText, tint: '#378ADD', bg: '#DCEBFB' },
-  { key: 'triggers', label: 'Triggers', sub: 'What sets off cravings', Icon: AlertTriangle, tint: '#E0A52B', bg: '#FFF3D6' },
-  { key: 'people', label: 'People', sub: 'Who you were with', Icon: Users, tint: '#8B5CF6', bg: '#F3E8FF' },
-  { key: 'places', label: 'Places', sub: 'Where cravings hit', Icon: MapPin, tint: '#268255', bg: '#D6F0E2' },
-  { key: 'soon', label: 'Streaks', sub: 'Your quit history', Icon: Activity, tint: '#E0A52B', bg: '#FFF3D6' },
+} & (
+  | { kind: 'nav'; view: HubView }
+  | { kind: 'expand'; expand: ExpandKey }
+  | { kind: 'soon' }
+)
+
+const EXPLORE: ExploreItem[] = [
+  { kind: 'nav', view: 'patterns', label: 'Cravings', sub: 'Patterns, intensity, timing', Icon: Zap, tint: '#F15025', bg: '#FFE5DC' },
+  { kind: 'nav', view: 'tools', label: 'Top tools', sub: "What's working for you", Icon: Wrench, tint: '#4E9A52', bg: '#E6F4D6' },
+  { kind: 'soon', label: 'Journal', sub: 'Your notes over time', Icon: FileText, tint: '#378ADD', bg: '#DCEBFB' },
+  { kind: 'expand', expand: 'triggers', label: 'Triggers', sub: 'What sets off cravings', Icon: AlertTriangle, tint: '#E0A52B', bg: '#FFF3D6' },
+  { kind: 'expand', expand: 'people', label: 'People', sub: 'Who you were with', Icon: Users, tint: '#8B5CF6', bg: '#F3E8FF' },
+  { kind: 'expand', expand: 'places', label: 'Places', sub: 'Where cravings hit', Icon: MapPin, tint: '#268255', bg: '#D6F0E2' },
+  { kind: 'nav', view: 'streaks', label: 'Streaks', sub: 'Your quit history', Icon: Activity, tint: '#E0A52B', bg: '#FFF3D6' },
 ]
 
 export default function Insights() {
   const insets = useSafeAreaInsets()
   const { feed, metrics, logs, hasAnyLog, screenState, isLoading, resnapshotOrder } = useInsights()
-  const { stage } = useStage()
+  const { stage, quitDate } = useStage()
+  const { data: streak } = useStreakRecord()
 
   // coping_tools catalog (id -> name/family + total count) for the Top tools view.
   const { data: toolCatalog } = useQuery({
@@ -84,6 +96,7 @@ export default function Insights() {
   const triggers = useMemo(() => triggerBreakdown(logs), [logs])
   const social = useMemo(() => socialBreakdown(logs), [logs])
   const places = useMemo(() => locationBreakdown(logs), [logs])
+  const slipDays = useMemo(() => slipDaySet(logs), [logs])
   const tools = useMemo(
     () => toolStats(logs, toolCatalog?.total ?? 0),
     [logs, toolCatalog?.total],
@@ -93,10 +106,40 @@ export default function Insights() {
   const familyLabel = (fam: string) =>
     ({ breathing: 'Breathing', physical: 'Physical', mini_games: 'Mini-Game', reframing: 'Reframe' } as Record<string, string>)[fam] ??
     cap(fam)
+
+  // Props for the inline Explore breakdowns (Triggers/People/Places) shown on the hub.
+  const inlineBreakdown: Record<ExpandKey, React.ComponentProps<typeof BreakdownInline>> = {
+    triggers: {
+      kind: 'triggers',
+      caption: 'What sets off your cravings, most common first.',
+      rows: triggers.rows,
+      total: triggers.total,
+      labelFor: (k) => TRIGGER_LABELS[k] ?? cap(k),
+      emptyText: "As you tag what's behind each craving, the patterns will show up here.",
+    },
+    people: {
+      kind: 'people',
+      caption: 'Who you were with when cravings hit.',
+      rows: social.rows,
+      total: social.total,
+      labelFor: (k) => SOCIAL_LABELS[k] ?? cap(k),
+      emptyText: "When you log who you're around during a craving, you'll see the breakdown here.",
+    },
+    places: {
+      kind: 'places',
+      caption: 'Where your cravings tend to hit.',
+      rows: places.rows,
+      total: places.total,
+      labelFor: (k) => LOCATION_LABELS[k] ?? cap(k),
+      emptyText: 'When you log where a craving happened, the places that trigger you most will show up here.',
+    },
+  }
   const { expandCard, toggleRiskWindow } = useInsightActions()
   const [view, setView] = useState<HubView>('main')
   const [expandedKey, setExpandedKey] = useState<string | null>(null)
   const [soon, setSoon] = useState<string | null>(null)
+  // Which inline Explore breakdown (Triggers/People/Places) is open on the hub.
+  const [openExplore, setOpenExplore] = useState<ExpandKey | null>(null)
 
   useFocusEffect(
     useCallback(() => {
@@ -105,6 +148,7 @@ export default function Insights() {
         setExpandedKey(null)
         setView('main')
         setSoon(null)
+        setOpenExplore(null)
       }
     }, [resnapshotOrder]),
   )
@@ -187,51 +231,6 @@ export default function Insights() {
     )
   }
 
-  // ── Triggers — what sets off cravings (spec top_trigger / INS-4 categories) ──
-  if (view === 'triggers') {
-    return (
-      <BreakdownView
-        title="Triggers"
-        caption="What sets off your cravings, most common first."
-        rows={triggers.rows}
-        total={triggers.total}
-        labelFor={(k) => TRIGGER_LABELS[k] ?? cap(k)}
-        emptyText="As you tag what's behind each craving, the patterns will show up here."
-        onBack={() => setView('main')}
-      />
-    )
-  }
-
-  // ── People — social context breakdown (spec INS-4) ──────────────────────────
-  if (view === 'people') {
-    return (
-      <BreakdownView
-        title="People"
-        caption="Who you were with when cravings hit."
-        rows={social.rows}
-        total={social.total}
-        labelFor={(k) => SOCIAL_LABELS[k] ?? cap(k)}
-        emptyText="When you log who you're around during a craving, you'll see the breakdown here."
-        onBack={() => setView('main')}
-      />
-    )
-  }
-
-  // ── Places — location breakdown ─────────────────────────────────────────────
-  if (view === 'places') {
-    return (
-      <BreakdownView
-        title="Places"
-        caption="Where your cravings tend to hit."
-        rows={places.rows}
-        total={places.total}
-        labelFor={(k) => LOCATION_LABELS[k] ?? cap(k)}
-        emptyText="When you log where a craving happened, the places that trigger you most will show up here."
-        onBack={() => setView('main')}
-      />
-    )
-  }
-
   // ── Top tools — the design's 5-section ToolStatsView ────────────────────────
   if (view === 'tools') {
     return (
@@ -243,6 +242,20 @@ export default function Insights() {
           return fam ? `${id} · ${familyLabel(fam)}` : id
         }}
         triggerLabel={(k) => TRIGGER_LABELS[k] ?? cap(k)}
+        onBack={() => setView('main')}
+      />
+    )
+  }
+
+  // ── Streaks — current/best + month calendar + history (design StreaksView) ──
+  if (view === 'streaks') {
+    return (
+      <StreaksView
+        currentStreak={streak?.current_streak_days ?? 0}
+        bestStreak={streak?.longest_streak_ever ?? 0}
+        totalSmokeFree={streak?.lifetime_smoke_free_days ?? 0}
+        quitDate={quitDate ? quitDate.slice(0, 10) : null}
+        slipDays={slipDays}
         onBack={() => setView('main')}
       />
     )
@@ -292,31 +305,61 @@ export default function Insights() {
           Explore
         </Text>
         <View style={{ gap: 12 }}>
-          {EXPLORE.map((e) => (
-            <Pressable
-              key={e.label}
-              onPress={() => (e.key === 'soon' ? setSoon(e.label) : setView(e.key))}
-              className="bg-card border border-border rounded-3xl p-5 flex-row items-center active:scale-[0.99]"
-              style={{ gap: 16 }}
-            >
-              <View className="h-10 w-10 rounded-full items-center justify-center" style={{ backgroundColor: e.bg }}>
-                <e.Icon size={16} color={e.tint} strokeWidth={2} />
+          {EXPLORE.map((e) => {
+            const isExpand = e.kind === 'expand'
+            const isOpen = isExpand && openExplore === e.expand
+            const onPress = () => {
+              if (e.kind === 'soon') setSoon((s) => (s === e.label ? null : e.label))
+              else if (e.kind === 'nav') setView(e.view)
+              else setOpenExplore((cur) => (cur === e.expand ? null : e.expand))
+            }
+            return (
+              <View
+                key={e.label}
+                className="bg-card border border-border rounded-3xl overflow-hidden"
+              >
+                <Pressable
+                  onPress={onPress}
+                  className="p-5 flex-row items-center active:opacity-90"
+                  style={{ gap: 16 }}
+                >
+                  <View className="h-10 w-10 rounded-full items-center justify-center" style={{ backgroundColor: e.bg }}>
+                    <e.Icon size={16} color={e.tint} strokeWidth={2} />
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-foreground font-display" style={{ fontSize: 16 }}>
+                      {e.label}
+                    </Text>
+                    <Text className="text-muted-foreground text-[13px] mt-0.5">{e.sub}</Text>
+                  </View>
+                  {isExpand ? (
+                    <View style={{ transform: [{ rotate: isOpen ? '180deg' : '0deg' }] }}>
+                      <ChevronDown size={18} color="#76706C" strokeWidth={2} />
+                    </View>
+                  ) : (
+                    <ChevronRight size={18} color="#76706C" strokeWidth={2} />
+                  )}
+                </Pressable>
+                {isExpand && isOpen && (
+                  <View className="px-5 pb-5 pt-1">
+                    <View className="pt-4 border-t border-border">
+                      <BreakdownInline {...inlineBreakdown[e.expand]} />
+                    </View>
+                  </View>
+                )}
+                {e.kind === 'soon' && soon === e.label && (
+                  <View className="px-5 pb-5 pt-1">
+                    <View className="pt-4 border-t border-border">
+                      <Text className="text-muted-foreground text-sm text-center leading-relaxed">
+                        {e.label} insights are coming soon.
+                      </Text>
+                    </View>
+                  </View>
+                )}
               </View>
-              <View className="flex-1">
-                <Text className="text-foreground font-display" style={{ fontSize: 16 }}>
-                  {e.label}
-                </Text>
-                <Text className="text-muted-foreground text-[13px] mt-0.5">{e.sub}</Text>
-              </View>
-              <ChevronRight size={18} color="#76706C" strokeWidth={2} />
-            </Pressable>
-          ))}
+            )
+          })}
         </View>
-        {soon && (
-          <Text className="text-muted-foreground text-xs text-center mt-3">
-            {soon} insights are coming soon.
-          </Text>
-        )}
       </View>
     </ScrollView>
   )
