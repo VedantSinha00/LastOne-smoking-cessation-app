@@ -1,6 +1,6 @@
 import React from 'react'
 import { View, Text, ScrollView, StyleSheet, type ViewStyle } from 'react-native'
-import { Wrench } from 'lucide-react-native'
+import { Wrench, Wind, Activity, Gamepad2, Brain, Sparkles } from 'lucide-react-native'
 import { ScreenHeader } from '../ui/ScreenHeader'
 import { SectionLabel } from '../ui/SectionLabel'
 import type { ToolStats } from '../../lib/insights'
@@ -38,6 +38,15 @@ interface Props {
   onBack: () => void
 }
 
+const getToolIcon = (subLabel: string) => {
+  const sub = subLabel.toLowerCase()
+  if (sub.includes('breathing')) return Wind
+  if (sub.includes('physical')) return Activity
+  if (sub.includes('game') || sub.includes('mini-game')) return Gamepad2
+  if (sub.includes('reframe') || sub.includes('reframing')) return Brain
+  return Wrench
+}
+
 export const TopToolsView: React.FC<Props> = ({ stats, labelFor, subFor, triggerLabel, onBack }) => {
   const { triedCount, totalToolCount, totalUses, mostUsed, effectiveness, topTriggers, bestTool } =
     stats
@@ -48,10 +57,15 @@ export const TopToolsView: React.FC<Props> = ({ stats, labelFor, subFor, trigger
       <View className="flex-1 bg-background">
         <ScreenHeader title="Top tools" onBack={onBack} />
         <ScrollView className="flex-1" contentContainerClassName="p-5 gap-4 pb-12">
-          <View className="bg-card border border-border rounded-3xl p-5">
-            <Text className="text-muted-foreground text-sm leading-relaxed">
-              Once you start using a coping tool when a craving hits, you{'’'}ll see which ones
-              work best for you here.
+          <View className="bg-card border border-border rounded-3xl p-8 items-center justify-center">
+            <View className="h-16 w-16 rounded-full items-center justify-center bg-[#E6F4D6] mb-4">
+              <Wrench size={32} color="#27500A" strokeWidth={2} />
+            </View>
+            <Text className="text-foreground font-display text-lg text-center mb-2">
+              No tools used yet
+            </Text>
+            <Text className="text-muted-foreground text-sm text-center leading-relaxed px-2">
+              Once you start using a coping tool when a craving hits, you'll see which ones work best for you here.
             </Text>
           </View>
         </ScrollView>
@@ -94,25 +108,39 @@ export const TopToolsView: React.FC<Props> = ({ stats, labelFor, subFor, trigger
         <View style={{ marginTop: 24 }}>
           <SectionLabel>Most used</SectionLabel>
           <View style={designCard}>
-            {mostUsed.slice(0, 4).map((r, i) => (
-              <View
-                key={r.tool}
-                className="flex-row items-center justify-between"
-                style={{ paddingVertical: 12, ...(i > 0 ? { borderTopWidth: 1, borderTopColor: '#E8E8E8' } : null) }}
-              >
-                <View className="flex-1 pr-3">
-                  <Text className="font-sans-bold" style={{ fontSize: 15, lineHeight: 21, color: '#0D0D0D' }}>
-                    {labelFor(r.tool)}
-                  </Text>
-                  <Text style={{ fontSize: 12, lineHeight: 17, marginTop: 2, color: '#888888' }}>
-                    {subFor(r.tool)}
-                  </Text>
+            {mostUsed.slice(0, 4).map((r, i) => {
+              const subLabel = subFor(r.tool)
+              const ToolIcon = getToolIcon(subLabel)
+              return (
+                <View
+                  key={r.tool}
+                  className="flex-row items-center"
+                  style={{
+                    paddingVertical: 12,
+                    ...(i > 0 ? { borderTopWidth: 1, borderTopColor: '#E8E8E8' } : null),
+                    gap: 12,
+                  }}
+                >
+                  <View className="h-9 w-9 rounded-xl items-center justify-center bg-muted">
+                    <ToolIcon size={16} color="#76706C" strokeWidth={2} />
+                  </View>
+                  <View className="flex-1 pr-2">
+                    <Text className="font-sans-bold" style={{ fontSize: 15, lineHeight: 21, color: '#0D0D0D' }}>
+                      {labelFor(r.tool)}
+                    </Text>
+                    <Text style={{ fontSize: 12, lineHeight: 17, marginTop: 2, color: '#888888' }}>
+                      {subLabel}
+                    </Text>
+                  </View>
+                  <View className="items-end">
+                    <Text className="font-sans-bold" style={{ fontSize: 15, lineHeight: 21, color: '#7FC200' }}>
+                      {r.uses}×
+                    </Text>
+                    <Text style={{ fontSize: 10, color: '#888888' }}>used</Text>
+                  </View>
                 </View>
-                <Text className="font-sans-bold" style={{ fontSize: 15, lineHeight: 21, color: '#84C524' }}>
-                  {r.uses}× <Text className="font-sans" style={{ fontSize: 12, color: '#888888' }}>used</Text>
-                </Text>
-              </View>
-            ))}
+              )
+            })}
           </View>
         </View>
 
@@ -124,14 +152,21 @@ export const TopToolsView: React.FC<Props> = ({ stats, labelFor, subFor, trigger
               <View style={{ gap: 16 }}>
                 {effectiveness.map((e) => {
                   const pct = Math.round((e.helpfulRate ?? 0) * 100)
+                  const subLabel = subFor(e.tool)
+                  const ToolIcon = getToolIcon(subLabel)
                   return (
-                    <View key={e.tool}>
-                      <View className="flex-row justify-between items-center" style={{ marginBottom: 6 }}>
-                        <Text className="font-sans-bold" style={{ fontSize: 14, color: '#0D0D0D' }}>{labelFor(e.tool)}</Text>
-                        <Text className="font-sans-bold" style={{ fontSize: 13, color: '#0D0D0D' }}>{pct}%</Text>
+                    <View key={e.tool} className="flex-row items-center" style={{ gap: 12 }}>
+                      <View className="h-9 w-9 rounded-xl items-center justify-center bg-muted">
+                        <ToolIcon size={16} color="#76706C" strokeWidth={2} />
                       </View>
-                      <View className="rounded-full overflow-hidden" style={{ height: 4, backgroundColor: '#E8E8E8' }}>
-                        <View className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: '#84C524' }} />
+                      <View className="flex-1">
+                        <View className="flex-row justify-between items-center" style={{ marginBottom: 6 }}>
+                          <Text className="font-sans-bold" style={{ fontSize: 14, color: '#0D0D0D' }}>{labelFor(e.tool)}</Text>
+                          <Text className="font-sans-bold" style={{ fontSize: 13, color: '#0D0D0D' }}>{pct}%</Text>
+                        </View>
+                        <View className="rounded-full overflow-hidden" style={{ height: 4, backgroundColor: '#E8E8E8' }}>
+                          <View className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: '#84C524' }} />
+                        </View>
                       </View>
                     </View>
                   )
@@ -174,7 +209,11 @@ export const TopToolsView: React.FC<Props> = ({ stats, labelFor, subFor, trigger
                 className="items-center justify-center rounded-full"
                 style={{ width: 56, height: 56, backgroundColor: '#E6F4D6' }}
               >
-                <Wrench size={22} color="#27500A" strokeWidth={2} />
+                {(() => {
+                  const subLabel = subFor(bestTool.tool)
+                  const ToolIcon = getToolIcon(subLabel)
+                  return <ToolIcon size={22} color="#27500A" strokeWidth={2} />
+                })()}
               </View>
               <View className="flex-1">
                 <Text className="font-sans-bold" style={{ fontSize: 16, lineHeight: 22, color: '#0D0D0D' }}>
