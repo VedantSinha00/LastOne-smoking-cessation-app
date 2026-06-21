@@ -3,7 +3,7 @@ import { View, Text, ScrollView, Pressable, ActivityIndicator } from 'react-nati
 import { useQuery } from '@tanstack/react-query'
 import { useFocusEffect } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Zap, Wrench, FileText, AlertTriangle, Users, MapPin, Activity, ChevronRight, ChevronDown } from 'lucide-react-native'
+import { Zap, Wrench, AlertTriangle, Users, MapPin, Activity, ChevronRight, ChevronDown } from 'lucide-react-native'
 import { useInsights, useInsightActions } from '../../hooks/useInsights'
 import { useStage } from '../../hooks/useStage'
 import { useStreakRecord } from '../../hooks/useStreakRecord'
@@ -62,7 +62,6 @@ type ExploreItem = {
 const EXPLORE: ExploreItem[] = [
   { kind: 'nav', view: 'patterns', label: 'Cravings', sub: 'Patterns, intensity, timing', Icon: Zap, tint: '#F15025', bg: '#FFE5DC' },
   { kind: 'nav', view: 'tools', label: 'Top tools', sub: "What's working for you", Icon: Wrench, tint: '#4E9A52', bg: '#E6F4D6' },
-  { kind: 'soon', label: 'Journal', sub: 'Your notes over time', Icon: FileText, tint: '#378ADD', bg: '#DCEBFB' },
   { kind: 'expand', expand: 'triggers', label: 'Triggers', sub: 'What sets off cravings', Icon: AlertTriangle, tint: '#E0A52B', bg: '#FFF3D6' },
   { kind: 'expand', expand: 'people', label: 'People', sub: 'Who you were with', Icon: Users, tint: '#8B5CF6', bg: '#F3E8FF' },
   { kind: 'expand', expand: 'places', label: 'Places', sub: 'Where cravings hit', Icon: MapPin, tint: '#268255', bg: '#D6F0E2' },
