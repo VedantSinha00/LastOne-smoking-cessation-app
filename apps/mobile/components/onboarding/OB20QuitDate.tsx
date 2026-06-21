@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { Platform, Pressable, Text, View } from 'react-native'
 import DateTimePicker from '@react-native-community/datetimepicker'
 import { useOnboarding } from '../../hooks/useOnboarding'
-import { OBScreen, OBHeader, OBContinue, OBTextLink } from './parts'
+import { OBScreen, OBHeader, OBContinue, OBTextLink, OBEyebrow, OBProgress } from './parts'
 
 function addDays(d: Date, n: number): Date {
   const r = new Date(d)
@@ -48,17 +48,21 @@ export function OB20QuitDate() {
         </View>
       }
     >
-      <OBHeader
-        title="When do you want this to be your last?"
-        subtitle="Pick a date at least a few days out — enough time to learn your patterns first. No pressure to decide now."
-      />
+      <OBEyebrow label="Looking ahead  2 of 2" />
+      <OBProgress value={2 / 2} />
+      <View className="mt-6">
+        <OBHeader
+          title="When do you want this to be your last?"
+          subtitle="Pick a date at least a few days out — enough time to learn your patterns first. No pressure to decide now."
+        />
+      </View>
 
       {Platform.OS === 'android' && (
         <Pressable
           onPress={() => setShow(true)}
-          className="bg-card border border-border rounded-2xl px-5 py-4 mb-4 active:bg-muted"
+          className="bg-card border border-border rounded-2xl px-5 py-4 mb-4 active:bg-secondary"
         >
-          <Text className="text-primary text-lg">{fmt(selected)}</Text>
+          <Text className="text-foreground text-lg">{fmt(selected)}</Text>
         </Pressable>
       )}
 

@@ -39,14 +39,39 @@ export function OBScreen({
 export function OBHeader({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
     <View className="mb-7 mt-2">
-      <Text className="text-foreground font-display text-2xl leading-8">{title}</Text>
-      {subtitle ? <Text className="text-muted-foreground text-base mt-3 leading-relaxed">{subtitle}</Text> : null}
+      <Text className="text-foreground font-display text-[28px] leading-tight">{title}</Text>
+      {subtitle ? <Text className="text-muted-foreground text-sm mt-2 leading-relaxed">{subtitle}</Text> : null}
+    </View>
+  )
+}
+
+// ── Eyebrow + progress (design's question-screen chrome) ─────────────────────
+
+// Pill chip above question titles, e.g. "GETTING TO KNOW YOU  1 OF 3".
+export function OBEyebrow({ label }: { label: string }) {
+  return (
+    <View className="self-start rounded-full border border-border px-3 py-1">
+      <Text className="text-muted-foreground text-[10px] uppercase" style={{ letterSpacing: 1.8 }}>
+        {label}
+      </Text>
+    </View>
+  )
+}
+
+// Thin 2px progress bar (value 0..1).
+export function OBProgress({ value }: { value: number }) {
+  const pct = Math.max(0, Math.min(1, value)) * 100
+  return (
+    <View className="mt-3 h-[2px] w-full rounded bg-border overflow-hidden">
+      <View className="h-full rounded bg-foreground" style={{ width: `${pct}%` }} />
     </View>
   )
 }
 
 // ── Primary CTA ──────────────────────────────────────────────────────────────
 
+// Design's outline pill: transparent fill, thin foreground border, dark fill on
+// press (active:bg-foreground inverts the label). Disabled = 40% opacity.
 export function OBContinue({
   onPress,
   disabled = false,
@@ -62,15 +87,15 @@ export function OBContinue({
   return (
     <Pressable
       onPress={inactive ? undefined : onPress}
-      className={`py-4 rounded-2xl items-center justify-center ${
-        disabled ? 'bg-muted' : 'bg-primary active:opacity-90'
+      className={`py-4 rounded-2xl items-center justify-center border border-foreground/80 ${
+        inactive ? '' : 'active:bg-foreground'
       }`}
-      style={disabled ? { opacity: 0.5 } : undefined}
+      style={disabled ? { opacity: 0.4 } : undefined}
     >
       {loading ? (
         <ActivityIndicator color="#0D140B" />
       ) : (
-        <Text className={`font-sans-bold text-base ${disabled ? 'text-muted-foreground' : 'text-primary-foreground'}`}>{title}</Text>
+        <Text className="font-display text-base text-foreground">{title}</Text>
       )}
     </Pressable>
   )
@@ -100,12 +125,11 @@ export function OptionRow({
   return (
     <Pressable
       onPress={onPress}
-      className={`flex-row items-center justify-between px-5 py-4 rounded-2xl mb-3 border ${
-        selected ? 'bg-primary/15 border-primary' : 'bg-card border-border active:bg-muted'
+      className={`px-5 py-4 rounded-2xl mb-3 border ${
+        selected ? 'border-foreground bg-secondary' : 'border-border active:border-foreground/40'
       }`}
     >
-      <Text className={`text-base flex-1 ${selected ? 'text-foreground font-sans-medium' : 'text-foreground'}`}>{label}</Text>
-      {selected ? <Text className="text-primary text-lg ml-3">{multi ? '✓' : '●'}</Text> : null}
+      <Text className={`text-[15px] ${selected ? 'text-foreground font-sans-medium' : 'text-foreground'}`}>{label}</Text>
     </Pressable>
   )
 }
@@ -115,6 +139,8 @@ export type Choice<T extends string> = { value: T; label: string }
 /** Single-select question screen — pick one, then Continue (Spec: button inactive until a selection). */
 export function SingleChoiceScreen<T extends string>({
   onBack,
+  eyebrow,
+  progress,
   title,
   subtitle,
   options,
@@ -123,6 +149,8 @@ export function SingleChoiceScreen<T extends string>({
   onContinue,
 }: {
   onBack?: () => void
+  eyebrow?: string
+  progress?: number
   title: string
   subtitle?: string
   options: Choice<T>[]
@@ -132,7 +160,11 @@ export function SingleChoiceScreen<T extends string>({
 }) {
   return (
     <OBScreen onBack={onBack} footer={<OBContinue disabled={value == null} onPress={onContinue} />}>
-      <OBHeader title={title} subtitle={subtitle} />
+      {eyebrow ? <OBEyebrow label={eyebrow} /> : null}
+      {progress != null ? <OBProgress value={progress} /> : null}
+      <View className={eyebrow || progress != null ? 'mt-6' : ''}>
+        <OBHeader title={title} subtitle={subtitle} />
+      </View>
       {options.map((o) => (
         <OptionRow key={o.value} label={o.label} selected={value === o.value} onPress={() => onSelect(o.value)} />
       ))}
@@ -143,6 +175,8 @@ export function SingleChoiceScreen<T extends string>({
 /** Multi-select question screen — pick one or more (Spec: button inactive until ≥1 selected). */
 export function MultiChoiceScreen<T extends string>({
   onBack,
+  eyebrow,
+  progress,
   title,
   subtitle,
   options,
@@ -151,6 +185,8 @@ export function MultiChoiceScreen<T extends string>({
   onContinue,
 }: {
   onBack?: () => void
+  eyebrow?: string
+  progress?: number
   title: string
   subtitle?: string
   options: Choice<T>[]
@@ -160,7 +196,11 @@ export function MultiChoiceScreen<T extends string>({
 }) {
   return (
     <OBScreen onBack={onBack} footer={<OBContinue disabled={values.length === 0} onPress={onContinue} />}>
-      <OBHeader title={title} subtitle={subtitle} />
+      {eyebrow ? <OBEyebrow label={eyebrow} /> : null}
+      {progress != null ? <OBProgress value={progress} /> : null}
+      <View className={eyebrow || progress != null ? 'mt-6' : ''}>
+        <OBHeader title={title} subtitle={subtitle} />
+      </View>
       {options.map((o) => (
         <OptionRow
           key={o.value}
