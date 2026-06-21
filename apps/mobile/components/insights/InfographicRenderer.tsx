@@ -1,5 +1,6 @@
 import React from 'react'
 import { View, Text } from 'react-native'
+import { Flame, Bell, Clock } from 'lucide-react-native'
 import type {
   InfographicSpec,
   InfographicBarRow,
@@ -91,16 +92,20 @@ const WindowsChart: React.FC<{ title: string; rows: InfographicWindowRow[] }> = 
     <View style={{ gap: 10 }}>
       {rows.map((r) => {
         const tone = WINDOW_TONE[r.tone]
+        const Icon = r.tone === 'high' ? Flame : r.tone === 'medium' ? Bell : Clock
         return (
           <View
             key={r.label}
-            className="flex-row items-center justify-between rounded-xl"
-            style={{ backgroundColor: tone.bg, paddingVertical: 12, paddingHorizontal: 16 }}
+            className="flex-row items-center rounded-xl"
+            style={{ backgroundColor: tone.bg, paddingVertical: 12, paddingHorizontal: 16, gap: 10 }}
           >
-            <Text className="font-sans-bold" style={{ fontSize: 14, color: tone.fg }}>
-              {r.label}
-            </Text>
-            <Text style={{ fontSize: 12, color: tone.fg }}>{r.caption}</Text>
+            <Icon size={16} color={tone.fg} strokeWidth={2.5} />
+            <View className="flex-1 flex-row items-center justify-between">
+              <Text className="font-sans-bold" style={{ fontSize: 14, color: tone.fg }}>
+                {r.label}
+              </Text>
+              <Text style={{ fontSize: 12, color: tone.fg, opacity: 0.85 }}>{r.caption}</Text>
+            </View>
           </View>
         )
       })}
@@ -116,22 +121,41 @@ const SplitChart: React.FC<{
 }> = ({ title, left, right }) => (
   <View style={{ gap: 16 }}>
     <SectionTitle>{title}</SectionTitle>
-    <View className="flex-row">
-      <SplitSide side={left} divider />
-      <SplitSide side={right} />
+    <View className="flex-row" style={{ gap: 12 }}>
+      <View
+        className="flex-1 rounded-2xl items-center justify-center p-4 border border-border bg-card"
+        style={{
+          shadowColor: '#15110D',
+          shadowOpacity: 0.03,
+          shadowRadius: 8,
+          shadowOffset: { width: 0, height: 2 },
+          elevation: 1,
+        }}
+      >
+        <Text className="font-sans-bold" style={{ fontSize: 32, color: left.color, letterSpacing: -0.5 }}>
+          {left.value}
+        </Text>
+        <Text className="text-muted-foreground text-[11px] font-sans-bold uppercase tracking-wider mt-1">
+          {left.label}
+        </Text>
+      </View>
+      <View
+        className="flex-1 rounded-2xl items-center justify-center p-4 border border-border bg-card"
+        style={{
+          shadowColor: '#15110D',
+          shadowOpacity: 0.03,
+          shadowRadius: 8,
+          shadowOffset: { width: 0, height: 2 },
+          elevation: 1,
+        }}
+      >
+        <Text className="font-sans-bold" style={{ fontSize: 32, color: right.color, letterSpacing: -0.5 }}>
+          {right.value}
+        </Text>
+        <Text className="text-muted-foreground text-[11px] font-sans-bold uppercase tracking-wider mt-1">
+          {right.label}
+        </Text>
+      </View>
     </View>
-  </View>
-)
-const SplitSide: React.FC<{ side: InfographicSplitSide; divider?: boolean }> = ({ side, divider }) => (
-  <View
-    className="flex-1 items-center"
-    style={divider ? { borderRightWidth: 1, borderRightColor: '#E8E8E8' } : undefined}
-  >
-    <Text className="font-sans-bold" style={{ fontSize: 44, lineHeight: 48, color: side.color }}>
-      {side.value}
-    </Text>
-    <Text className="text-muted-foreground" style={{ fontSize: 13, marginTop: 4 }}>
-      {side.label}
-    </Text>
   </View>
 )

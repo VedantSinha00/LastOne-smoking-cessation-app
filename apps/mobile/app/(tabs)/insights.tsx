@@ -145,26 +145,37 @@ export default function Insights() {
         <ScreenHeader title="Cravings" onBack={() => setView('main')} />
         <ScrollView className="flex-1" contentContainerClassName="p-5 gap-4 pb-12">
         {feed.length === 0 ? (
-          <View className="bg-card border border-border rounded-3xl p-5">
-            <Text className="text-muted-foreground text-sm leading-relaxed">
-              Your quit patterns will start appearing here as you go. Check back after a few days.
+          <View className="bg-card border border-border rounded-3xl p-8 items-center justify-center">
+            <View className="h-16 w-16 rounded-full items-center justify-center bg-accent mb-4">
+              <Zap size={32} color="#F15025" strokeWidth={2} />
+            </View>
+            <Text className="text-foreground font-display text-lg text-center mb-2">
+              Quit patterns taking shape
+            </Text>
+            <Text className="text-muted-foreground text-sm text-center leading-relaxed px-2">
+              We analyze your logs to find key patterns in when, where, and why you feel cravings. Check back in a few days after logging a few entry points.
             </Text>
           </View>
         ) : (
-          feed.map((item) => (
-            <InsightCardView
-              key={item.card.insight_key}
-              item={item}
-              metrics={metrics}
-              expanded={expandedKey === item.card.insight_key}
-              onToggle={() => handleToggle(item.card.insight_key)}
-              onToggleRiskWindow={
-                item.content.riskWindowStartHour != null
-                  ? () => toggleRiskWindow.mutate(item.content.riskWindowStartHour!)
-                  : undefined
-              }
-            />
-          ))
+          <>
+            <Text className="text-muted-foreground text-sm px-1 mb-1 leading-relaxed">
+              Analyze patterns in your craving intensity, triggers, and timing to build better defenses.
+            </Text>
+            {feed.map((item) => (
+              <InsightCardView
+                key={item.card.insight_key}
+                item={item}
+                metrics={metrics}
+                expanded={expandedKey === item.card.insight_key}
+                onToggle={() => handleToggle(item.card.insight_key)}
+                onToggleRiskWindow={
+                  item.content.riskWindowStartHour != null
+                    ? () => toggleRiskWindow.mutate(item.content.riskWindowStartHour!)
+                    : undefined
+                }
+              />
+            ))}
+          </>
         )}
         {(screenState === 'feed_led' || screenState === 'feed_continues') && stage >= 3 && (
           <Text className="text-muted-foreground text-xs text-center mt-2 leading-relaxed">
