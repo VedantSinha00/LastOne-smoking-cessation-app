@@ -2,10 +2,15 @@ import React from 'react'
 import { Text, View, Pressable } from 'react-native'
 import { Card } from '../ui/Card'
 import type { FeedItem } from '../../hooks/useInsights'
+import type { InsightMetrics } from '../../lib/insights'
+import { insightInfographic } from '../../lib/insightInfographic'
+import { InfographicRenderer } from './InfographicRenderer'
 
 interface Props {
   item: FeedItem
   expanded: boolean
+  /** Live metrics — resolves the optional infographic for this card type. */
+  metrics: InsightMetrics
   onToggle: () => void
   onToggleRiskWindow?: () => void
 }
@@ -19,11 +24,15 @@ interface Props {
 export const InsightCardView: React.FC<Props> = ({
   item,
   expanded,
+  metrics,
   onToggle,
   onToggleRiskWindow,
 }) => {
   const { card, content } = item
   const isRead = card.card_state === 'read'
+
+  // Generic infographic: present only when the resolver has one for this type.
+  const infographic = insightInfographic(card.insight_type, metrics)
 
   return (
     <Card onPress={onToggle} className={isRead && !expanded ? 'opacity-80' : ''}>
@@ -53,6 +62,14 @@ export const InsightCardView: React.FC<Props> = ({
                   </Text>
                 </Pressable>
               )}
+            </View>
+          )}
+
+          {/* Generic infographic — rendered inline whenever the card is expanded
+              and the resolver has one for this type. No extra tap. */}
+          {infographic && (
+            <View className="mt-4 pt-4 border-t border-border">
+              <InfographicRenderer spec={infographic} />
             </View>
           )}
         </View>

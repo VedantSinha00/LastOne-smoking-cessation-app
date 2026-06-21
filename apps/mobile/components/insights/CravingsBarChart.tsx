@@ -9,7 +9,7 @@ import Svg, { Rect } from 'react-native-svg'
  * the hardest day is called out below. Data is real (metrics.weeklyCravings).
  */
 interface Props {
-  data: { dayLabel: string; count: number }[]
+  data: { dayLabel: string; dayFull: string; count: number }[]
 }
 
 // low → high intensity colour ramp (design's calm-green → orange → red)
@@ -63,23 +63,9 @@ export const CravingsBarChart: React.FC<Props> = ({ data }) => {
 
       {hardest && hardest.count > 0 && (
         <Text className="text-muted-foreground text-sm text-center mt-3 leading-relaxed">
-          {fullDay(hardest.dayLabel)} was your hardest day this week.
+          {hardest.dayFull} was your hardest day this week.
         </Text>
       )}
     </View>
   )
-}
-
-function fullDay(label: string): string {
-  // best-effort expansion for the callout line
-  switch (label) {
-    case 'M':
-      return 'Monday'
-    case 'W':
-      return 'Wednesday'
-    case 'F':
-      return 'Friday'
-    default:
-      return 'That day'
-  }
 }

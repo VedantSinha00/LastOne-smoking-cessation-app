@@ -437,6 +437,118 @@ export const DevPanel: React.FC<DevPanelProps> = ({ onUnlockReturnGate, onResetC
     }
   };
 
+  /** Seed a FAT, varied dataset so the Insights Explore views fill up:
+   *  triggers, social_context, location, mood, and tool_selected across
+   *  craving / overcome / slip logs over the last ~13 days. Tools carry a mix of
+   *  resist/slip outcomes so Top tools shows differing success rates. Stacks on
+   *  re-run (the log table has no client DELETE — clear via SQL to reset). */
+  const seedExploreLogs = async (label: string) => {
+    if (!user) return;
+    setBusy(label);
+    try {
+      const { data: attempt } = await supabase
+        .from("quit_attempts")
+        .select("attempt_id, quit_date")
+        .eq("user_id", user.id)
+        .is("ended_at", null)
+        .maybeSingle();
+      if (!attempt) {
+        setLastResult("ERROR: no open attempt — set a Stage first.");
+        return;
+      }
+      const quitDate = attempt.quit_date;
+      const dayNum = (d: Date) =>
+        quitDate ? differenceInCalendarDays(d, parseISO(quitDate)) : 0;
+      const stageOf = (d: Date) =>
+        quitDate ? deriveStage(format(d, "yyyy-MM-dd")) : 0;
+      const at = (daysAgo: number, hour: number) => {
+        const d = subDays(new Date(), daysAgo);
+        d.setHours(hour, 15, 0, 0);
+        return d;
+      };
+
+      type Seed = {
+        daysAgo: number;
+        hour: number;
+        type: "craving" | "overcome" | "slip";
+        triggers: string[];
+        social_context: string[];
+        location: string[];
+        mood: number | null;
+        tool_selected: string | null;
+      };
+      // tool_helpful (the design's "thumbs up" effectiveness metric) derived per
+      // row: a tool helps unless the user slipped, with a couple of fixed misses
+      // on the heavy tool so its rate lands ~80% rather than a flat 100%.
+      const helpfulFor = (s: Seed, idx: number): boolean | null => {
+        if (!s.tool_selected) return null;
+        if (s.type === "slip") return false; // tool didn't hold
+        if (s.tool_selected === "BRE-01" && idx % 5 === 0) return false; // occasional miss
+        return true;
+      };
+      // Spread across the last 13 days. Boredom-heavy (top trigger), friends +
+      // tapri dominant (People/Places), box-breathing strong vs walk weaker (Top
+      // tools). overcome = resisted, slip = gave in.
+      const seeds: Seed[] = [
+        { daysAgo: 13, hour: 18, type: "overcome", triggers: ["boredom"], social_context: ["friends"], location: ["tapri"], mood: 3, tool_selected: "BRE-01" },
+        { daysAgo: 12, hour: 11, type: "craving", triggers: ["stress"], social_context: ["colleagues"], location: ["work"], mood: 2, tool_selected: "BRE-02" },
+        { daysAgo: 12, hour: 18, type: "overcome", triggers: ["boredom"], social_context: ["friends"], location: ["tapri"], mood: 3, tool_selected: "BRE-01" },
+        { daysAgo: 11, hour: 21, type: "slip", triggers: ["social"], social_context: ["friends"], location: ["party"], mood: 4, tool_selected: "PHY-03" },
+        { daysAgo: 11, hour: 9, type: "overcome", triggers: ["morning"], social_context: ["alone"], location: ["home"], mood: 2, tool_selected: "BRE-01" },
+        { daysAgo: 10, hour: 18, type: "craving", triggers: ["boredom"], social_context: ["friends"], location: ["tapri"], mood: 3, tool_selected: "BRE-03" },
+        { daysAgo: 10, hour: 14, type: "overcome", triggers: ["boredom"], social_context: ["alone"], location: ["home"], mood: 3, tool_selected: "BRE-01" },
+        { daysAgo: 9, hour: 18, type: "slip", triggers: ["boredom"], social_context: ["friends"], location: ["tapri"], mood: 3, tool_selected: "PHY-03" },
+        { daysAgo: 9, hour: 20, type: "overcome", triggers: ["after_meal"], social_context: ["family"], location: ["home"], mood: 4, tool_selected: "BRE-02" },
+        { daysAgo: 8, hour: 18, type: "craving", triggers: ["boredom"], social_context: ["friends"], location: ["tapri"], mood: 3, tool_selected: "BRE-01" },
+        { daysAgo: 8, hour: 13, type: "overcome", triggers: ["stress"], social_context: ["colleagues"], location: ["work"], mood: 2, tool_selected: "BRE-04" },
+        { daysAgo: 7, hour: 16, type: "craving", triggers: ["study_work"], social_context: ["alone"], location: ["work"], mood: 2, tool_selected: "BRE-02" },
+        { daysAgo: 6, hour: 18, type: "overcome", triggers: ["boredom"], social_context: ["friends"], location: ["tapri"], mood: 3, tool_selected: "BRE-01" },
+        { daysAgo: 6, hour: 22, type: "slip", triggers: ["alcohol"], social_context: ["friends"], location: ["party"], mood: 5, tool_selected: "PHY-04" },
+        { daysAgo: 5, hour: 11, type: "overcome", triggers: ["stress"], social_context: ["colleagues"], location: ["work"], mood: 2, tool_selected: "BRE-02" },
+        { daysAgo: 5, hour: 18, type: "craving", triggers: ["boredom"], social_context: ["alone"], location: ["home"], mood: 3, tool_selected: "BRE-03" },
+        { daysAgo: 4, hour: 18, type: "overcome", triggers: ["boredom"], social_context: ["friends"], location: ["tapri"], mood: 3, tool_selected: "BRE-01" },
+        { daysAgo: 3, hour: 9, type: "overcome", triggers: ["morning"], social_context: ["alone"], location: ["home"], mood: 2, tool_selected: "BRE-01" },
+        { daysAgo: 3, hour: 20, type: "craving", triggers: ["after_meal"], social_context: ["family"], location: ["home"], mood: 4, tool_selected: "BRE-02" },
+        { daysAgo: 2, hour: 11, type: "overcome", triggers: ["stress"], social_context: ["colleagues"], location: ["work"], mood: 2, tool_selected: "BRE-04" },
+        { daysAgo: 2, hour: 18, type: "overcome", triggers: ["boredom"], social_context: ["friends"], location: ["tapri"], mood: 3, tool_selected: "BRE-01" },
+        { daysAgo: 1, hour: 19, type: "craving", triggers: ["boredom"], social_context: ["friends"], location: ["tapri"], mood: 3, tool_selected: "BRE-03" },
+        { daysAgo: 1, hour: 14, type: "overcome", triggers: ["study_work"], social_context: ["alone"], location: ["work"], mood: 2, tool_selected: "BRE-02" },
+        { daysAgo: 0, hour: 12, type: "craving", triggers: ["stress"], social_context: ["colleagues"], location: ["work"], mood: 2, tool_selected: "BRE-04" },
+      ];
+
+      const rows = seeds.map((s, idx) => {
+        const ts = at(s.daysAgo, s.hour);
+        return {
+          user_id: user.id,
+          attempt_id: attempt.attempt_id,
+          log_type: s.type,
+          timestamp: ts.toISOString(),
+          quit_day_number: dayNum(ts),
+          current_stage: stageOf(ts),
+          entry_method: "fab" as const,
+          triggers: s.triggers,
+          social_context: s.social_context,
+          location: s.location,
+          mood: s.mood,
+          tool_selected: s.tool_selected,
+          tool_helpful: helpfulFor(s, idx),
+        };
+      });
+
+      await supabase.from("log").insert(rows).throwOnError();
+      await queryClient.invalidateQueries({ queryKey: ["logs", user.id] });
+      await queryClient.invalidateQueries({ queryKey: ["insights", user.id] });
+      setLastResult(
+        `seeded ${rows.length} rich logs (triggers + social + location + mood + tools). ` +
+          `Open Insights → Explore: Triggers/People/Places/Top tools now fill.`,
+      );
+    } catch (e: any) {
+      setLastResult(`ERROR: ${e.message}`);
+    } finally {
+      setBusy(null);
+    }
+  };
+
   /** Write a HIGH-confidence risk window covering the CURRENT 2-hour bucket so
    *  alert_level reads 2 right now → the CopingSurfaceCard appears on Home
    *  (Insights §B2.8). Preserves nothing else; sets a single window for testing. */
@@ -860,6 +972,9 @@ export const DevPanel: React.FC<DevPanelProps> = ({ onUnlockReturnGate, onResetC
       </Text>
       <View className="flex-row gap-2 mb-2">
         <View className="flex-1"><Btn label="Seed insight logs" onPress={() => seedInsightLogs("Seed insight logs")} /></View>
+      </View>
+      <View className="flex-row gap-2 mb-2">
+        <View className="flex-1"><Btn label="Seed Explore data (rich)" onPress={() => seedExploreLogs("Seed Explore data (rich)")} /></View>
       </View>
       <View className="flex-row gap-2 mb-3">
         <View className="flex-1"><Btn label="Risk window NOW" onPress={() => seedRiskWindowNow("Risk window NOW")} /></View>

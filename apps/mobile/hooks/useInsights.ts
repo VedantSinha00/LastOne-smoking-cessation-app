@@ -29,6 +29,8 @@ export interface InsightsData {
   screenState: InsightScreenState
   metrics: InsightMetrics
   feed: FeedItem[]
+  /** Raw current-attempt logs — backs the Explore breakdown views. */
+  logs: LogRow[]
   hasAnyLog: boolean
   isLoading: boolean
   /** Re-rank the feed order. Call on screen focus so 'read' cards settle lower on
@@ -53,7 +55,7 @@ export function useInsights(): InsightsData {
     queryFn: async () => {
       const { data } = await supabase
         .from('log')
-        .select('log_type, timestamp, triggers, attempt_id')
+        .select('log_type, timestamp, triggers, attempt_id, social_context, location, mood, tool_selected, tool_helpful, what_helped')
         .eq('user_id', user!.id)
         .eq('attempt_id', attemptId!)
         .throwOnError()
@@ -143,6 +145,7 @@ export function useInsights(): InsightsData {
     screenState,
     metrics,
     feed,
+    logs,
     hasAnyLog: logs.length > 0,
     isLoading: logsQuery.isLoading || cardsQuery.isLoading,
     resnapshotOrder,

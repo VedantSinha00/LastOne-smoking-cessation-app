@@ -39,6 +39,15 @@ export interface LogRow {
   timestamp: string
   triggers: string[] | null
   attempt_id: number | null
+  // Optional context fields — captured by the log modals (A: social_context,
+  // D: mood) and the tool picker (tool_selected). Used by the Explore breakdowns
+  // (Triggers / People / Top tools). computeMetrics doesn't depend on these.
+  social_context?: string[] | null
+  location?: string[] | null
+  mood?: number | null
+  tool_selected?: string | null
+  tool_helpful?: boolean | null
+  what_helped?: string[] | null
 }
 
 /** trigger_tag (singular) = MODE of triggers[] for a row; first element fallback. */
@@ -64,22 +73,31 @@ export interface InsightMetrics {
   resistanceRate: number | null // 0–100, null when denominator 0
   topTrigger: string | null
   topTriggerPct: number | null
+  /** Full ranked trigger distribution (token + share), for the card infographics. */
+  triggerDistribution: BreakdownRow[]
+  /** Ranked social-context distribution (token + share), for the card infographics. */
+  socialDistribution: BreakdownRow[]
   /** Rolling 7-day vs prior 7-day craving averages (per day). */
   cravingPerDayCurrent: number
   cravingPerDayPrior: number
   riskWindows: RiskWindow[]
   /** Cravings logged on each of the last 7 days (oldest→newest), for the
-   *  "Cravings This Week" bar chart on the Insights hub. */
-  weeklyCravings: { dayLabel: string; count: number }[]
+   *  "Cravings This Week" bar chart on the Insights hub. `dayLabel` is the
+   *  single-letter axis label; `dayFull` is the full weekday name for the
+   *  hardest-day callout (the letter alone is ambiguous — T=Tue/Thu, S=Sat/Sun). */
+  weeklyCravings: { dayLabel: string; dayFull: string; count: number }[]
 }
 
 /** Per-day craving counts for the last 7 days (oldest→newest). */
-function weeklyCravingBuckets(cravings: LogRow[]): { dayLabel: string; count: number }[] {
+function weeklyCravingBuckets(
+  cravings: LogRow[],
+): { dayLabel: string; dayFull: string; count: number }[] {
   const DAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
+  const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
   const day = 86_400_000
   const startOfToday = new Date()
   startOfToday.setHours(0, 0, 0, 0)
-  const buckets: { dayLabel: string; count: number }[] = []
+  const buckets: { dayLabel: string; dayFull: string; count: number }[] = []
   for (let i = 6; i >= 0; i--) {
     const dayStart = startOfToday.getTime() - i * day
     const dayEnd = dayStart + day
@@ -87,7 +105,8 @@ function weeklyCravingBuckets(cravings: LogRow[]): { dayLabel: string; count: nu
       const t = new Date(c.timestamp).getTime()
       return t >= dayStart && t < dayEnd
     }).length
-    buckets.push({ dayLabel: DAY_LABELS[new Date(dayStart).getDay()], count })
+    const weekday = new Date(dayStart).getDay()
+    buckets.push({ dayLabel: DAY_LABELS[weekday], dayFull: DAY_NAMES[weekday], count })
   }
   return buckets
 }
@@ -173,11 +192,152 @@ export function computeMetrics(logs: LogRow[]): InsightMetrics {
     resistanceRate,
     topTrigger: tag,
     topTriggerPct: pct,
+    triggerDistribution: triggerBreakdown(logs).rows,
+    socialDistribution: socialBreakdown(logs).rows,
     cravingPerDayCurrent,
     cravingPerDayPrior,
     riskWindows: calculateRiskWindows(cravings),
     weeklyCravings: weeklyCravingBuckets(cravings),
   }
+}
+
+// ── Explore breakdowns (spec INS-4 profile sections + tool_effectiveness card) ──
+// Each returns a ranked distribution + total, so the view can render bars and an
+// empty state when nothing's been logged yet.
+
+export interface BreakdownRow {
+  key: string
+  count: number
+  /** share of total, 0–1 */
+  pct: number
+}
+
+/** Triggers breakdown — every element of triggers[] across cravings, ranked.
+ *  Backs the spec's top_trigger card / INS-4 trigger categories. */
+export function triggerBreakdown(logs: LogRow[]): { rows: BreakdownRow[]; total: number } {
+  const cravings = logs.filter((l) => l.log_type === 'craving')
+  const counts: Record<string, number> = {}
+  let total = 0
+  for (const c of cravings) {
+    for (const t of c.triggers ?? []) {
+      counts[t] = (counts[t] ?? 0) + 1
+      total++
+    }
+  }
+  return { rows: rankCounts(counts, total), total }
+}
+
+/** Social-context breakdown — every element of social_context[] across cravings,
+ *  ranked. Backs the spec's INS-4 "social context breakdown" (People). */
+export function socialBreakdown(logs: LogRow[]): { rows: BreakdownRow[]; total: number } {
+  const cravings = logs.filter((l) => l.log_type === 'craving')
+  const counts: Record<string, number> = {}
+  let total = 0
+  for (const c of cravings) {
+    for (const s of c.social_context ?? []) {
+      counts[s] = (counts[s] ?? 0) + 1
+      total++
+    }
+  }
+  return { rows: rankCounts(counts, total), total }
+}
+
+/** Location breakdown — every element of location[] across cravings, ranked.
+ *  Backs the Explore "Places" view (where cravings hit). */
+export function locationBreakdown(logs: LogRow[]): { rows: BreakdownRow[]; total: number } {
+  const cravings = logs.filter((l) => l.log_type === 'craving')
+  const counts: Record<string, number> = {}
+  let total = 0
+  for (const c of cravings) {
+    for (const loc of c.location ?? []) {
+      counts[loc] = (counts[loc] ?? 0) + 1
+      total++
+    }
+  }
+  return { rows: rankCounts(counts, total), total }
+}
+
+/** Per-tool usage + helpful-rate, ranked by uses. `helpfulRate` is the share of
+ *  uses the user marked tool_helpful=true (the design's "thumbs up" metric);
+ *  null when no helpful signal was recorded for that tool. */
+export interface ToolUsageRow {
+  tool: string
+  uses: number
+  helpfulCount: number
+  /** rated = uses where tool_helpful is non-null (the helpfulRate denominator) */
+  rated: number
+  helpfulRate: number | null
+}
+
+/** Everything the Top Tools screen needs, mirroring the design's 5 sections.
+ *  Built from real logs (tool_selected, tool_helpful, triggers). `totalToolCount`
+ *  is the size of the coping_tools catalog, used for the "N of total tried" line. */
+export interface ToolStats {
+  triedCount: number
+  totalToolCount: number
+  totalUses: number
+  /** ranked by uses (the "Most used" section) */
+  mostUsed: ToolUsageRow[]
+  /** tools with a helpful signal, ranked by helpfulRate (the "Effectiveness" section) */
+  effectiveness: ToolUsageRow[]
+  /** triggers that most often preceded a tool use (the "Used most after" chips) */
+  topTriggers: string[]
+  /** the single best tool by helpfulRate with enough uses, or null */
+  bestTool: ToolUsageRow | null
+}
+
+export function toolStats(logs: LogRow[], totalToolCount: number): ToolStats {
+  const byTool: Record<string, { uses: number; helpfulCount: number; rated: number }> = {}
+  const triggerCounts: Record<string, number> = {}
+
+  for (const l of logs) {
+    const tool = l.tool_selected
+    if (!tool) continue
+    const b = (byTool[tool] ??= { uses: 0, helpfulCount: 0, rated: 0 })
+    b.uses++
+    if (l.tool_helpful != null) {
+      b.rated++
+      if (l.tool_helpful) b.helpfulCount++
+    }
+    // triggers preceding any tool use feed the "used most after" chips
+    for (const t of l.triggers ?? []) triggerCounts[t] = (triggerCounts[t] ?? 0) + 1
+  }
+
+  const rows: ToolUsageRow[] = Object.entries(byTool).map(([tool, b]) => ({
+    tool,
+    uses: b.uses,
+    helpfulCount: b.helpfulCount,
+    rated: b.rated,
+    helpfulRate: b.rated > 0 ? b.helpfulCount / b.rated : null,
+  }))
+
+  const mostUsed = [...rows].sort((a, b) => b.uses - a.uses)
+  const effectiveness = rows
+    .filter((r) => r.helpfulRate != null)
+    .sort((a, b) => (b.helpfulRate ?? 0) - (a.helpfulRate ?? 0))
+  // best tool = highest helpful rate among tools used at least twice
+  const bestTool = effectiveness.filter((r) => r.uses >= 2)[0] ?? effectiveness[0] ?? null
+  const topTriggers = Object.entries(triggerCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 4)
+    .map(([t]) => t)
+
+  return {
+    triedCount: rows.length,
+    totalToolCount,
+    totalUses: rows.reduce((sum, r) => sum + r.uses, 0),
+    mostUsed,
+    effectiveness,
+    topTriggers,
+    bestTool,
+  }
+}
+
+/** Sort a count map into ranked BreakdownRows (desc by count). */
+function rankCounts(counts: Record<string, number>, total: number): BreakdownRow[] {
+  return Object.entries(counts)
+    .map(([key, count]) => ({ key, count, pct: total ? count / total : 0 }))
+    .sort((a, b) => b.count - a.count)
 }
 
 // ── Threshold gate (§B2.3) — which insight types have enough data to surface ──
