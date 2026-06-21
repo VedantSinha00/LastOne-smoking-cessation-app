@@ -2,7 +2,7 @@ import { Tabs } from "expo-router";
 import { View, Pressable } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Home, BarChart3, Heart, Plus, Users } from "lucide-react-native";
+import { Home, BarChart3, Wrench, Plus, Users } from "lucide-react-native";
 import { SosFab } from "../../components/sos/sos-fab";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 
@@ -41,7 +41,7 @@ const LEFT: TabDef[] = [
 ];
 const RIGHT: TabDef[] = [
   { name: "insights", label: "Insights", Icon: BarChart3 },
-  { name: "tools", label: "Tools", Icon: Heart },
+  { name: "tools", label: "Tools", Icon: Wrench },
 ];
 
 function CustomTabBar({ state, navigation }: BottomTabBarProps) {
@@ -60,9 +60,9 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
         className="flex-1 h-full items-center justify-center"
       >
         <Icon
-          size={24}
+          size={21}
           color={isFocused ? ACTIVE : INACTIVE}
-          strokeWidth={isFocused ? 2.4 : 1.9}
+          strokeWidth={isFocused ? 2.5 : 2.0}
         />
       </Pressable>
     );
@@ -91,7 +91,7 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
             elevation: 8,
           }}
         >
-          <Plus size={26} color="#FBFAF9" strokeWidth={2.5} />
+          <Plus size={24} color="#FBFAF9" strokeWidth={2.5} />
         </Pressable>
       </View>
 
