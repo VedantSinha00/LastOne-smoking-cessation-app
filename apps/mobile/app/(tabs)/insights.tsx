@@ -1,9 +1,10 @@
 import React, { useCallback, useMemo, useState } from 'react'
 import { View, Text, ScrollView, Pressable, ActivityIndicator } from 'react-native'
 import { useQuery } from '@tanstack/react-query'
-import { useFocusEffect } from 'expo-router'
+import { useFocusEffect, useLocalSearchParams } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Zap, Wrench, AlertTriangle, Users, MapPin, Activity, ChevronRight, ChevronDown } from 'lucide-react-native'
+import { Zap, Wrench, FileText, AlertTriangle, Users, MapPin, Activity, ChevronRight, ChevronDown } from 'lucide-react-native'
+import { useRouter } from 'expo-router'
 import { useInsights, useInsightActions } from '../../hooks/useInsights'
 import { useStage } from '../../hooks/useStage'
 import { useStreakRecord } from '../../hooks/useStreakRecord'
@@ -22,6 +23,7 @@ import { CravingsBarChart } from '../../components/insights/CravingsBarChart'
 import { BreakdownInline } from '../../components/insights/BreakdownView'
 import { TopToolsView } from '../../components/insights/TopToolsView'
 import { StreaksView } from '../../components/insights/StreaksView'
+import { JournalView } from '../../components/insights/JournalView'
 import { ScreenHeader } from '../../components/ui/ScreenHeader'
 
 // token -> display label maps (reuse the canonical logging tokens)
@@ -43,7 +45,7 @@ const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
  * sub-views that have no backing data yet are "coming soon".
  */
 // Full-page Explore destinations (rich multi-section screens).
-type HubView = 'main' | 'patterns' | 'tools' | 'streaks'
+type HubView = 'main' | 'patterns' | 'tools' | 'streaks' | 'journal'
 // Inline expandable Explore destinations (breakdown shows in place on the hub).
 type ExpandKey = 'triggers' | 'people' | 'places'
 
@@ -62,6 +64,7 @@ type ExploreItem = {
 const EXPLORE: ExploreItem[] = [
   { kind: 'nav', view: 'patterns', label: 'Cravings', sub: 'Patterns, intensity, timing', Icon: Zap, tint: '#F15025', bg: '#FFE5DC' },
   { kind: 'nav', view: 'tools', label: 'Top tools', sub: "What's working for you", Icon: Wrench, tint: '#4E9A52', bg: '#E6F4D6' },
+  { kind: 'nav', view: 'journal', label: 'Journal', sub: 'Your notes over time', Icon: FileText, tint: '#378ADD', bg: '#DCEBFB' },
   { kind: 'expand', expand: 'triggers', label: 'Triggers', sub: 'What sets off cravings', Icon: AlertTriangle, tint: '#E0A52B', bg: '#FFF3D6' },
   { kind: 'expand', expand: 'people', label: 'People', sub: 'Who you were with', Icon: Users, tint: '#8B5CF6', bg: '#F3E8FF' },
   { kind: 'expand', expand: 'places', label: 'Places', sub: 'Where cravings hit', Icon: MapPin, tint: '#268255', bg: '#D6F0E2' },
@@ -70,6 +73,7 @@ const EXPLORE: ExploreItem[] = [
 
 export default function Insights() {
   const insets = useSafeAreaInsets()
+  const router = useRouter()
   const { feed, metrics, logs, hasAnyLog, screenState, isLoading, resnapshotOrder } = useInsights()
   const { stage, quitDate } = useStage()
   const { data: streak } = useStreakRecord()
@@ -134,7 +138,11 @@ export default function Insights() {
     },
   }
   const { expandCard, toggleRiskWindow } = useInsightActions()
-  const [view, setView] = useState<HubView>('main')
+  // Optional deep-link param: /(tabs)/insights?view=journal opens that sub-view
+  // (used when returning from the Quick Note flow so we land back on Journal).
+  const params = useLocalSearchParams<{ view?: string }>()
+  const paramView = params.view as HubView | undefined
+  const [view, setView] = useState<HubView>(paramView ?? 'main')
   const [expandedKey, setExpandedKey] = useState<string | null>(null)
   const [soon, setSoon] = useState<string | null>(null)
   // Which inline Explore breakdown (Triggers/People/Places) is open on the hub.
@@ -143,13 +151,18 @@ export default function Insights() {
   useFocusEffect(
     useCallback(() => {
       resnapshotOrder()
+      // Apply a deep-link view param on focus (e.g. returning to Journal after a note).
+      if (paramView) setView(paramView)
       return () => {
+        // Reset transient in-view state on blur, but DO NOT reset `view` here —
+        // opening a modal (e.g. "+ Add a note" → Flow D) blurs the tab, and we
+        // want router.back() to return to the same sub-view (e.g. Journal), not
+        // snap back to the hub.
         setExpandedKey(null)
-        setView('main')
         setSoon(null)
         setOpenExplore(null)
       }
-    }, [resnapshotOrder]),
+    }, [resnapshotOrder, paramView]),
   )
 
   if (isLoading) {
@@ -256,6 +269,17 @@ export default function Insights() {
         quitDate={quitDate ? quitDate.slice(0, 10) : null}
         slipDays={slipDays}
         onBack={() => setView('main')}
+      />
+    )
+  }
+
+  // ── Journal — Quick Note logs over time (design JournalView) ────────────────
+  if (view === 'journal') {
+    return (
+      <JournalView
+        logs={logs}
+        onBack={() => setView('main')}
+        onAddNote={() => router.push({ pathname: '/(modals)/log-d', params: { from: 'journal' } })}
       />
     )
   }

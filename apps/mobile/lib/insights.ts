@@ -48,6 +48,26 @@ export interface LogRow {
   tool_selected?: string | null
   tool_helpful?: boolean | null
   what_helped?: string[] | null
+  note_text?: string | null
+}
+
+export interface JournalEntry {
+  timestamp: string
+  text: string
+  mood: number | null
+}
+
+/** Quick-note logs (log_type='note'), newest first, optionally limited to the
+ *  current week/month. Backs the Insights "Journal" view. */
+export function journalEntries(logs: LogRow[], filter: 'all' | 'week' | 'month' = 'all'): JournalEntry[] {
+  const now = Date.now()
+  const day = 86_400_000
+  const cutoff = filter === 'week' ? now - 7 * day : filter === 'month' ? now - 30 * day : 0
+  return logs
+    .filter((l) => l.log_type === 'note' && (l.note_text ?? '').trim().length > 0)
+    .filter((l) => new Date(l.timestamp).getTime() >= cutoff)
+    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+    .map((l) => ({ timestamp: l.timestamp, text: l.note_text!.trim(), mood: l.mood ?? null }))
 }
 
 /** trigger_tag (singular) = MODE of triggers[] for a row; first element fallback. */

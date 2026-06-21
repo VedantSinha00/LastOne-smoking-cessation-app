@@ -1,10 +1,12 @@
 import React, { useState } from "react";
 import { View, Text, ScrollView, Pressable, TextInput, ToastAndroid, Platform, Alert } from "react-native";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { ArrowLeft, Check } from "lucide-react-native";
 import { exitToHome } from "../../lib/navigation";
 import { useStage } from "../../hooks/useStage";
 import { useCreateLog } from "../../hooks/useCreateLog";
 import { useDailyCheckIn } from "../../hooks/useDailyCheckIn";
-import { Button } from "../../components/ui/button";
 
 const MOODS = [
   { value: 1, emoji: "😞" },
@@ -31,17 +33,33 @@ function placeholderFor(stage: number): string {
 
 /**
  * Flow D — Quick Note (Logging Spec §5 / Architecture Guide §9.7).
- * No auto-commit. On Save: createLog note → markSatisfied → toast → back.
- * Cancel = no log written.
+ * Renders note input and mood picker, and shows a beautiful Saved confirmation
+ * screen on success.
  */
 export default function LogD() {
   const { stage } = useStage();
   const createLog = useCreateLog();
   const { markSatisfied } = useDailyCheckIn();
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const { from } = useLocalSearchParams<{ from?: string }>();
+
+  // Launched from Journal: go back to the Journal sub-view. router.back() is
+  // unreliable here — the modal's back target resolves to the tabs group's
+  // default tab (Home), not Insights — so navigate explicitly with ?view=journal.
+  // Launched from the Log menu (default): exit to Home (the picker replaced the stack).
+  const exit = () => {
+    if (from === "journal") {
+      router.replace({ pathname: "/(tabs)/insights", params: { view: "journal" } });
+    } else {
+      exitToHome();
+    }
+  };
 
   const [text, setText] = useState("");
   const [mood, setMood] = useState<number | null>(null);
   const [placeholder] = useState(() => placeholderFor(stage));
+  const [isSaved, setIsSaved] = useState(false);
 
   const handleSave = async () => {
     if (!text.trim()) return;
@@ -51,58 +69,186 @@ export default function LogD() {
         entry_method: "fab",
         note_text: text.trim(),
         mood,
-        has_photo: false, // photo capture deferred — not wired in V1 Step 9
+        has_photo: false, // photo capture deferred
       });
       await markSatisfied();
       if (Platform.OS === "android") ToastAndroid.show("Note saved", ToastAndroid.SHORT);
-      exitToHome();
+      setIsSaved(true);
     } catch (e: any) {
       Alert.alert("Couldn't save", e.message);
     }
   };
 
-  return (
-    <ScrollView
-      className="flex-1 bg-background px-6 py-8"
-      contentContainerClassName="pb-12"
-      // First-tap Save while the keyboard is up (note input).
-      keyboardShouldPersistTaps="handled"
-    >
-      <View className="flex-row justify-between items-center mb-6">
-        <Text className="text-foreground font-display text-2xl">Quick note</Text>
-        <Pressable onPress={() => exitToHome()} className="px-3 py-1.5 bg-card border border-border rounded-lg">
-          <Text className="text-muted-foreground text-sm">Cancel</Text>
+  // ---- Saved confirmation screen ----
+  if (isSaved) {
+    return (
+      <View className="flex-1 bg-background justify-center items-center px-6" style={{ paddingTop: insets.top }}>
+        {/* Green circle checkmark */}
+        <View
+          style={{
+            width: 64,
+            height: 64,
+            borderRadius: 32,
+            backgroundColor: "#84C524",
+            alignItems: "center",
+            justifyContent: "center",
+            marginBottom: 24,
+            shadowColor: "#84C524",
+            shadowOpacity: 0.2,
+            shadowRadius: 8,
+            shadowOffset: { width: 0, height: 4 },
+            elevation: 4,
+          }}
+        >
+          <Check size={28} color="#FFFFFF" strokeWidth={3} />
+        </View>
+
+        <Text className="text-foreground font-display text-3xl text-center" style={{ marginBottom: 10 }}>
+          Saved.
+        </Text>
+
+        <Text className="text-muted-foreground text-base text-center font-sans" style={{ marginBottom: 40, maxWidth: 240 }}>
+          Good to get it out.
+        </Text>
+
+        <Pressable
+          onPress={exit}
+          style={{
+            width: "100%",
+            maxWidth: 320,
+            backgroundColor: "#0F0D0B",
+            borderRadius: 16,
+            height: 52,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+          className="active:opacity-90"
+        >
+          <Text className="text-white font-sans-bold" style={{ fontSize: 15 }}>
+            Done
+          </Text>
         </Pressable>
       </View>
+    );
+  }
 
-      <TextInput
-        className="bg-card text-foreground px-4 py-3 rounded-2xl border border-border h-32 text-base leading-relaxed"
-        placeholder={placeholder}
-        placeholderTextColor="#76706C"
-        multiline
-        maxLength={280}
-        value={text}
-        onChangeText={setText}
-        textAlignVertical="top"
-      />
-      <Text className="text-muted-foreground text-xs text-right mt-1">{text.length}/280</Text>
-
-      <Text className="text-muted-foreground text-sm font-sans-medium mt-6 mb-3">How are you feeling? (optional)</Text>
-      <View className="flex-row justify-between">
-        {MOODS.map((m) => (
-          <Pressable
-            key={m.value}
-            onPress={() => setMood(mood === m.value ? null : m.value)}
-            className={`w-14 h-14 rounded-full items-center justify-center border ${
-              mood === m.value ? "bg-primary/15 border-primary" : "bg-card border-border"
-            }`}
-          >
-            <Text className="text-2xl">{m.emoji}</Text>
+  // ---- Note writing screen ----
+  return (
+    <View className="flex-1 bg-background">
+      {/* Top Bar with Inline Save */}
+      <View style={{ paddingTop: insets.top }} className="bg-background px-5">
+        <View className="h-14 flex-row items-center justify-between">
+          <Pressable onPress={exit} accessibilityLabel="Cancel" hitSlop={12} className="pr-3 active:opacity-60">
+            <ArrowLeft size={22} color="#15110D" strokeWidth={2} />
           </Pressable>
-        ))}
+          <Text className="text-foreground font-display text-lg" style={{ letterSpacing: -0.3 }}>
+            Quick note
+          </Text>
+          <Pressable
+            onPress={handleSave}
+            disabled={!text.trim() || createLog.isPending}
+            style={{
+              backgroundColor: text.trim() ? "#84C524" : "#E9E7E5",
+              borderRadius: 9999,
+              paddingHorizontal: 16,
+              paddingVertical: 6,
+            }}
+            className="active:opacity-85"
+          >
+            <Text
+              className="font-sans-medium"
+              style={{
+                fontSize: 14,
+                color: text.trim() ? "#FFFFFF" : "#76706C",
+              }}
+            >
+              Save
+            </Text>
+          </Pressable>
+        </View>
       </View>
 
-      <Button title="Save note" onPress={handleSave} disabled={!text.trim()} loading={createLog.isPending} className="mt-8" />
-    </ScrollView>
+      <ScrollView
+        className="flex-1 px-5"
+        contentContainerStyle={{ paddingTop: 8, paddingBottom: 48 }}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* Borderless Card Input */}
+        <View className="bg-card border border-border rounded-3xl p-5" style={{ minHeight: 180 }}>
+          <TextInput
+            style={{
+              flex: 1,
+              fontSize: 16,
+              color: "#15110D",
+              fontFamily: "DMSans_400Regular",
+              lineHeight: 24,
+              textAlignVertical: "top",
+              minHeight: 120,
+            }}
+            placeholder={placeholder}
+            placeholderTextColor="#76706C"
+            multiline
+            value={text}
+            onChangeText={setText}
+            autoFocus
+          />
+          <View className="flex-row justify-between items-center mt-3 pt-3 border-t border-border">
+            <Text style={{ fontSize: 12, color: "#76706C" }}>
+              {text.length} characters
+            </Text>
+            {text.length > 0 && (
+              <Pressable onPress={() => setText("")} className="active:opacity-60">
+                <Text style={{ fontSize: 13, color: "#76706C" }}>Clear</Text>
+              </Pressable>
+            )}
+          </View>
+        </View>
+
+        {/* Elegant Mood Selector Card */}
+        <View
+          style={{
+            backgroundColor: "#FFFFFF",
+            borderRadius: 24,
+            padding: 20,
+            shadowColor: "#000",
+            shadowOpacity: 0.04,
+            shadowRadius: 8,
+            shadowOffset: { width: 0, height: 2 },
+            elevation: 1,
+            marginTop: 20,
+            borderWidth: 1,
+            borderColor: "#E9E7E5",
+          }}
+        >
+          <Text className="font-sans-medium text-foreground text-sm" style={{ marginBottom: 12 }}>
+            How are you feeling? <Text style={{ color: "#76706C", fontSize: 12 }}>(optional)</Text>
+          </Text>
+          <View className="flex-row justify-between">
+            {MOODS.map((m) => {
+              const active = mood === m.value;
+              return (
+                <Pressable
+                  key={m.value}
+                  onPress={() => setMood(mood === m.value ? null : m.value)}
+                  style={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: 24,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    backgroundColor: active ? "#84C524" : "#F7F5F1",
+                    borderWidth: 1,
+                    borderColor: active ? "#84C524" : "#E9E7E5",
+                  }}
+                  className="active:scale-95"
+                >
+                  <Text style={{ fontSize: 22 }}>{m.emoji}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+      </ScrollView>
+    </View>
   );
 }

@@ -14,7 +14,12 @@ export default function ModalsLayout() {
         contentStyle: { backgroundColor: "#FBFAF9" },
       }}
     >
-      <Stack.Screen name="log" options={{ presentation: "transparentModal", animation: "fade" }} />
+      {/* Transparent content background so the screen behind shows through the
+          dimmed/blurred backdrop (the group default #FBFAF9 would paint it white). */}
+      <Stack.Screen
+        name="log"
+        options={{ presentation: "transparentModal", animation: "fade", contentStyle: { backgroundColor: "transparent" } }}
+      />
       <Stack.Screen name="log-a" />
       <Stack.Screen name="log-b" />
       <Stack.Screen name="log-c" />
