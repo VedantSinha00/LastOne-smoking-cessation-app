@@ -1,12 +1,10 @@
 import React from 'react'
 import { View, Text, ScrollView } from 'react-native'
 import { useRouter } from 'expo-router'
-import { useQuery } from '@tanstack/react-query'
-import { useAuth } from '../../hooks/useAuth'
 import { useProfile } from '../../hooks/useProfile'
 import { useStage } from '../../hooks/useStage'
+import { useStreakRecord } from '../../hooks/useStreakRecord'
 import { useDashboard } from '../../hooks/useDashboard'
-import { supabase } from '../../lib/supabase'
 import { Row, Section } from '../../components/settings/Row'
 import { ProfileHeaderCard } from '../../components/settings/ProfileHeaderCard'
 import { TopBar } from '../../components/home/TopBar'
@@ -21,23 +19,10 @@ import { TopBar } from '../../components/home/TopBar'
  */
 export default function SettingsRoot() {
   const router = useRouter()
-  const { user } = useAuth()
   const { data: profile } = useProfile()
-  const { stage, daysSinceQuit } = useStage()
+  const { stage } = useStage()
+  const { data: streak } = useStreakRecord()
   const dashboard = useDashboard()
-
-  const { data: attemptCount } = useQuery({
-    queryKey: ['attempt_count', user?.id ?? ''],
-    queryFn: async () => {
-      const { count } = await supabase
-        .from('quit_attempts')
-        .select('attempt_id', { count: 'exact', head: true })
-        .eq('user_id', user!.id)
-        .throwOnError()
-      return count ?? 0
-    },
-    enabled: !!user,
-  })
 
   return (
     <View className="flex-1 bg-background">
@@ -46,8 +31,11 @@ export default function SettingsRoot() {
       <ProfileHeaderCard
         name={profile?.display_name?.trim() || profile?.first_name?.trim() || 'You'}
         stage={stage}
-        daysClean={stage === 0 ? null : daysSinceQuit}
-        attempts={attemptCount ?? 1}
+        // "Lifetime" = lifetime smoke-free days (never drops, survives slips) —
+        // the spec's lifetime metric, same source + label as the StreakBar's
+        // Lifetime column. NOT calendar days since quit (counted smoked days) and
+        // NOT the current streak (which the old "days clean" label implied).
+        smokeFreeDays={stage === 0 ? null : streak?.lifetime_smoke_free_days ?? 0}
         savedLabel={dashboard.moneyLabel}
       />
 

@@ -13,8 +13,7 @@ import { STAGE_NAMES, type Stage } from "../../lib/stage";
 interface ProfileHeaderCardProps {
   name: string;
   stage: Stage;
-  daysClean: number | null;
-  attempts: number;
+  smokeFreeDays: number | null;
   savedLabel: string;
 }
 
@@ -32,8 +31,7 @@ const Stat: React.FC<{ value: string; label: string }> = ({ value, label }) => (
 export const ProfileHeaderCard: React.FC<ProfileHeaderCardProps> = ({
   name,
   stage,
-  daysClean,
-  attempts,
+  smokeFreeDays,
   savedLabel,
 }) => {
   const initial = name.trim().charAt(0).toUpperCase() || "?";
@@ -57,8 +55,7 @@ export const ProfileHeaderCard: React.FC<ProfileHeaderCardProps> = ({
       </View>
 
       <View className="flex-row mt-4" style={{ gap: 8 }}>
-        <Stat value={daysClean != null ? String(daysClean) : "—"} label="days clean" />
-        <Stat value={String(attempts)} label="attempts" />
+        <Stat value={smokeFreeDays != null ? String(smokeFreeDays) : "—"} label="lifetime" />
         <Stat value={savedLabel} label="saved" />
       </View>
     </Card>
