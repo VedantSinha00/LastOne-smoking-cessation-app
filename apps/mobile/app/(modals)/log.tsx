@@ -1,7 +1,6 @@
 import React, { useRef } from "react";
 import { View, Text, Pressable, Animated, PanResponder } from "react-native";
 import { useRouter } from "expo-router";
-import { X } from "lucide-react-native";
 
 // expo-blur is a NATIVE module. A plain require() guard is NOT enough: when the
 // JS dep is installed (so Metro resolves it) but the native view manager is
@@ -108,13 +107,12 @@ export default function LogSheet() {
         <View {...panResponder.panHandlers}>
           <View className="self-center w-10 h-1 rounded-full bg-border" style={{ marginBottom: 20 }} />
 
-          <View className="flex-row items-center justify-between" style={{ marginBottom: 20 }}>
-          <Text className="text-foreground font-sans-bold" style={{ fontSize: 28, letterSpacing: -0.5 }}>
-            Log
-          </Text>
-          <Pressable onPress={dismiss} accessibilityLabel="Close" hitSlop={8} className="p-1">
-            <X size={24} color="#888888" strokeWidth={2} />
-          </Pressable>
+          {/* No × — the sheet is dismissed by dragging the handle down or tapping
+              outside, so a close button is redundant. */}
+          <View style={{ marginBottom: 20 }}>
+            <Text className="text-foreground font-sans-bold" style={{ fontSize: 28, letterSpacing: -0.5 }}>
+              Log
+            </Text>
           </View>
         </View>
 
