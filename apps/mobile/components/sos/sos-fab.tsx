@@ -1,11 +1,10 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import { Pressable, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
-  withRepeat,
   withTiming,
   Easing,
   interpolate,
@@ -16,12 +15,17 @@ import Animated, {
  * screen). Visual follows Lovable's CravingFAB: a 56px craving-orange circle that
  * floats clear above the bottom bar, with a pulsing halo ring.
  *
- * Lovable uses a CSS `pulse-ring` animation (an expanding, fading box-shadow).
- * RN has no animated box-shadow, so the ring is recreated with Reanimated: a halo
- * View behind the button loops scale-up + fade-out on the UI thread (2s, matching
- * Lovable's `pulse-ring 2s infinite`).
+ * Pulse cadence: each ring is a quick, consistent expand-and-fade (PULSE_MS). The
+ * GAP between rings grows each cycle — total period 5s, 10s, 15s, 20s, 25s, 30s —
+ * then holds at 30s indefinitely. So the halo is attention-grabbing at first and
+ * settles into a calm, infrequent pulse over time, without the pulse itself ever
+ * slowing down. (Reanimated ring on the UI thread; the growing gap is a JS timer.)
  */
 const SIZE = 64;
+const PULSE_MS = 1100; // duration of a single snappy ring
+const START_MS = 5000; // first full cycle (ring + gap)
+const STEP_MS = 5000;
+const MAX_MS = 30000;
 
 export const SosFab: React.FC = () => {
   const router = useRouter();
@@ -31,14 +35,38 @@ export const SosFab: React.FC = () => {
   const bottom = 62 + insets.bottom + 40;
   const right = 28;
 
-  // 0 → 1 loop drives the halo's scale + opacity.
+  // 0 → 1 drives the halo's scale + opacity for a single snappy ring.
   const progress = useSharedValue(0);
+  // Current full cycle period (ms) = ring + gap, bumped by STEP each cycle to MAX.
+  const periodRef = useRef(START_MS);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mountedRef = useRef(true);
+
   useEffect(() => {
-    progress.value = withRepeat(
-      withTiming(1, { duration: 2000, easing: Easing.out(Easing.ease) }),
-      -1, // infinite
-      false,
-    );
+    mountedRef.current = true;
+
+    // Fire one quick ring, then wait out the remainder of the current period
+    // before the next — so the GAP grows while the ring stays a constant speed.
+    const runCycle = () => {
+      if (!mountedRef.current) return;
+      progress.value = 0;
+      progress.value = withTiming(1, { duration: PULSE_MS, easing: Easing.out(Easing.ease) });
+
+      // Next ring starts one full period after this one started (the ring's
+      // PULSE_MS plays first, then dead time fills the rest of the period).
+      const wait = periodRef.current;
+      timerRef.current = setTimeout(() => {
+        periodRef.current = Math.min(periodRef.current + STEP_MS, MAX_MS);
+        runCycle();
+      }, wait);
+    };
+
+    runCycle();
+
+    return () => {
+      mountedRef.current = false;
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
   }, [progress]);
 
   const haloStyle = useAnimatedStyle(() => ({

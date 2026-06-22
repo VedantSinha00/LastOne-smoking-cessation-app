@@ -6,7 +6,7 @@ import { subDays } from "date-fns";
 import { Wind, Activity, Puzzle, Shuffle, ChevronRight, ThumbsUp, ThumbsDown, Check } from "lucide-react-native";
 import { useAuth } from "../../hooks/useAuth";
 import { useProfile } from "../../hooks/useProfile";
-import { useSosSelection } from "../../hooks/useSosSelection";
+import { useSosSelection, prefetchSosData } from "../../hooks/useSosSelection";
 import { useCreateLog } from "../../hooks/useCreateLog";
 import { useUpdateLog } from "../../hooks/useUpdateLog";
 import { useDailyCheckIn } from "../../hooks/useDailyCheckIn";
@@ -18,7 +18,6 @@ import {
   updateToolScore,
   recordSosOutcome,
   getSosEscalationLevel,
-  resetSosWindow,
   type SosEscalationLevel,
 } from "../../lib/sos";
 import { confirmSmokeFreeDay } from "../../lib/streak";
@@ -32,6 +31,11 @@ type CopingTool = Database["public"]["Tables"]["coping_tools"]["Row"];
 type Screen = "GATE" | "SOS1" | "SOS2" | "SOS3" | "SUCCESS" | "POSTCALL";
 
 const CRAVING = "#F15025";
+// SOS-1 accent is GREEN ("you're safe / this is working"), not craving-orange —
+// per Lovable SOSFlow SOS-1 (badge, tool-icon tints, first-card left border,
+// bottom CTA). Bright pill green + dark green icon stroke.
+const SOS_GREEN = "#84C524";
+const SOS_GREEN_DARK = "#27500A";
 
 /**
  * Soft drop shadow for the SOS-1 / gate popup cards. Matches Lovable's
@@ -53,22 +57,24 @@ const SCREEN = Dimensions.get("window");
 const POPUP_WIDTH = Math.min(368, SCREEN.width - 40);
 const POPUP_SCROLL_MAX = Math.round(SCREEN.height * 0.82);
 
-/** Lovable maps each tool family to a circular orange line icon (SOS-1 cards). */
+/** Lovable maps each tool family to a circular GREEN line icon (SOS-1 cards). */
 function ToolFamilyIcon({ family }: { family: ToolFamily }) {
   const Icon = family === "breathing" ? Wind : family === "mini_games" ? Puzzle : Activity;
-  return <Icon size={22} color={CRAVING} strokeWidth={1.8} />;
+  return <Icon size={22} color={SOS_GREEN_DARK} strokeWidth={1.8} />;
 }
 
 /**
- * Popup header: compact orange "SOS" pill + 36px grey round close — matching
- * Lovable's exact chrome (badge padding 7×14, 13px bold; close #F0EFED circle).
+ * Popup header: compact green "SOS" pill + 36px grey round close — matching
+ * Lovable's exact chrome (badge #84C524, padding 7×14, 13px bold; close #F0EFED
+ * circle). The SOS-1 accent is green ("you're safe / this is working"), not the
+ * craving-orange used elsewhere — see Lovable SOSFlow SOS-1.
  */
 function SosHeader({ onClose }: { onClose: () => void }) {
   return (
     <View className="flex-row justify-between items-center" style={{ marginBottom: 22 }}>
       <View
-        className="bg-craving rounded-full"
-        style={{ paddingVertical: 7, paddingHorizontal: 14, alignSelf: "flex-start" }}
+        className="rounded-full"
+        style={{ backgroundColor: SOS_GREEN, paddingVertical: 7, paddingHorizontal: 14, alignSelf: "flex-start" }}
       >
         <Text className="text-white font-sans-bold" style={{ fontSize: 13, letterSpacing: 1.5 }}>
           SOS
@@ -132,6 +138,13 @@ export default function SosModal() {
       return next.length >= 9 ? [] : next; // 12-tool catalogue → reset before exhaustion
     });
   };
+
+  // Warm the SOS data cache as soon as the modal mounts (while the user is still
+  // on the context gate), so the tool list is ready the instant they pick one —
+  // no network wait on the hot path. No-op if already cached + fresh.
+  useEffect(() => {
+    if (user) prefetchSosData(qc, user.id);
+  }, [user, qc]);
 
   // Read escalation level when we leave the gate (§8.1 ladder).
   useEffect(() => {
@@ -205,6 +218,9 @@ export default function SosModal() {
     }
     if (tool) await updateToolScore(user.id, tool.tool_id, -1, "same");
     await recordSosOutcome(user.id, "same");
+    // The score just changed — drop the cached SOS data so the next ranking (we
+    // return to SOS1) reflects it rather than the 5-min-cached scores.
+    qc.invalidateQueries({ queryKey: queryKeys.sosData(user.id) });
     // Re-read escalation so the next surface reflects the new failed_sos_count (§8.1).
     setEscalation(await getSosEscalationLevel(user.id));
     setProcessing(false); // returns to the tool list — re-enable for the next session
@@ -222,27 +238,6 @@ export default function SosModal() {
     }
     // Compressed Flow C — slip log handles acknowledgement + support.
     router.replace("/(modals)/log-c");
-  };
-
-  // DEV ONLY: the escalation placeholder cards aren't yet tappable into a real tool
-  // (Step 18), so there's no way to drive failed_sos_count past level 1 by hand. This
-  // simulates one more failed SOS session so the 2→3 ladder transition is testable.
-  const devSimulateFailure = async () => {
-    if (!user || processing) return;
-    setProcessing(true);
-    await recordSosOutcome(user.id, "same");
-    setEscalation(await getSosEscalationLevel(user.id));
-    setProcessing(false);
-  };
-
-  // DEV ONLY: clear the failed-SOS window so escalation drops back to level 0 (normal
-  // waterfall), so the 0→1→2 progression can be re-tested from scratch.
-  const devResetEscalation = async () => {
-    if (!user || processing) return;
-    setProcessing(true);
-    await resetSosWindow(user.id);
-    setEscalation(0);
-    setProcessing(false);
   };
 
   // ── Context gate (spec: two large tap targets) — Lovable popup-over-home look ──
@@ -322,16 +317,19 @@ export default function SosModal() {
               <View style={{ gap: 14 }}>
                 {/* Level 1 (2 failures): Call a Friend pinned to slot 1, tools fill 2–3. */}
                 {escalation === 1 && <CallAFriendCard onCallPerson={() => setScreen("POSTCALL")} />}
-                {tools.map((t) => (
+                {tools.map((t, idx) => (
                   <Pressable
                     key={t.tool_id}
                     onPress={() => selectTool(t)}
                     className="bg-card flex-row items-center active:bg-muted"
-                    // Uniform card styling: 1px border, 16 radius, 17×18 padding (no
-                    // per-slot accent — every tool reads the same).
+                    // 1px border, 16 radius, 17×18 padding. The first (top-ranked)
+                    // tool gets a 3px green left border as the "best pick" accent
+                    // (Lovable SOS-1 slot 0).
                     style={{
                       borderWidth: 1,
                       borderColor: "#E5E7EB",
+                      borderLeftWidth: idx === 0 ? 3 : 1,
+                      borderLeftColor: idx === 0 ? SOS_GREEN : "#E5E7EB",
                       borderRadius: 16,
                       paddingVertical: 17,
                       paddingHorizontal: 18,
@@ -339,7 +337,7 @@ export default function SosModal() {
                   >
                     <View
                       className="rounded-full items-center justify-center"
-                      style={{ width: 42, height: 42, marginRight: 14, backgroundColor: "rgba(241,80,37,0.15)" }}
+                      style={{ width: 42, height: 42, marginRight: 14, backgroundColor: "rgba(132,197,36,0.18)" }}
                     >
                       <ToolFamilyIcon family={t.family} />
                     </View>
@@ -374,38 +372,12 @@ export default function SosModal() {
             {/* "It passed on its own — log it →" → the overcome log (Flow B / log-b). */}
             <View className="mt-5 pt-5 border-t border-border items-center">
               <Pressable onPress={() => router.replace("/(modals)/log-b")} className="active:opacity-60">
-                <Text className="text-craving font-sans-medium text-[13px]">
+                <Text className="font-sans-medium text-[13px]" style={{ color: SOS_GREEN_DARK }}>
                   It passed on its own — log it →
                 </Text>
               </Pressable>
             </View>
 
-            {/* DEV ONLY — drive + reset the escalation ladder (no tappable escalation tool
-                exists yet; that surfacing is Step 18). */}
-            {__DEV__ && (
-              <View className="mt-6 gap-2">
-                {escalation > 0 && (
-                  <Pressable
-                    onPress={devSimulateFailure}
-                    disabled={processing}
-                    className="border border-border rounded-xl p-3 active:bg-muted"
-                  >
-                    <Text className="text-muted-foreground text-xs font-semibold text-center">
-                      DEV · Simulate another failed SOS (level {escalation})
-                    </Text>
-                  </Pressable>
-                )}
-                <Pressable
-                  onPress={devResetEscalation}
-                  disabled={processing}
-                  className="border border-border rounded-xl p-3 active:bg-muted"
-                >
-                  <Text className="text-muted-foreground text-xs font-semibold text-center">
-                    DEV · Reset escalation → level 0
-                  </Text>
-                </Pressable>
-              </View>
-            )}
           </ScrollView>
         </View>
       </View>
