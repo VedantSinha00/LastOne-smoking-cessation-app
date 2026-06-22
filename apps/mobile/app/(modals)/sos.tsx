@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { View, Text, ScrollView, Pressable, ActivityIndicator, Dimensions, Linking, Platform, ToastAndroid, Alert } from "react-native";
+import Animated, { useSharedValue, useAnimatedStyle, withTiming, withSequence, withDelay, Easing, runOnJS } from "react-native-reanimated";
 import { useRouter } from "expo-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { subDays } from "date-fns";
@@ -394,27 +395,10 @@ export default function SosModal() {
   }
 
   // ── SUCCESS — celebratory end screen after a "Better" check-in (Lovable) ──────
+  // No button: it fades in, holds long enough to read, then fades itself away and
+  // dismisses the flow automatically (see SuccessScreen).
   if (screen === "SUCCESS") {
-    return (
-      <View className="flex-1 bg-secondary px-8 items-center justify-center">
-        <View className="w-16 h-16 rounded-full bg-primary items-center justify-center mb-6">
-          <Check size={28} color="#FFFFFF" strokeWidth={2.5} />
-        </View>
-        <Text className="text-foreground font-display text-2xl text-center mb-2.5">
-          Craving beaten.
-        </Text>
-        <Text className="text-muted-foreground text-[15px] text-center leading-relaxed mb-10" style={{ maxWidth: 280 }}>
-          You rode it out — that&apos;s one more time the urge didn&apos;t win. Each one rewires it a little.
-        </Text>
-        <Pressable
-          onPress={() => router.back()}
-          className="w-full rounded-2xl h-[52px] items-center justify-center bg-foreground active:opacity-90"
-          style={{ maxWidth: 320 }}
-        >
-          <Text className="text-background font-sans-bold text-[15px]">Back to home</Text>
-        </Pressable>
-      </View>
-    );
+    return <SuccessScreen onDone={() => router.back()} />;
   }
 
   // ── GU-7 post-call log (inline) — after the SOS "Call [Name]" escalation ─────
@@ -507,6 +491,47 @@ export default function SosModal() {
     </ScrollView>
   );
 }
+
+/**
+ * SUCCESS end screen — no button. Fades in, holds long enough to read, then fades
+ * the whole screen away and dismisses the flow (onDone). Timing: 0.5s in → 3s
+ * hold → 5s out (≈8.5s total), so the user has ample time to read before it goes.
+ */
+const SUCCESS_FADE_IN = 500;
+const SUCCESS_HOLD = 3000;
+const SUCCESS_FADE_OUT = 5000;
+
+const SuccessScreen: React.FC<{ onDone: () => void }> = ({ onDone }) => {
+  const opacity = useSharedValue(0);
+
+  useEffect(() => {
+    opacity.value = withSequence(
+      withTiming(1, { duration: SUCCESS_FADE_IN, easing: Easing.out(Easing.ease) }),
+      withDelay(
+        SUCCESS_HOLD,
+        withTiming(0, { duration: SUCCESS_FADE_OUT, easing: Easing.in(Easing.ease) }, (finished) => {
+          if (finished) runOnJS(onDone)();
+        }),
+      ),
+    );
+  }, [opacity, onDone]);
+
+  const style = useAnimatedStyle(() => ({ opacity: opacity.value }));
+
+  return (
+    <Animated.View className="flex-1 bg-secondary px-8 items-center justify-center" style={style}>
+      <View className="w-16 h-16 rounded-full bg-primary items-center justify-center mb-6">
+        <Check size={28} color="#FFFFFF" strokeWidth={2.5} />
+      </View>
+      <Text className="text-foreground font-display text-2xl text-center mb-2.5">
+        Craving beaten.
+      </Text>
+      <Text className="text-muted-foreground text-[15px] text-center leading-relaxed" style={{ maxWidth: 280 }}>
+        You rode it out — that&apos;s one more time the urge didn&apos;t win. Each one rewires it a little.
+      </Text>
+    </Animated.View>
+  );
+};
 
 /**
  * Escalation tools — Call a Friend + Quit Specialist Line (Step 13 ladder,
