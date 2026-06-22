@@ -28,7 +28,11 @@ export default function PreferencesSettings() {
         />
         <Row
           label="Display Name"
-          value={profile?.display_name ?? 'Not set'}
+          value={
+            profile?.display_name?.trim() ||
+            profile?.first_name?.trim() ||
+            'Not set'
+          }
           onPress={() => router.push('/settings/name')}
         />
       </Section>

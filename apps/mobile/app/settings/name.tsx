@@ -11,7 +11,11 @@ export default function EditName() {
   const router = useRouter()
   const { data: profile } = useProfile()
   const { updateProfile } = useSettings()
-  const [value, setValue] = useState(profile?.display_name ?? '')
+  // Prefill from display_name, falling back to the onboarding first_name (the
+  // name we actually collected; display_name is an optional later override).
+  const [value, setValue] = useState(
+    profile?.display_name?.trim() || profile?.first_name?.trim() || '',
+  )
   const [error, setError] = useState<string | null>(null)
 
   const save = async () => {
