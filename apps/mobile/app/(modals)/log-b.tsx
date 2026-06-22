@@ -149,29 +149,8 @@ export default function LogB() {
 
   // ── B3 — "Logged." confirmation ──────────────────────────────────────────────
   if (screen === "B3") {
-    return (
-      <View className="flex-1 bg-secondary items-center justify-center px-6" style={{ paddingTop: insets.top }}>
-        <View
-          className="items-center justify-center"
-          style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: GREEN }}
-        >
-          <Check size={28} color="#FFFFFF" strokeWidth={2.5} />
-        </View>
-        <Text className="text-foreground font-sans-bold text-center mt-6 mb-2.5" style={{ fontSize: 28 }}>
-          Logged.
-        </Text>
-        <Text className="text-muted-foreground text-center" style={{ fontSize: 15, lineHeight: 24, maxWidth: 240, marginBottom: 40 }}>
-          Keep going. You&apos;re building something real.
-        </Text>
-        <Pressable
-          onPress={() => exitToHome()}
-          className="bg-foreground rounded-2xl h-[52px] w-full items-center justify-center active:opacity-90"
-          style={{ maxWidth: 320 }}
-        >
-          <Text className="font-sans-bold" style={{ fontSize: 15, color: "#FFFFFF" }}>Back to home</Text>
-        </Pressable>
-      </View>
-    );
+    // No button — fades in, holds, then fades away and exits (like SOS success).
+    return <LoggedScreen onDone={() => exitToHome()} />;
   }
 
   // ── B2 — "What got you through?" ─────────────────────────────────────────────
@@ -273,6 +252,52 @@ export default function LogB() {
     </View>
   );
 }
+
+/**
+ * B3 "Logged." — no button. Fades in, holds long enough to read, then fades the
+ * whole screen away and exits (onDone). Matches the SOS success screen: 0.5s in →
+ * 3s hold → 3s out.
+ */
+const LOGGED_FADE_IN = 500;
+const LOGGED_HOLD = 3000;
+const LOGGED_FADE_OUT = 3000;
+
+const LoggedScreen: React.FC<{ onDone: () => void }> = ({ onDone }) => {
+  const insets = useSafeAreaInsets();
+  const opacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const anim = Animated.sequence([
+      Animated.timing(opacity, { toValue: 1, duration: LOGGED_FADE_IN, easing: Easing.out(Easing.ease), useNativeDriver: true }),
+      Animated.delay(LOGGED_HOLD),
+      Animated.timing(opacity, { toValue: 0, duration: LOGGED_FADE_OUT, easing: Easing.in(Easing.ease), useNativeDriver: true }),
+    ]);
+    anim.start(({ finished }) => {
+      if (finished) onDone();
+    });
+    return () => anim.stop();
+  }, [opacity, onDone]);
+
+  return (
+    <Animated.View
+      className="flex-1 bg-secondary items-center justify-center px-6"
+      style={{ paddingTop: insets.top, opacity }}
+    >
+      <View
+        className="items-center justify-center"
+        style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: GREEN }}
+      >
+        <Check size={28} color="#FFFFFF" strokeWidth={2.5} />
+      </View>
+      <Text className="text-foreground font-sans-bold text-center mt-6 mb-2.5" style={{ fontSize: 28 }}>
+        Logged.
+      </Text>
+      <Text className="text-muted-foreground text-center" style={{ fontSize: 15, lineHeight: 24, maxWidth: 240 }}>
+        Keep going. You&apos;re building something real.
+      </Text>
+    </Animated.View>
+  );
+};
 
 const CARD_SHADOW = {
   shadowColor: "#000000",
