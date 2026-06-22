@@ -8,12 +8,13 @@ import { Button } from '../../components/ui/button'
 import { VOICE_OPTIONS, CATEGORY_OPTIONS } from '../../lib/settings'
 import type { VoiceStyle, RelatableCategory } from '../../types/database'
 
-/** Section label matching the design's spacing rhythm: 24px above, 12px below
- *  (mt-6 / mb-3). `first` drops the top margin for the leading section. */
+/** Section label matching the design's SectionLabel exactly: 10px, 0.18em
+ *  tracking, 24px above / 12px below (mt-6 / mb-3). `first` drops the top
+ *  margin for the leading section. */
 const Label: React.FC<{ children: React.ReactNode; first?: boolean }> = ({ children, first }) => (
   <Text
-    className={`text-muted-foreground text-[11px] font-sans-bold uppercase tracking-[0.18em] mb-3 ${
-      first ? '' : 'mt-7'
+    className={`text-muted-foreground text-[10px] font-sans-bold uppercase tracking-[0.18em] mb-3 ${
+      first ? '' : 'mt-6'
     }`}
   >
     {children}
@@ -74,9 +75,9 @@ export default function PreferencesSettings() {
       <View>
         <Label first>Voice style</Label>
         <Pills options={VOICE_OPTIONS} value={voice} onChange={pickVoice} />
-        <Text className="text-muted-foreground text-xs mt-3">How LastOne talks to you</Text>
+        <Text className="text-muted-foreground text-xs mt-2">How LastOne talks to you</Text>
         {voiceExample && (
-          <Text className="text-foreground text-sm italic mt-2 leading-relaxed">
+          <Text className="text-foreground text-sm italic mt-1.5 leading-relaxed">
             &ldquo;{voiceExample}&rdquo;
           </Text>
         )}
@@ -84,7 +85,7 @@ export default function PreferencesSettings() {
         <Label>Spending category</Label>
         <Pills options={CATEGORY_OPTIONS} value={category} onChange={pickCategory} />
         {categoryDesc && (
-          <Text className="text-muted-foreground text-xs mt-3">{categoryDesc}</Text>
+          <Text className="text-muted-foreground text-xs mt-2">{categoryDesc}</Text>
         )}
 
         <Label>Display name</Label>
