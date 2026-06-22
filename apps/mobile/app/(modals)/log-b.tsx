@@ -140,7 +140,7 @@ export default function LogB() {
             onPress={() => setScreen("B2")}
             className="bg-foreground rounded-2xl h-[52px] items-center justify-center active:opacity-90"
           >
-            <Text className="text-background font-sans-bold" style={{ fontSize: 15 }}>What helped?</Text>
+            <Text className="font-sans-bold" style={{ fontSize: 15, color: "#FFFFFF" }}>What helped?</Text>
           </Pressable>
         </View>
       </View>
@@ -168,7 +168,7 @@ export default function LogB() {
           className="bg-foreground rounded-2xl h-[52px] w-full items-center justify-center active:opacity-90"
           style={{ maxWidth: 320 }}
         >
-          <Text className="text-background font-sans-bold" style={{ fontSize: 15 }}>Back to home</Text>
+          <Text className="font-sans-bold" style={{ fontSize: 15, color: "#FFFFFF" }}>Back to home</Text>
         </Pressable>
       </View>
     );
@@ -267,7 +267,7 @@ export default function LogB() {
           className="bg-foreground rounded-2xl h-[52px] items-center justify-center active:opacity-90"
           style={{ opacity: updateLog.isPending ? 0.6 : 1 }}
         >
-          <Text className="text-background font-sans-bold" style={{ fontSize: 15 }}>Done</Text>
+          <Text className="font-sans-bold" style={{ fontSize: 15, color: "#FFFFFF" }}>Done</Text>
         </Pressable>
       </View>
     </View>
