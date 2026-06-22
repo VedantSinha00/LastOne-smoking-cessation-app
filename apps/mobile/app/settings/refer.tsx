@@ -12,7 +12,8 @@ import { EditScreen } from '../../components/settings/EditScreen'
  * (no store link).
  */
 const SHARE_MESSAGE =
-  "I'm quitting smoking with LastOne — it's helping me beat cravings one at a time. Want to quit together?"
+  "I'm quitting smoking with LastOne — it's helping me beat cravings one at a time. " +
+  "It's still in development (not published yet), but I'll let you know the moment it's out so we can quit together."
 
 export default function ReferSettings() {
   const onShare = async () => {
@@ -45,6 +46,16 @@ export default function ReferSettings() {
           </Text>
         </Pressable>
       </View>
+
+      {/* Honest note: no install link to share yet, since the app isn't live. */}
+      <Text
+        className="text-muted-foreground text-center"
+        style={{ fontSize: 12, lineHeight: 18, marginTop: 16, paddingHorizontal: 12 }}
+      >
+        LastOne is still in development and isn&apos;t published yet, so there&apos;s no
+        download link to send. Sharing spreads the word for now — invites come once
+        it&apos;s live.
+      </Text>
     </EditScreen>
   )
 }
