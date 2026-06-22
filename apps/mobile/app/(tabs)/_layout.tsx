@@ -2,7 +2,7 @@ import { Tabs } from "expo-router";
 import { View, Pressable } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Home, BarChart3, Wrench, Plus, Users } from "lucide-react-native";
+import { Home, BarChart3, Heart, Plus, Users, Sparkle } from "lucide-react-native";
 import { SosFab } from "../../components/sos/sos-fab";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 
@@ -31,7 +31,7 @@ import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 const ACTIVE = "#15110D"; // foreground
 const INACTIVE = "#76706C"; // muted-foreground
 
-type TabDef = { name: string; label: string; Icon: typeof Home };
+type TabDef = { name: string; label: string; Icon: typeof Home; twinkle?: boolean };
 
 // Five slots around the center "+", mirroring the design: two left, two right.
 // Community is a real tab (opens a "coming soon" page) — see header note.
@@ -41,16 +41,17 @@ const LEFT: TabDef[] = [
 ];
 const RIGHT: TabDef[] = [
   { name: "insights", label: "Insights", Icon: BarChart3 },
-  { name: "tools", label: "Tools", Icon: Wrench },
+  { name: "tools", label: "Tools", Icon: Heart, twinkle: true },
 ];
 
 function CustomTabBar({ state, navigation }: BottomTabBarProps) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
-  const renderTab = ({ name, label, Icon }: TabDef) => {
+  const renderTab = ({ name, label, Icon, twinkle }: TabDef) => {
     const route = state.routes.find((r) => r.name === name);
     const isFocused = route ? state.index === state.routes.indexOf(route) : false;
+    const tint = isFocused ? ACTIVE : INACTIVE;
     return (
       <Pressable
         key={name}
@@ -59,11 +60,33 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
         onPress={() => navigation.navigate(name)}
         className="flex-1 h-full items-center justify-center"
       >
-        <Icon
-          size={21}
-          color={isFocused ? ACTIVE : INACTIVE}
-          strokeWidth={isFocused ? 2.5 : 2.0}
-        />
+        <View style={{ width: 21, height: 21, alignItems: "center", justifyContent: "center" }}>
+          <Icon
+            size={21}
+            color={tint}
+            strokeWidth={isFocused ? 2.5 : 2.0}
+          />
+          {/* Little twinkles around the heart — a bigger one top-right and a
+              smaller one bottom-left, tinted to match the icon's active state. */}
+          {twinkle && (
+            <>
+              <Sparkle
+                size={9}
+                color={tint}
+                fill={tint}
+                strokeWidth={1.5}
+                style={{ position: "absolute", top: -4, right: -5 }}
+              />
+              <Sparkle
+                size={6}
+                color={tint}
+                fill={tint}
+                strokeWidth={1.5}
+                style={{ position: "absolute", bottom: -2, left: -5 }}
+              />
+            </>
+          )}
+        </View>
       </Pressable>
     );
   };
@@ -71,16 +94,23 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
   return (
     <View
       className="flex-row items-center bg-background border-t border-border"
-      style={{ height: 62 + insets.bottom, paddingBottom: insets.bottom }}
+      // overflow visible so the raised center button's region that sticks up above
+      // the bar (via marginTop: -32) stays inside the touch tree — without this,
+      // Android clips touches to the parent bounds and the button's top ~32px is
+      // visible but NOT tappable (the "have to press the + twice" bug).
+      style={{ height: 62 + insets.bottom, paddingBottom: insets.bottom, overflow: "visible" }}
     >
       {LEFT.map(renderTab)}
 
       {/* Raised center Log button (Lovable's near-black "+"). Opens the log sheet. */}
-      <View className="items-center justify-center" style={{ width: 72 }}>
+      <View className="items-center justify-center" style={{ width: 72, overflow: "visible" }}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Log"
           onPress={() => router.push("/(modals)/log")}
+          // hitSlop extends the touch target up over the raised area as a belt-and-
+          // suspenders backup to overflow: visible.
+          hitSlop={{ top: 32, bottom: 8, left: 8, right: 8 }}
           className="w-14 h-14 rounded-full bg-foreground items-center justify-center active:scale-95"
           style={{
             marginTop: -32, // design raises the center button -mt-8 (32px)
