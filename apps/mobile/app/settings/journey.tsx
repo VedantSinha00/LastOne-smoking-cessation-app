@@ -23,13 +23,19 @@ export default function JourneySettings() {
   const { stage, quitDate } = useStage()
   const { data: streak } = useStreakRecord()
 
+  // Count only Quick Note logs — the Journal screen ("View all notes") shows
+  // log_type='note' with non-empty text. Counting all `log` rows here mismatched
+  // the list (it summed every craving/slip/check-in/tool log too).
   const { data: journalCount } = useQuery({
-    queryKey: ['journal_count', user?.id ?? ''],
+    queryKey: ['journal_note_count', user?.id ?? ''],
     queryFn: async () => {
       const { count } = await supabase
         .from('log')
         .select('log_id', { count: 'exact', head: true })
         .eq('user_id', user!.id)
+        .eq('log_type', 'note')
+        .not('note_text', 'is', null)
+        .neq('note_text', '')
         .throwOnError()
       return count ?? 0
     },
@@ -54,6 +60,8 @@ export default function JourneySettings() {
     : 'Not set'
   const cpd = profile?.cigarettes_per_day
   const price = profile?.price_per_cigarette
+  // "Lifetime" mirrors the Home StreakBar's right column (same field + wording).
+  const lifetime = streak?.lifetime_smoke_free_days ?? 0
 
   return (
     <EditScreen title="Your Journey">
@@ -78,8 +86,20 @@ export default function JourneySettings() {
       <Section title="History">
         <Row label="Current Stage" value={`${STAGE_NAMES[stage]}`} />
         <Row label="Quit Attempts" value={`${attemptCount ?? 1}`} />
+        <Row
+          label="Lifetime"
+          value={`${lifetime} ${lifetime === 1 ? 'day' : 'days'}`}
+          valueAccent
+        />
         <Row label="Streak Freezes" value={`${streak?.freeze_stock ?? 0} remaining`} />
-        <Row label="Journal Entries" value={`${journalCount ?? 0} entries`} />
+      </Section>
+
+      <Section title="Journal entries">
+        <Row
+          label="View all notes"
+          value={`${journalCount ?? 0} ${journalCount === 1 ? 'entry' : 'entries'}`}
+          onPress={() => router.push('/settings/journal')}
+        />
       </Section>
     </EditScreen>
   )

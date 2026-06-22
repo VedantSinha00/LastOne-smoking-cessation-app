@@ -21,8 +21,13 @@ import { User } from "lucide-react-native";
  * The profile button → /profile (real route). The design's notifications bell
  * was dropped: it was a no-op placeholder with no notifications surface behind
  * it (logic-wins: no dead controls).
+ *
+ * `inProfile` keeps the bar pinned across the Profile flow (it renders in each
+ * Profile screen's chrome so it never disappears as you drill into sub-screens).
+ * There, the profile icon is hidden — you're already in Profile, so the control
+ * is redundant — leaving just the wordmark.
  */
-export const TopBar: React.FC = () => {
+export const TopBar: React.FC<{ inProfile?: boolean }> = ({ inProfile = false }) => {
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
@@ -32,24 +37,35 @@ export const TopBar: React.FC = () => {
       style={{ paddingTop: insets.top }}
     >
       <View className="h-14 flex-row items-center justify-between">
-        {/* Wordmark — "LastOne" + primary-green dot */}
-        <Text
-          className="text-foreground font-display"
-          style={{ fontSize: 17, letterSpacing: -0.3 }}
+        {/* Wordmark — "LastOne" + primary-green dot. Doubles as a Home button:
+            tapping it returns to the Home tab (handy from the Profile flow). */}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Home"
+          onPress={() => router.navigate("/(tabs)")}
+          hitSlop={8}
+          className="active:opacity-60"
         >
-          LastOne<Text className="text-primary">.</Text>
-        </Text>
+          <Text
+            className="text-foreground font-display"
+            style={{ fontSize: 17, letterSpacing: -0.3 }}
+          >
+            LastOne<Text className="text-primary">.</Text>
+          </Text>
+        </Pressable>
 
         <View className="flex-row items-center" style={{ gap: 8 }}>
-          {/* Profile */}
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Profile"
-            onPress={() => router.push("/profile")}
-            className="h-9 w-9 rounded-full border border-border bg-card items-center justify-center active:bg-secondary"
-          >
-            <User size={16} color="#15110D" strokeWidth={2} />
-          </Pressable>
+          {/* Profile — hidden inside the Profile flow (redundant there) */}
+          {!inProfile && (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Profile"
+              onPress={() => router.push("/profile")}
+              className="h-9 w-9 rounded-full border border-border bg-card items-center justify-center active:bg-secondary"
+            >
+              <User size={16} color="#15110D" strokeWidth={2} />
+            </Pressable>
+          )}
         </View>
       </View>
     </View>

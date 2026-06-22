@@ -155,8 +155,10 @@ export default function TabsLayout() {
         {/* Tools renders its own in-body "All tools" TopBar — hide the native one. */}
         <Tabs.Screen name="tools" options={{ title: "Tools", headerShown: false }} />
         {/* Profile — reached via the Home TopBar icon (design nav model), not a
-            tab. Kept as a route with href: null so navigation still resolves. */}
-        <Tabs.Screen name="profile" options={{ href: null, title: "Profile" }} />
+            tab. Kept as a route with href: null so navigation still resolves.
+            Renders its own in-body LastOne TopBar — hide the native one (else a
+            second "Profile" header stacks above it and pushes it down). */}
+        <Tabs.Screen name="profile" options={{ href: null, title: "Profile", headerShown: false }} />
         {/* Progress Dashboard (DASH-2) — reachable from Home's counter/health cards
             via /progress, not a tab (Insights took the slot; surfaces are distinct).
             Renders its own in-body header (back + title), so the native one is hidden. */}

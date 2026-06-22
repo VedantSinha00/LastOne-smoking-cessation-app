@@ -8,32 +8,46 @@ interface RowProps {
   onPress?: () => void
   /** Tints the label (Delete Account). */
   danger?: boolean
+  /** Highlights the value in primary green + semibold (design's "Best streak"). */
+  valueAccent?: boolean
 }
 
-/** One PROF-01 settings row: label left, value + chevron right. Generous
- *  vertical padding + a two-line layout for editable rows keeps the value from
- *  crowding the label. */
-export const Row: React.FC<RowProps> = ({ label, value, onPress, danger }) => {
+/** One PROF-01 settings row. Ported to the Lovable ProfileScreen row: each row
+ *  is its OWN floating rounded card (border + bg-card) with spacing between rows
+ *  — not a grouped list with dividers. Single line: label left, value + chevron
+ *  right (matching the design). */
+export const Row: React.FC<RowProps> = ({ label, value, onPress, danger, valueAccent }) => {
   const body = (
-    <View className="flex-row items-center justify-between py-4 min-h-[56px]">
-      <View className="flex-1 pr-3">
-        <Text
-          className={`text-base ${danger ? 'text-destructive font-sans-bold' : 'text-foreground font-sans-medium'}`}
-        >
-          {label}
-        </Text>
+    <View
+      className={`flex-row items-center justify-between rounded-2xl bg-card border px-4 py-3.5 mb-2 min-h-[56px] ${
+        danger ? 'border-destructive/40' : 'border-border'
+      }`}
+    >
+      <Text
+        className={`flex-shrink text-base ${danger ? 'text-destructive font-sans-bold' : 'text-foreground font-sans-medium'}`}
+      >
+        {label}
+      </Text>
+      <View className="flex-row items-center pl-3" style={{ gap: 6 }}>
         {value !== undefined && (
-          <Text className="text-muted-foreground text-sm mt-0.5" numberOfLines={1}>
+          <Text
+            className={
+              valueAccent
+                ? 'text-primary text-sm font-sans-bold'
+                : 'text-muted-foreground text-sm'
+            }
+            numberOfLines={1}
+          >
             {value}
           </Text>
         )}
+        {onPress && !danger && <Text className="text-muted-foreground text-xl">›</Text>}
       </View>
-      {onPress && <Text className="text-muted-foreground text-xl">›</Text>}
     </View>
   )
   if (onPress) {
     return (
-      <Pressable onPress={onPress} className="active:opacity-60">
+      <Pressable onPress={onPress} className="active:opacity-[0.97]">
         {body}
       </Pressable>
     )
@@ -41,17 +55,16 @@ export const Row: React.FC<RowProps> = ({ label, value, onPress, danger }) => {
   return body
 }
 
-/** Section wrapper: label + a card holding the rows with hairline dividers. */
+/** Section wrapper: an uppercase label above a stack of standalone Row cards
+ *  (rows carry their own card chrome + spacing, matching the design). */
 export const Section: React.FC<{ title: string; children: React.ReactNode }> = ({
   title,
   children,
 }) => (
   <View>
-    <Text className="text-muted-foreground text-xs font-sans-bold uppercase tracking-wider mb-2.5 ml-1">
+    <Text className="text-muted-foreground text-[11px] font-sans-bold uppercase tracking-[0.18em] mb-3 ml-1">
       {title}
     </Text>
-    <View className="bg-card border border-border rounded-3xl px-5 divide-y divide-border">
-      {children}
-    </View>
+    {children}
   </View>
 )

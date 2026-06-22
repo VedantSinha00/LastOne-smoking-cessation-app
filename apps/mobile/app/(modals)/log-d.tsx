@@ -44,13 +44,17 @@ export default function LogD() {
   const insets = useSafeAreaInsets();
   const { from } = useLocalSearchParams<{ from?: string }>();
 
-  // Launched from Journal: go back to the Journal sub-view. router.back() is
+  // Return to wherever the note flow was opened from. router.back() is
   // unreliable here — the modal's back target resolves to the tabs group's
-  // default tab (Home), not Insights — so navigate explicitly with ?view=journal.
-  // Launched from the Log menu (default): exit to Home (the picker replaced the stack).
+  // default tab (Home) — so navigate to the origin explicitly:
+  //  - "journal": the Journal sub-view inside the Insights tab.
+  //  - "settings-journal": the dedicated Journal route in the Profile stack.
+  //  - default (Log menu): exit to Home (the picker replaced the stack).
   const exit = () => {
     if (from === "journal") {
       router.replace({ pathname: "/(tabs)/insights", params: { view: "journal" } });
+    } else if (from === "settings-journal") {
+      router.replace("/settings/journal");
     } else {
       exitToHome();
     }

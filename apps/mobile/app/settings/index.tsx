@@ -9,6 +9,7 @@ import { useDashboard } from '../../hooks/useDashboard'
 import { supabase } from '../../lib/supabase'
 import { Row, Section } from '../../components/settings/Row'
 import { ProfileHeaderCard } from '../../components/settings/ProfileHeaderCard'
+import { TopBar } from '../../components/home/TopBar'
 
 /**
  * PROF-01 — Profile Tab Root. Reworked to the Lovable ProfileScreen's two-level
@@ -39,7 +40,9 @@ export default function SettingsRoot() {
   })
 
   return (
-    <ScrollView className="flex-1 bg-background" contentContainerClassName="px-5 pt-8 pb-16 gap-7">
+    <View className="flex-1 bg-background">
+      <TopBar inProfile />
+      <ScrollView className="flex-1 bg-background" contentContainerClassName="px-5 pt-4 pb-16 gap-7">
       <ProfileHeaderCard
         name={profile?.display_name?.trim() || profile?.first_name?.trim() || 'You'}
         stage={stage}
@@ -61,6 +64,7 @@ export default function SettingsRoot() {
       </Section>
 
       <Text className="text-muted-foreground text-[11px] text-center mt-2">LastOne v1.0</Text>
-    </ScrollView>
+      </ScrollView>
+    </View>
   )
 }
