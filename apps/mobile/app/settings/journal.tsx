@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router'
 import { useInsights } from '../../hooks/useInsights'
 import { useDeleteNote } from '../../hooks/useDeleteNote'
 import { JournalView } from '../../components/insights/JournalView'
+import { SosFab } from '../../components/sos/sos-fab'
 
 /**
  * Settings → Your Journey → View all notes. A dedicated route for the Journal so
@@ -38,6 +39,8 @@ export default function JournalScreen() {
           })
         }
       />
+      {/* Journal is a browsing surface (reading notes) — keep SOS reachable. */}
+      <SosFab />
     </View>
   )
 }

@@ -14,7 +14,7 @@ export default function PreferencesSettings() {
   const { data: profile } = useProfile()
 
   return (
-    <EditScreen title="Preferences">
+    <EditScreen title="Preferences" showSos>
       <Section title="Personalisation">
         <Row
           label="Voice Style"

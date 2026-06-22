@@ -1,6 +1,4 @@
 import { Stack } from 'expo-router'
-import { View } from 'react-native'
-import { SosFab } from '../../components/sos/sos-fab'
 
 /**
  * Settings & Profile stack (Step 20). The Profile tab renders index (PROF-01);
@@ -13,21 +11,17 @@ import { SosFab } from '../../components/sos/sos-fab'
  * root. Putting it in the shared chrome makes it appear on every entry path and
  * stay pinned across the whole flow.
  *
- * The persistent SOS FAB is mounted here so it stays visible across every
- * settings sub-screen (e.g. Your Journey) — these screens live in a sibling
- * stack of (tabs), so the tabs-layout FAB doesn't cover them. The Profile tab
- * ROOT still gets its FAB from the tabs layout.
+ * The SOS FAB is NOT mounted here. It belongs on passive/browsing surfaces, not
+ * on focused edit forms — so it is opt-in per screen via EditScreen's `showSos`
+ * prop (the browsing category screens set it; the leaf edit forms don't).
  */
 export default function SettingsLayout() {
   return (
-    <View className="flex-1">
-      <Stack
-        screenOptions={{
-          headerShown: false,
-          contentStyle: { backgroundColor: '#FBFAF9' },
-        }}
-      />
-      <SosFab />
-    </View>
+    <Stack
+      screenOptions={{
+        headerShown: false,
+        contentStyle: { backgroundColor: '#FBFAF9' },
+      }}
+    />
   )
 }

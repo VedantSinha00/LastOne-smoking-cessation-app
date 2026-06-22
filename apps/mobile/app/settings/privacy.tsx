@@ -14,7 +14,7 @@ export default function PrivacySettings() {
   const email = user?.email ?? '—'
 
   return (
-    <EditScreen title="Privacy & Account">
+    <EditScreen title="Privacy & Account" showSos>
       <Section title="Account">
         <Row label="Account Details" value={email} onPress={() => router.push('/settings/account')} />
       </Section>

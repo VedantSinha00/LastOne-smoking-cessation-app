@@ -16,7 +16,7 @@ export default function SupportSettings() {
   const { person } = useSupportPerson()
 
   return (
-    <EditScreen title="Find Support">
+    <EditScreen title="Find Support" showSos>
       <Section title="Your person">
         <Row
           label="SOS Contact"

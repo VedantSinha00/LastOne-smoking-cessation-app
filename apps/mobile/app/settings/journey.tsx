@@ -64,7 +64,7 @@ export default function JourneySettings() {
   const lifetime = streak?.lifetime_smoke_free_days ?? 0
 
   return (
-    <EditScreen title="Your Journey">
+    <EditScreen title="Your Journey" showSos>
       <Section title="Quit details">
         <Row
           label="Quit Date"
