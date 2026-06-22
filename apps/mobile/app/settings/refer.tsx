@@ -1,30 +1,49 @@
 import React from 'react'
-import { View, Text } from 'react-native'
-import { UserPlus } from 'lucide-react-native'
+import { View, Text, Pressable, Share, Alert } from 'react-native'
 import { EditScreen } from '../../components/settings/EditScreen'
 
 /**
- * Settings → Refer & Invite. Community (V2) — "coming soon" placeholder,
- * consistent with the Community nav tab. No referral backend yet.
+ * Settings → Refer & Invite. Ported from the Lovable ProfileScreen ReferScreen:
+ * a green hero card + a working "Share LastOne" button (native share sheet).
+ *
+ * The design's "Your Quit Ons" list is mock social data needing a referral
+ * backend the app doesn't have, so it's omitted. Sharing itself needs no backend
+ * — it's the RN Share API. The app isn't published, so the message is text-only
+ * (no store link).
  */
+const SHARE_MESSAGE =
+  "I'm quitting smoking with LastOne — it's helping me beat cravings one at a time. Want to quit together?"
+
 export default function ReferSettings() {
+  const onShare = async () => {
+    try {
+      await Share.share({ message: SHARE_MESSAGE })
+    } catch (e: any) {
+      Alert.alert("Couldn't share", e?.message ?? 'Please try again.')
+    }
+  }
+
   return (
-    <EditScreen title="Refer & Invite">
-      <View className="items-center px-4 pt-8">
-        <View className="h-16 w-16 rounded-full bg-secondary border border-border items-center justify-center">
-          <UserPlus size={26} color="#76706C" strokeWidth={1.8} />
-        </View>
-        <Text className="text-foreground font-display mt-5 text-center" style={{ fontSize: 18 }}>
-          Bring someone along
+    <EditScreen title="Refer & Invite" showSos showNav>
+      <View
+        className="rounded-3xl bg-primary/15 border border-primary/30 p-6 items-center"
+        style={{ marginTop: 4 }}
+      >
+        <Text className="text-foreground font-display text-center" style={{ fontSize: 18 }}>
+          Bring someone along.
         </Text>
-        <Text className="text-muted-foreground text-[15px] mt-2 text-center leading-relaxed">
-          Quitting with a friend works better than going alone. Sharing and invites are coming soon.
+        <Text className="text-muted-foreground text-center mt-1.5" style={{ fontSize: 14, lineHeight: 21 }}>
+          Quitting with a friend works better than going alone.
         </Text>
-        <View className="mt-5 rounded-full bg-secondary px-4 py-1.5">
-          <Text className="text-muted-foreground text-xs font-sans-medium uppercase tracking-wider">
-            Coming soon
+        <Pressable
+          onPress={onShare}
+          className="bg-primary rounded-full mt-5 active:opacity-90"
+          style={{ paddingVertical: 12, paddingHorizontal: 22 }}
+        >
+          <Text className="text-primary-foreground font-sans-bold" style={{ fontSize: 14 }}>
+            Share LastOne
           </Text>
-        </View>
+        </Pressable>
       </View>
     </EditScreen>
   )
