@@ -495,11 +495,11 @@ export default function SosModal() {
 /**
  * SUCCESS end screen — no button. Fades in, holds long enough to read, then fades
  * the whole screen away and dismisses the flow (onDone). Timing: 0.5s in → 3s
- * hold → 5s out (≈8.5s total), so the user has ample time to read before it goes.
+ * hold → 3s out (≈6.5s total), so the user has ample time to read before it goes.
  */
 const SUCCESS_FADE_IN = 500;
 const SUCCESS_HOLD = 3000;
-const SUCCESS_FADE_OUT = 5000;
+const SUCCESS_FADE_OUT = 3000;
 
 const SuccessScreen: React.FC<{ onDone: () => void }> = ({ onDone }) => {
   const opacity = useSharedValue(0);
