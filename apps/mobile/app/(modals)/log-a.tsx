@@ -92,7 +92,9 @@ export default function LogA() {
     if (id) {
       await updateLog.mutateAsync({ logId: id, patch: { routed_to_sos: true } });
     }
-    router.replace("/(modals)/sos");
+    // from=flow_a → SOS opens straight on the full-page A3-style tool list
+    // (design's "get help" layout), skipping the popup gate.
+    router.replace("/(modals)/sos?from=flow_a");
   };
 
   // ── A1 — Intensity ───────────────────────────────────────────────────────────

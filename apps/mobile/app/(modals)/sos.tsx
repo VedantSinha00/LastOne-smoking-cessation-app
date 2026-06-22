@@ -1,10 +1,12 @@
 import React, { useEffect, useRef, useState } from "react";
 import { View, Text, ScrollView, Pressable, ActivityIndicator, Dimensions, Linking, Platform, ToastAndroid, Alert } from "react-native";
 import Animated, { useSharedValue, useAnimatedStyle, withTiming, withSequence, withDelay, Easing, runOnJS } from "react-native-reanimated";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { subDays } from "date-fns";
-import { Wind, Activity, Puzzle, Shuffle, ChevronRight, ThumbsUp, ThumbsDown, Check } from "lucide-react-native";
+import { Wind, Activity, Puzzle, Shuffle, ChevronRight, ThumbsUp, ThumbsDown, Check, ArrowLeft, X } from "lucide-react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { exitToHome } from "../../lib/navigation";
 import { useAuth } from "../../hooks/useAuth";
 import { useProfile } from "../../hooks/useProfile";
 import { useSosSelection, prefetchSosData } from "../../hooks/useSosSelection";
@@ -100,6 +102,11 @@ function SosHeader({ onClose }: { onClose: () => void }) {
  */
 export default function SosModal() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const { from } = useLocalSearchParams<{ from?: string }>();
+  // Entered from Flow A "get help": skip the popup gate and show the design's
+  // full-page A3 tool list instead of the centered popup card. Same data/logic.
+  const fromFlowA = from === "flow_a";
   const { user } = useAuth();
   const { data: profile } = useProfile();
   const firstName = profile?.first_name?.trim() || null;
@@ -108,7 +115,7 @@ export default function SosModal() {
   const { markSatisfied } = useDailyCheckIn();
   const qc = useQueryClient();
 
-  const [screen, setScreen] = useState<Screen>("GATE");
+  const [screen, setScreen] = useState<Screen>(fromFlowA ? "SOS1" : "GATE");
   const [context, setContext] = useState<CravingContext>("unknown");
   const [tool, setTool] = useState<CopingTool | null>(null);
   const [escalation, setEscalation] = useState<SosEscalationLevel>(0);
@@ -270,8 +277,139 @@ export default function SosModal() {
     );
   }
 
-  // ── SOS-1 — Tool Selection: centered popup card over dimmed home (Lovable) ─────
+  // ── SOS-1 — Tool Selection ───────────────────────────────────────────────────
+  // Two visual variants of the SAME data/logic: from the SOS FAB it's a centered
+  // popup card over the dimmed home (Lovable SOS-1); from Flow A "get help" it's
+  // the design's full-page A3 layout ("These can help right now."). Tool list,
+  // shuffle, selection, escalation and links are identical in both.
   if (screen === "SOS1") {
+    const heading = fromFlowA ? (
+      <>
+        <Text className="text-foreground font-sans-bold mb-2.5" style={{ fontSize: 28, lineHeight: 32 }}>
+          These can help right now.
+        </Text>
+        <Text className="text-muted-foreground mb-8" style={{ fontSize: 16, lineHeight: 24 }}>
+          Picked for this moment. Try one.
+        </Text>
+      </>
+    ) : (
+      <>
+        <Text className="text-foreground font-sans-bold mb-3" style={{ fontSize: 22, lineHeight: 27 }}>
+          {firstName ? `Hey ${firstName} — what'll work right now?` : "What'll work right now?"}
+        </Text>
+        <Text className="text-muted-foreground mb-6" style={{ fontSize: 13, lineHeight: 20 }}>
+          Pick one — that&apos;s all. Cravings peak and pass in a few minutes.
+        </Text>
+      </>
+    );
+
+    const body = (
+      <>
+        {!fromFlowA && <SosHeader onClose={() => router.back()} />}
+        {heading}
+
+        {/* Escalation level 2 (3+ failures): suspend the waterfall, escalation only (§8.1). */}
+        {escalation === 2 ? (
+          <EscalationOnly onCallPerson={() => setScreen("POSTCALL")} />
+        ) : isLoading ? (
+          <ActivityIndicator color="#F15025" className="mt-8" />
+        ) : !tools?.length ? (
+          <View className="bg-card border border-border rounded-2xl p-6">
+            <Text className="text-muted-foreground text-sm leading-relaxed">
+              No coping tools are available right now.
+            </Text>
+          </View>
+        ) : (
+          <View style={{ gap: 14 }}>
+            {/* Level 1 (2 failures): Call a Friend pinned to slot 1, tools fill 2–3. */}
+            {escalation === 1 && <CallAFriendCard onCallPerson={() => setScreen("POSTCALL")} />}
+            {tools.map((t, idx) => (
+              <Pressable
+                key={t.tool_id}
+                onPress={() => selectTool(t)}
+                className="bg-card flex-row items-center active:bg-muted"
+                // 1px border, 16 radius, 17×18 padding. The first (top-ranked)
+                // tool gets a 3px green left border as the "best pick" accent
+                // (Lovable SOS-1 slot 0).
+                style={{
+                  borderWidth: 1,
+                  borderColor: "#E5E7EB",
+                  borderLeftWidth: idx === 0 ? 3 : 1,
+                  borderLeftColor: idx === 0 ? SOS_GREEN : "#E5E7EB",
+                  borderRadius: 16,
+                  paddingVertical: 17,
+                  paddingHorizontal: 18,
+                }}
+              >
+                <View
+                  className="rounded-full items-center justify-center"
+                  style={{ width: 42, height: 42, marginRight: 14, backgroundColor: "rgba(132,197,36,0.18)" }}
+                >
+                  <ToolFamilyIcon family={t.family} />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-foreground font-sans-bold" style={{ fontSize: 15, marginBottom: 4 }}>
+                    {t.name}
+                  </Text>
+                  <Text className="text-muted-foreground" style={{ fontSize: 12 }}>
+                    {Math.round(t.duration_seconds / 60) || 1} min · {t.category.replace(/_/g, " ")}
+                  </Text>
+                </View>
+                <ChevronRight size={20} color="#D9D6D2" strokeWidth={2} />
+              </Pressable>
+            ))}
+          </View>
+        )}
+
+        {/* "Show me other things that worked" — re-rolls to a different valid trio. */}
+        {escalation !== 2 && (tools?.length ?? 0) > 0 && (
+          <Pressable
+            onPress={shuffle}
+            className="mt-6 flex-row items-center justify-center active:opacity-60"
+            style={{ minHeight: 28 }}
+          >
+            <Shuffle size={16} color="#76706C" strokeWidth={1.8} />
+            <Text className="text-muted-foreground font-sans-medium text-[13px] ml-2.5">
+              Show me other things that worked
+            </Text>
+          </Pressable>
+        )}
+
+        {/* "It passed on its own — log it →" → the overcome log (Flow B / log-b). */}
+        <View className="mt-5 pt-5 border-t border-border items-center">
+          <Pressable onPress={() => router.replace("/(modals)/log-b")} className="active:opacity-60">
+            <Text className="font-sans-medium text-[13px]" style={{ color: SOS_GREEN_DARK }}>
+              It passed on its own — log it →
+            </Text>
+          </Pressable>
+        </View>
+      </>
+    );
+
+    // Flow A entry → full-page A3 layout (TopBar over secondary bg).
+    if (fromFlowA) {
+      return (
+        <View className="flex-1 bg-secondary" style={{ paddingTop: insets.top }}>
+          <View className="flex-row items-center justify-between px-5" style={{ height: 56 }}>
+            <Pressable onPress={() => router.back()} hitSlop={12} className="active:opacity-60">
+              <ArrowLeft size={22} color="#15110D" strokeWidth={2} />
+            </Pressable>
+            <Pressable onPress={() => exitToHome()} hitSlop={12} className="active:opacity-60">
+              <X size={24} color="#888888" strokeWidth={2} />
+            </Pressable>
+          </View>
+          <ScrollView
+            className="flex-1"
+            contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 24, paddingBottom: insets.bottom + 24 }}
+            showsVerticalScrollIndicator={false}
+          >
+            {body}
+          </ScrollView>
+        </View>
+      );
+    }
+
+    // Default (SOS FAB) → centered popup card over the dimmed home.
     return (
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(13,13,13,0.45)" }}>
         {/* Tap the dim backdrop to dismiss. */}
@@ -284,98 +422,7 @@ export default function SosModal() {
             contentContainerClassName="px-6 pt-6 pb-6"
             showsVerticalScrollIndicator={false}
           >
-            {/* Orange SOS badge + grey round close (Lovable chrome). */}
-            <SosHeader onClose={() => router.back()} />
-
-            <Text
-              className="text-foreground font-sans-bold mb-3"
-              style={{ fontSize: 22, lineHeight: 27 }}
-            >
-              {firstName ? `Hey ${firstName} — what'll work right now?` : "What'll work right now?"}
-            </Text>
-            <Text
-              className="text-muted-foreground mb-6"
-              style={{ fontSize: 13, lineHeight: 20 }}
-            >
-              Pick one — that&apos;s all. Cravings peak and pass in a few minutes.
-            </Text>
-
-            {/* Escalation level 2 (3+ failures): suspend the waterfall, escalation only (§8.1). */}
-            {escalation === 2 ? (
-              <EscalationOnly onCallPerson={() => setScreen("POSTCALL")} />
-            ) : isLoading ? (
-              <ActivityIndicator color="#F15025" className="mt-8" />
-            ) : !tools?.length ? (
-              <View className="bg-card border border-border rounded-2xl p-6">
-                <Text className="text-muted-foreground text-sm leading-relaxed">
-                  No coping tools are available right now.
-                </Text>
-              </View>
-            ) : (
-              <View style={{ gap: 14 }}>
-                {/* Level 1 (2 failures): Call a Friend pinned to slot 1, tools fill 2–3. */}
-                {escalation === 1 && <CallAFriendCard onCallPerson={() => setScreen("POSTCALL")} />}
-                {tools.map((t, idx) => (
-                  <Pressable
-                    key={t.tool_id}
-                    onPress={() => selectTool(t)}
-                    className="bg-card flex-row items-center active:bg-muted"
-                    // 1px border, 16 radius, 17×18 padding. The first (top-ranked)
-                    // tool gets a 3px green left border as the "best pick" accent
-                    // (Lovable SOS-1 slot 0).
-                    style={{
-                      borderWidth: 1,
-                      borderColor: "#E5E7EB",
-                      borderLeftWidth: idx === 0 ? 3 : 1,
-                      borderLeftColor: idx === 0 ? SOS_GREEN : "#E5E7EB",
-                      borderRadius: 16,
-                      paddingVertical: 17,
-                      paddingHorizontal: 18,
-                    }}
-                  >
-                    <View
-                      className="rounded-full items-center justify-center"
-                      style={{ width: 42, height: 42, marginRight: 14, backgroundColor: "rgba(132,197,36,0.18)" }}
-                    >
-                      <ToolFamilyIcon family={t.family} />
-                    </View>
-                    <View className="flex-1">
-                      <Text className="text-foreground font-sans-bold" style={{ fontSize: 15, marginBottom: 4 }}>
-                        {t.name}
-                      </Text>
-                      <Text className="text-muted-foreground" style={{ fontSize: 12 }}>
-                        {Math.round(t.duration_seconds / 60) || 1} min · {t.category.replace(/_/g, " ")}
-                      </Text>
-                    </View>
-                    <ChevronRight size={20} color="#D9D6D2" strokeWidth={2} />
-                  </Pressable>
-                ))}
-              </View>
-            )}
-
-            {/* "Show me other things that worked" — re-rolls to a different valid trio. */}
-            {escalation !== 2 && (tools?.length ?? 0) > 0 && (
-              <Pressable
-                onPress={shuffle}
-                className="mt-6 flex-row items-center justify-center active:opacity-60"
-                style={{ minHeight: 28 }}
-              >
-                <Shuffle size={16} color="#76706C" strokeWidth={1.8} />
-                <Text className="text-muted-foreground font-sans-medium text-[13px] ml-2.5">
-                  Show me other things that worked
-                </Text>
-              </Pressable>
-            )}
-
-            {/* "It passed on its own — log it →" → the overcome log (Flow B / log-b). */}
-            <View className="mt-5 pt-5 border-t border-border items-center">
-              <Pressable onPress={() => router.replace("/(modals)/log-b")} className="active:opacity-60">
-                <Text className="font-sans-medium text-[13px]" style={{ color: SOS_GREEN_DARK }}>
-                  It passed on its own — log it →
-                </Text>
-              </Pressable>
-            </View>
-
+            {body}
           </ScrollView>
         </View>
       </View>
