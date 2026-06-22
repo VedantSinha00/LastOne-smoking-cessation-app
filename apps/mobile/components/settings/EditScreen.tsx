@@ -40,13 +40,13 @@ export const EditScreen: React.FC<{
       <TopBar inProfile />
       <ScrollView
         className="flex-1 bg-background"
-        contentContainerClassName="p-6 gap-4"
+        contentContainerClassName="px-6 pt-2 pb-6 gap-4"
         keyboardShouldPersistTaps="handled"
       >
         <Pressable
           onPress={goBack}
           hitSlop={12}
-          className="flex-row items-center mb-4 active:opacity-60"
+          className="flex-row items-center mb-2 active:opacity-60"
           style={{ gap: 6 }}
         >
           <ChevronLeft size={14} color="#76706C" strokeWidth={2.5} />
@@ -57,6 +57,7 @@ export const EditScreen: React.FC<{
         {children}
       </ScrollView>
       {footer != null && <View className="px-6 pt-3 pb-8 bg-background">{footer}</View>}
+      {showSos && <SosFab />}
     </View>
   )
 }
