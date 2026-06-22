@@ -32,9 +32,13 @@ function deriveProfile(
  *  scores/stage/profile change slowly. Fetched once and cached so opening SOS is
  *  near-instant after the first time — only the (free, in-memory) ranking re-runs
  *  per craving. */
+// NOTE: every field here must be JSON-serializable — this is persisted to disk by
+// PersistQueryClientProvider. A Map is NOT (it rehydrates as {} → "scores.get is
+// not a function"), so we store scores as a plain array and build the Map in the
+// consumer (useMemo below) instead.
 export interface SosData {
   tools: CopingTool[]
-  scoreMap: Map<string, ToolScore>
+  scores: ToolScore[]
   stage: number
   profile: SmokerProfile
 }
@@ -56,12 +60,9 @@ async function fetchSosData(userId: string): Promise<SosData> {
         .maybeSingle(),
     ])
 
-  const scoreMap = new Map<string, ToolScore>(
-    (scores ?? []).map((s) => [s.tool_id, s as ToolScore]),
-  )
   return {
     tools: (tools ?? []) as CopingTool[],
-    scoreMap,
+    scores: (scores ?? []) as ToolScore[],
     stage: streak?.current_stage ?? 0,
     profile: deriveProfile(streak?.dependency_level, profile?.cigarettes_per_day),
   }
@@ -107,9 +108,13 @@ export function useSosSelection(craving: CravingInput, enabled = true, exclude: 
 
   const tools = useMemo(() => {
     if (!data.data) return undefined
+    // Build the score Map here (not in the cached data — see SosData note).
+    const scoreMap = new Map<string, ToolScore>(
+      data.data.scores.map((s) => [s.tool_id, s]),
+    )
     return selectSOSTools({
       tools: data.data.tools,
-      scores: data.data.scoreMap,
+      scores: scoreMap,
       craving,
       stage: data.data.stage,
       profile: data.data.profile,
