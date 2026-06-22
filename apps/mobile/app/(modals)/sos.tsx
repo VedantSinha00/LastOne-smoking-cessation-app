@@ -11,10 +11,8 @@ import { useSosSelection, prefetchSosData } from "../../hooks/useSosSelection";
 import { useCreateLog } from "../../hooks/useCreateLog";
 import { useUpdateLog } from "../../hooks/useUpdateLog";
 import { useDailyCheckIn } from "../../hooks/useDailyCheckIn";
-import { ChipMultiSelect } from "../../components/logging/chip-multi-select";
 import { ToolRunner } from "../../components/coping/ToolRunner";
 import { queryKeys } from "../../lib/queryKeys";
-import { WHAT_HELPED_TOKENS } from "../../lib/logOptions";
 import {
   updateToolScore,
   recordSosOutcome,
@@ -117,7 +115,6 @@ export default function SosModal() {
   const [processing, setProcessing] = useState(false); // guards the check-in buttons
   const logIdRef = useRef<string | null>(null);
   const startedAtRef = useRef<number>(0);
-  const [whatHelped, setWhatHelped] = useState<string[]>([]);
   // Tools already shown this session — fed to the waterfall so "Show me other things"
   // surfaces a different valid trio. Cleared (wrap-around) when the pool runs dry.
   const [excludeIds, setExcludeIds] = useState<string[]>([]);
@@ -198,7 +195,7 @@ export default function SosModal() {
     setProcessing(true);
     if (!user) return router.back();
     if (logIdRef.current) {
-      await updateLog.mutateAsync({ logId: logIdRef.current, patch: { tool_helpful: true, post_tool_state: "better", what_helped: whatHelped.length ? whatHelped : null } });
+      await updateLog.mutateAsync({ logId: logIdRef.current, patch: { tool_helpful: true, post_tool_state: "better", what_helped: null } });
     }
     if (tool) await updateToolScore(user.id, tool.tool_id, +1, "better");
     await recordSosOutcome(user.id, "better");
@@ -437,60 +434,58 @@ export default function SosModal() {
 
   // ── SOS-3 — Post-Tool Check-in (skippable), Lovable two-card layout ───────────
   return (
-    <ScrollView
-      className="flex-1 bg-secondary px-6 py-8"
-      contentContainerClassName="flex-grow"
-      // First-tap buttons while the keyboard is up (chips' "Other" input).
-      keyboardShouldPersistTaps="handled"
-    >
-      <View className="flex-row justify-end mb-2">
-        <Pressable onPress={skip} className="px-3 py-1.5">
-          <Text className="text-muted-foreground text-sm">Skip</Text>
-        </Pressable>
-      </View>
-      <Text className="text-foreground font-display text-2xl mb-1">How are you feeling?</Text>
-      <Text className="text-muted-foreground text-sm mb-8 leading-relaxed">
-        Be honest — your feed gets smarter every time you tell it the truth.
-      </Text>
-
-      <ChipMultiSelect
-        label="What else helped? (optional)"
-        options={WHAT_HELPED_TOKENS}
-        selected={whatHelped}
-        onChange={setWhatHelped}
-        allowOther={false}
-      />
-
-      {/* Two big icon cards (Lovable): Better (green) / Still there (orange). */}
-      <View className={`flex-row gap-3 mt-6 ${processing ? "opacity-50" : ""}`}>
-        <Pressable
-          disabled={processing}
-          onPress={better}
-          className="flex-1 bg-card border-[1.5px] border-border rounded-2xl items-center active:opacity-80"
-          style={{ paddingVertical: 24, paddingHorizontal: 16 }}
-        >
-          <ThumbsUp size={32} color="#7FC200" strokeWidth={1.8} />
-          <Text className="text-foreground font-sans-bold text-[15px] mt-3">Better</Text>
-        </Pressable>
-        <Pressable
-          disabled={processing}
-          onPress={same}
-          className="flex-1 bg-card border-[1.5px] border-border rounded-2xl items-center active:opacity-80"
-          style={{ paddingVertical: 24, paddingHorizontal: 16 }}
-        >
-          <ThumbsDown size={32} color={CRAVING} strokeWidth={1.8} />
-          <Text className="text-foreground font-sans-bold text-[15px] mt-3">Still there</Text>
-        </Pressable>
-      </View>
-
-      {/* "I smoked" kept (spec: routes to the slip log) but de-emphasized per Lovable. */}
-      <Pressable disabled={processing} onPress={smoked} className="mt-6 py-3 items-center active:opacity-60">
-        <Text className="text-muted-foreground font-sans-medium text-sm">I smoked</Text>
+    // Centered, minimal layout matching Lovable SOS-3: × top-right, centered
+    // title + subtitle, two cards, then "Skip for now" at the bottom. The "I
+    // smoked" link is kept (routes to the slip log) but de-emphasized.
+    <View className="flex-1 bg-secondary">
+      <Pressable onPress={skip} hitSlop={12} className="absolute right-5 active:opacity-60" style={{ top: 20, zIndex: 10 }}>
+        <Text style={{ fontSize: 24, color: "#888888" }}>×</Text>
       </Pressable>
 
-      {/* Tier-3 escalation link (GU §B2 SOS integration) — silent conditional. */}
-      <Tier3Link />
-    </ScrollView>
+      <View className="flex-1 items-center justify-center px-8">
+        <Text className="text-foreground font-sans-bold text-center mb-3" style={{ fontSize: 26, lineHeight: 31 }}>
+          {firstName ? `How are you feeling, ${firstName}?` : "How are you feeling?"}
+        </Text>
+        <Text className="text-muted-foreground text-center mb-12" style={{ fontSize: 14, lineHeight: 21 }}>
+          Be honest — your feed gets smarter every time you tell it the truth.
+        </Text>
+
+        {/* Two icon cards (Lovable): Better (green) / Still there (orange). */}
+        <View className={`flex-row mb-10 ${processing ? "opacity-50" : ""}`} style={{ gap: 12, width: "100%", maxWidth: 320 }}>
+          <Pressable
+            disabled={processing}
+            onPress={better}
+            className="flex-1 bg-card border-[1.5px] border-border items-center active:opacity-80"
+            style={{ borderRadius: 20, paddingVertical: 24, paddingHorizontal: 16, gap: 12 }}
+          >
+            <ThumbsUp size={32} color="#84C524" strokeWidth={1.8} />
+            <Text className="text-foreground font-sans-bold" style={{ fontSize: 15 }}>Better</Text>
+          </Pressable>
+          <Pressable
+            disabled={processing}
+            onPress={same}
+            className="flex-1 bg-card border-[1.5px] border-border items-center active:opacity-80"
+            style={{ borderRadius: 20, paddingVertical: 24, paddingHorizontal: 16, gap: 12 }}
+          >
+            <ThumbsDown size={32} color={CRAVING} strokeWidth={1.8} />
+            <Text className="text-foreground font-sans-bold" style={{ fontSize: 15 }}>Still there</Text>
+          </Pressable>
+        </View>
+
+        {/* "I smoked" kept (spec: routes to the slip log) but de-emphasized. */}
+        <Pressable disabled={processing} onPress={smoked} className="py-2 items-center active:opacity-60">
+          <Text className="text-muted-foreground font-sans-medium text-sm">I smoked</Text>
+        </Pressable>
+
+        {/* Tier-3 escalation link (GU §B2 SOS integration) — silent conditional. */}
+        <Tier3Link />
+      </View>
+
+      {/* "Skip for now" pinned near the bottom (Lovable). */}
+      <Pressable onPress={skip} className="items-center pb-10 pt-2 active:opacity-60">
+        <Text className="text-muted-foreground font-sans-medium" style={{ fontSize: 13 }}>Skip for now</Text>
+      </Pressable>
+    </View>
   );
 }
 
