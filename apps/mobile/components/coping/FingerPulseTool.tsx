@@ -16,11 +16,16 @@ type CopingTool = Database['public']['Tables']['coping_tools']['Row']
  * Logic: the design's Calmer/Same end screen IS our post-tool check-in. Calmer →
  * onComplete(true) (helped, +score), Same → onComplete(false). Falls back to
  * onDone() when no onComplete is provided (e.g. SOS).
+ *
+ * hideOwnCheckIn (set by SOS): skip the Calmer/Same screen entirely and call
+ * onDone() when the count finishes — SOS runs its own shared check-in next, so
+ * showing this one too would be two check-ins back to back.
  */
 interface Props {
   tool: CopingTool
   onDone: () => void
   onComplete?: (helped: boolean) => void
+  hideOwnCheckIn?: boolean
 }
 
 type Phase = 'intro' | 'counting' | 'checkin'
@@ -32,7 +37,7 @@ const GREEN = '#5BAA2E'
 const DARK = '#0D0D0D'
 const MUTED = '#888888'
 
-export const FingerPulseTool: React.FC<Props> = ({ tool, onDone, onComplete }) => {
+export const FingerPulseTool: React.FC<Props> = ({ tool, onDone, onComplete, hideOwnCheckIn }) => {
   const insets = useSafeAreaInsets()
   const [phase, setPhase] = useState<Phase>('intro')
   const [beats, setBeats] = useState(0)
@@ -152,7 +157,9 @@ export const FingerPulseTool: React.FC<Props> = ({ tool, onDone, onComplete }) =
 
           {done ? (
             <Pressable
-              onPress={() => setPhase('checkin')}
+              // From SOS, skip our Calmer/Same screen and hand straight to the
+              // shared SOS check-in; from the Tools library, show it.
+              onPress={() => (hideOwnCheckIn ? onDone() : setPhase('checkin'))}
               className="rounded-full items-center"
               style={{ marginTop: 'auto', width: '100%', paddingVertical: 16, backgroundColor: '#143109' }}
             >

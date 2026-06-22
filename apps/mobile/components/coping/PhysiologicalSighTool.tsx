@@ -16,11 +16,15 @@ type CopingTool = Database['public']['Tables']['coping_tools']['Row']
  *
  * The complete screen is our post-tool check-in: its button reports onComplete(true)
  * (a finished sigh = helped). Falls back to onDone() when no onComplete (e.g. SOS).
+ *
+ * hideOwnCheckIn (set by SOS): skip the complete screen and call onDone() the
+ * moment the last round finishes — SOS runs its own shared check-in next.
  */
 interface Props {
   tool: CopingTool
   onDone: () => void
   onComplete?: (helped: boolean) => void
+  hideOwnCheckIn?: boolean
 }
 
 type Phase = 'intro' | 'inhale' | 'sniff' | 'exhale' | 'stillness' | 'complete'
@@ -41,7 +45,7 @@ const PHASE_META: Record<string, { label: string; sub: string; scale: number; du
   stillness: { label: '', sub: '', scale: 0.18, dur: 600 },
 }
 
-export const PhysiologicalSighTool: React.FC<Props> = ({ tool, onDone, onComplete }) => {
+export const PhysiologicalSighTool: React.FC<Props> = ({ tool, onDone, onComplete, hideOwnCheckIn }) => {
   const insets = useSafeAreaInsets()
   const [phase, setPhase] = useState<Phase>('intro')
   const [round, setRound] = useState(1)
@@ -73,6 +77,9 @@ export const PhysiologicalSighTool: React.FC<Props> = ({ tool, onDone, onComplet
         if (round < TOTAL_ROUNDS) {
           setRound((r) => r + 1)
           setPhase('inhale')
+        } else if (hideOwnCheckIn) {
+          // SOS: skip our complete screen, hand straight to the shared check-in.
+          onDone()
         } else setPhase('complete')
       }, T.stillness)
     return clearTimer

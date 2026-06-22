@@ -74,6 +74,10 @@ interface RunnerProps {
    *  here (helped=true → +score) instead of deferring to the caller's generic
    *  check-in. Falls back to onDone() when absent (e.g. SOS). */
   onComplete?: (helped: boolean) => void
+  /** Skip a bespoke tool's OWN end check-in screen and call onDone() at the point
+   *  the exercise completes. Set by the SOS flow, which has its own shared SOS-3
+   *  check-in right after — otherwise the user gets two back-to-back check-ins. */
+  hideOwnCheckIn?: boolean
 }
 
 // ── Breathing pacer ───────────────────────────────────────────────────────────
@@ -305,13 +309,14 @@ export const ToolRunner: React.FC<RunnerProps & { repCount?: number }> = ({
   tool,
   onDone,
   onComplete,
+  hideOwnCheckIn,
   repCount,
   accent = 'calm',
 }) => {
   if (tool.data_model_id === 'physiological_sigh')
-    return <PhysiologicalSighTool tool={tool} onDone={onDone} onComplete={onComplete} />
+    return <PhysiologicalSighTool tool={tool} onDone={onDone} onComplete={onComplete} hideOwnCheckIn={hideOwnCheckIn} />
   if (tool.data_model_id === 'finger_pulse')
-    return <FingerPulseTool tool={tool} onDone={onDone} onComplete={onComplete} />
+    return <FingerPulseTool tool={tool} onDone={onDone} onComplete={onComplete} hideOwnCheckIn={hideOwnCheckIn} />
   if (tool.category === 'cognitive_reframe')
     return <ReframeTool tool={tool} onDone={onDone} onComplete={onComplete} />
   if (tool.family === 'breathing') return <BreathingTool tool={tool} onDone={onDone} accent={accent} />

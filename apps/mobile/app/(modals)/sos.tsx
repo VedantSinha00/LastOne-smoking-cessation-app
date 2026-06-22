@@ -391,7 +391,9 @@ export default function SosModal() {
       setScreen("SOS1");
       return null;
     }
-    return <ToolRunner tool={tool} onDone={finishTool} accent="craving" />;
+    // hideOwnCheckIn: bespoke tools (Finger Pulse / Physiological Sigh) skip their
+    // own end check-in here — SOS-3 below is the single shared check-in.
+    return <ToolRunner tool={tool} onDone={finishTool} accent="craving" hideOwnCheckIn />;
   }
 
   // ── SUCCESS — celebratory end screen after a "Better" check-in (Lovable) ──────
