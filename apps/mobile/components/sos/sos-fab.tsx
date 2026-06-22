@@ -16,8 +16,8 @@ import Animated, {
  * floats clear above the bottom bar, with a pulsing halo ring.
  *
  * Pulse cadence: each ring is a quick, consistent expand-and-fade (PULSE_MS). The
- * GAP between rings grows each cycle — total period 5s, 10s, 15s, 20s, 25s, 30s —
- * then holds at 30s indefinitely. So the halo is attention-grabbing at first and
+ * GAP between rings grows each cycle — total period 5s, 10s, 15s — then holds at
+ * 15s indefinitely. So the halo is attention-grabbing at first and
  * settles into a calm, infrequent pulse over time, without the pulse itself ever
  * slowing down. (Reanimated ring on the UI thread; the growing gap is a JS timer.)
  *
@@ -30,7 +30,7 @@ const SIZE = 64;
 const PULSE_MS = 1100; // duration of a single snappy ring
 const START_MS = 5000; // first full cycle (ring + gap)
 const STEP_MS = 5000;
-const MAX_MS = 30000;
+const MAX_MS = 15000;
 
 export const SosFab: React.FC = () => {
   const router = useRouter();
