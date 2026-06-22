@@ -1,5 +1,6 @@
 import React, { useRef, useState } from "react";
 import { View, Text, ScrollView, Pressable, Alert } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { exitToHome } from "../../lib/navigation";
 import { useCreateLog } from "../../hooks/useCreateLog";
@@ -19,6 +20,7 @@ type Screen = "A1" | "A2";
  */
 export default function LogA() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const createLog = useCreateLog();
   const updateLog = useUpdateLog();
   const { markSatisfied } = useDailyCheckIn();
@@ -80,7 +82,11 @@ export default function LogA() {
 
   if (screen === "A1") {
     return (
-      <ScrollView className="flex-1 bg-background px-6 py-8" contentContainerClassName="flex-grow">
+      <ScrollView
+        className="flex-1 bg-background px-6 pb-8"
+        contentContainerClassName="flex-grow"
+        contentContainerStyle={{ paddingTop: insets.top + 16 }}
+      >
         <Header onClose={() => exitToHome()} title="How strong is it?" />
         <Text className="text-muted-foreground text-sm mb-8 leading-relaxed">
           Just the intensity for now. You can add detail next, or stop here.
@@ -111,8 +117,9 @@ export default function LogA() {
 
   return (
     <ScrollView
-      className="flex-1 bg-background px-6 py-8"
+      className="flex-1 bg-background px-6"
       contentContainerClassName="pb-12"
+      contentContainerStyle={{ paddingTop: insets.top + 16 }}
       // Buttons/chips respond on the FIRST tap while the keyboard is up
       // (the "Other" text input opens it).
       keyboardShouldPersistTaps="handled"

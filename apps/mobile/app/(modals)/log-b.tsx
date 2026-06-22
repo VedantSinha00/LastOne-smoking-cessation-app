@@ -27,35 +27,43 @@ export default function LogB() {
 
   const logIdRef = useRef<string | null>(null);
   const committedRef = useRef(false);
-  const [committed, setCommitted] = useState(false);
+  // Resolves with the log_id once the optimistic commit lands, so a fast Done tap
+  // can still attach "what helped" without blocking the UI on mount.
+  const commitPromise = useRef<Promise<string | null> | null>(null);
   const [whatHelped, setWhatHelped] = useState<string[]>([]);
   const [otherText, setOtherText] = useState("");
 
-  // Optimistic commit on mount — fire exactly once.
+  // Optimistic commit on mount — fire exactly once. Done is enabled immediately;
+  // these writes run in the background.
   useEffect(() => {
     if (committedRef.current || !user) return;
     committedRef.current = true;
-    (async () => {
+    commitPromise.current = (async () => {
       try {
         const row = await createLog.mutateAsync({ log_type: "overcome", entry_method: "fab" });
         logIdRef.current = row.log_id;
         await confirmSmokeFreeDay(user.id, "log");
         await markSatisfied();
         qc.invalidateQueries({ queryKey: queryKeys.streakRecord(user.id) });
-        setCommitted(true);
+        return row.log_id;
       } catch {
         // Even on failure we let the user out; nothing destructive committed.
-        setCommitted(true);
+        return null;
       }
     })();
   }, [user]);
 
   const handleSave = async () => {
-    if (logIdRef.current && whatHelped.length) {
-      await updateLog.mutateAsync({
-        logId: logIdRef.current,
-        patch: { what_helped: whatHelped, other_text: otherText.trim() || null },
-      });
+    // Only "what helped" needs the committed log id. If the user picked chips,
+    // wait for the in-flight commit (usually already done); otherwise exit now.
+    if (whatHelped.length) {
+      const logId = logIdRef.current ?? (await commitPromise.current);
+      if (logId) {
+        await updateLog.mutateAsync({
+          logId,
+          patch: { what_helped: whatHelped, other_text: otherText.trim() || null },
+        });
+      }
     }
     exitToHome();
   };
@@ -84,7 +92,7 @@ export default function LogB() {
         onOtherTextChange={setOtherText}
       />
 
-      <Button title="Done" onPress={handleSave} loading={!committed} className="mt-6" />
+      <Button title="Done" onPress={handleSave} loading={updateLog.isPending} className="mt-6" />
       <Pressable onPress={() => exitToHome()} className="mt-3 py-2 items-center">
         <Text className="text-muted-foreground text-sm">Skip</Text>
       </Pressable>
