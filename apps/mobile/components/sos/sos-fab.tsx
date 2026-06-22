@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import { Pressable, Text, View } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useSegments } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, {
   useSharedValue,
@@ -20,6 +20,11 @@ import Animated, {
  * then holds at 30s indefinitely. So the halo is attention-grabbing at first and
  * settles into a calm, infrequent pulse over time, without the pulse itself ever
  * slowing down. (Reanimated ring on the UI thread; the growing gap is a JS timer.)
+ *
+ * Overlay-aware: the FAB is mounted on tab/browse screens that stay alive UNDER a
+ * transparent modal (the log "+" sheet, the SOS popup itself). Without this, the
+ * FAB would float on top of / beside that popup — nagging. So it self-hides
+ * whenever a (modals) route is on top.
  */
 const SIZE = 64;
 const PULSE_MS = 1100; // duration of a single snappy ring
@@ -30,6 +35,10 @@ const MAX_MS = 30000;
 export const SosFab: React.FC = () => {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const segments = useSegments();
+  // A transparent modal (log sheet, SOS popup) leaves the screen beneath mounted,
+  // so hide the FAB while one is on top rather than floating it over the popup.
+  const overlayOpen = (segments as string[]).includes("(modals)");
 
   // Position driven by inline style (immune to NativeWind class purge/ordering).
   const bottom = 62 + insets.bottom + 40;
@@ -74,6 +83,10 @@ export const SosFab: React.FC = () => {
     transform: [{ scale: interpolate(progress.value, [0, 1], [1, 1.65]) }],
     opacity: interpolate(progress.value, [0, 0.7, 1], [0.5, 0, 0]),
   }));
+
+  // Hidden while a modal/popup is on top (kept AFTER all hooks so hook order is
+  // stable across renders).
+  if (overlayOpen) return null;
 
   return (
     <View
