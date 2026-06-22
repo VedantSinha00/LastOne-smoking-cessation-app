@@ -1,23 +1,38 @@
 import React, { useRef, useState } from "react";
 import { View, Text, ScrollView, Pressable, Alert } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { ArrowLeft, X } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import { exitToHome } from "../../lib/navigation";
 import { useCreateLog } from "../../hooks/useCreateLog";
 import { useUpdateLog } from "../../hooks/useUpdateLog";
 import { useDailyCheckIn } from "../../hooks/useDailyCheckIn";
 import { ChipMultiSelect } from "../../components/logging/chip-multi-select";
-import { Button } from "../../components/ui/button";
 import { TRIGGER_TOKENS, LOCATION_TOKENS, SOCIAL_TOKENS } from "../../lib/logOptions";
 
 type Screen = "A1" | "A2";
 
+const MUTED = "#888888";
+
 /**
  * Flow A — Craving Log (Logging Spec §2 / Architecture Guide §9.4).
  * A1 (commit point): createLog craving + intensity → markSatisfied → A2.
- * A2 (optional): trigger/location/social chips + 'Other'. "I Need Help Now"
+ * A2 (optional): trigger/location/social chips + 'Other'. "I need help now"
  * routes to SOS with routed_to_sos = true.
+ *
+ * Two screens by spec (A1 + A2). The Lovable design's extra A1b/A3/A4 screens
+ * contradict the spec (which routes all "get help" to the SOS overlay and needs
+ * no confirmation screen), so only the VISUALS are ported here, not the extra
+ * steps. Intensity stays a tap selector (spec allows "slider OR tap-based").
  */
+const intensityLabels: Record<number, string> = {
+  1: "Barely there",
+  2: "Noticeable",
+  3: "Strong",
+  4: "Very strong",
+  5: "Overwhelming",
+};
+
 export default function LogA() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -80,81 +95,164 @@ export default function LogA() {
     router.replace("/(modals)/sos");
   };
 
+  // ── A1 — Intensity ───────────────────────────────────────────────────────────
   if (screen === "A1") {
     return (
-      <ScrollView
-        className="flex-1 bg-background px-6 pb-8"
-        contentContainerClassName="flex-grow"
-        contentContainerStyle={{ paddingTop: insets.top + 16 }}
-      >
-        <Header onClose={() => exitToHome()} title="How strong is it?" />
-        <Text className="text-muted-foreground text-sm mb-8 leading-relaxed">
-          Just the intensity for now. You can add detail next, or stop here.
-        </Text>
+      <View className="flex-1 bg-secondary" style={{ paddingTop: insets.top }}>
+        <TopBar onBack={() => exitToHome()} onClose={() => exitToHome()} />
 
-        <View className="flex-row justify-between gap-2 mb-2">
-          {[1, 2, 3, 4, 5].map((v) => (
-            <Pressable
-              key={v}
-              onPress={() => setIntensity(v)}
-              className={`flex-1 py-5 rounded-2xl border ${
-                intensity === v ? "bg-primary border-primary" : "bg-card border-border"
-              }`}
-            >
-              <Text className={`text-center text-xl font-sans-bold ${intensity === v ? "text-primary-foreground" : "text-foreground"}`}>{v}</Text>
-            </Pressable>
-          ))}
-        </View>
-        <View className="flex-row justify-between px-1 mb-10">
-          <Text className="text-muted-foreground text-xs">Mild</Text>
-          <Text className="text-muted-foreground text-xs">Intense</Text>
-        </View>
+        <ScrollView className="flex-1" contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 24 }}>
+          <Text className="text-foreground font-sans-bold mb-2" style={{ fontSize: 26, lineHeight: 31 }}>
+            How strong is this craving?
+          </Text>
+          <Text className="text-muted-foreground mb-10" style={{ fontSize: 16, lineHeight: 24 }}>
+            Be honest. This helps us help you better.
+          </Text>
 
-        <Button title="Continue" onPress={handleContinue} loading={createLog.isPending} />
-      </ScrollView>
+          {/* Tap selector (spec allows tap-based) styled to the design. */}
+          <View className="flex-row" style={{ gap: 8 }}>
+            {[1, 2, 3, 4, 5].map((v) => {
+              const active = intensity === v;
+              return (
+                <Pressable
+                  key={v}
+                  onPress={() => setIntensity(v)}
+                  className="flex-1 items-center justify-center rounded-2xl active:opacity-80"
+                  style={{
+                    paddingVertical: 18,
+                    backgroundColor: active ? "#84C524" : "#FFFFFF",
+                    borderWidth: 1.5,
+                    borderColor: active ? "#84C524" : "#E8E8E8",
+                  }}
+                >
+                  <Text className="font-sans-bold" style={{ fontSize: 20, color: active ? "#FFFFFF" : "#15110D" }}>
+                    {v}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          {/* Big value + word label (design). */}
+          <View className="items-center" style={{ marginTop: 40 }}>
+            <View className="flex-row items-baseline">
+              <Text className="text-foreground font-sans-bold" style={{ fontSize: 56, lineHeight: 56 }}>
+                {intensity}
+              </Text>
+              <Text className="text-muted-foreground" style={{ fontSize: 24, marginLeft: 4 }}>/5</Text>
+            </View>
+            <Text className="text-muted-foreground font-sans-medium" style={{ fontSize: 16, marginTop: 10 }}>
+              {intensityLabels[intensity]}
+            </Text>
+          </View>
+        </ScrollView>
+
+        <View style={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 24, paddingTop: 16 }}>
+          <PrimaryButton label="Next" onPress={handleContinue} disabled={createLog.isPending} />
+        </View>
+      </View>
     );
   }
 
+  // ── A2 — Context (optional) ──────────────────────────────────────────────────
   return (
-    <ScrollView
-      className="flex-1 bg-background px-6"
-      contentContainerClassName="pb-12"
-      contentContainerStyle={{ paddingTop: insets.top + 16 }}
-      // Buttons/chips respond on the FIRST tap while the keyboard is up
-      // (the "Other" text input opens it).
-      keyboardShouldPersistTaps="handled"
-    >
-      <Header onClose={handleSaveA2} title="What's going on?" />
-      <Text className="text-muted-foreground text-sm mb-4 leading-relaxed">
-        All optional — this helps spot your patterns.
-      </Text>
+    <View className="flex-1 bg-secondary" style={{ paddingTop: insets.top }}>
+      <TopBar onBack={() => setScreen("A1")} onClose={handleSaveA2} rightLabel="Context" />
 
-      <ChipMultiSelect
-        label="Triggers"
-        options={TRIGGER_TOKENS}
-        selected={triggers}
-        onChange={setTriggers}
-        otherText={otherText}
-        onOtherTextChange={setOtherText}
-      />
-      <ChipMultiSelect label="Where are you?" options={LOCATION_TOKENS} selected={location} onChange={setLocation} allowOther={false} />
-      <ChipMultiSelect label="Who's around?" options={SOCIAL_TOKENS} selected={social} onChange={setSocial} allowOther={false} />
+      <ScrollView
+        className="flex-1"
+        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 24, paddingBottom: 24 }}
+        keyboardShouldPersistTaps="handled"
+      >
+        <Text className="text-foreground font-sans-bold mb-2" style={{ fontSize: 26, lineHeight: 31 }}>
+          A little context.
+        </Text>
+        <Text className="text-muted-foreground mb-7" style={{ fontSize: 16, lineHeight: 24 }}>
+          All optional. Answer what feels right.
+        </Text>
 
-      <Button title="Save" onPress={handleSaveA2} loading={updateLog.isPending} className="mt-6" />
-      <Pressable onPress={handleNeedHelp} className="mt-4 py-3 items-center">
-        <Text className="text-craving font-sans-bold">I need help now →</Text>
-      </Pressable>
-    </ScrollView>
+        <ChipMultiSelect
+          variant="card"
+          label="What triggered it?"
+          options={TRIGGER_TOKENS}
+          selected={triggers}
+          onChange={setTriggers}
+          otherText={otherText}
+          onOtherTextChange={setOtherText}
+        />
+        <ChipMultiSelect
+          variant="card"
+          label="Where were you?"
+          options={LOCATION_TOKENS}
+          selected={location}
+          onChange={setLocation}
+          allowOther={false}
+        />
+        <ChipMultiSelect
+          variant="card"
+          label="Who were you with?"
+          options={SOCIAL_TOKENS}
+          selected={social}
+          onChange={setSocial}
+          allowOther={false}
+        />
+
+        <Pressable onPress={handleNeedHelp} className="py-2 items-center active:opacity-60" style={{ marginTop: 4 }}>
+          <Text className="font-sans-medium" style={{ fontSize: 13, color: "#F15025" }}>I need help now →</Text>
+        </Pressable>
+      </ScrollView>
+
+      <View
+        className="flex-row"
+        style={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 24, paddingTop: 16, gap: 10 }}
+      >
+        <SecondaryButton label="Save & done" onPress={handleSaveA2} style={{ flex: 1 }} disabled={updateLog.isPending} />
+        <PrimaryButton label="Save & get help" onPress={handleNeedHelp} style={{ flex: 1 }} />
+      </View>
+    </View>
   );
 }
 
-function Header({ title, onClose }: { title: string; onClose: () => void }) {
+function TopBar({ onBack, onClose, rightLabel }: { onBack: () => void; onClose: () => void; rightLabel?: string }) {
   return (
-    <View className="flex-row justify-between items-center mb-3">
-      <Text className="text-foreground font-display text-2xl flex-1 pr-3">{title}</Text>
-      <Pressable onPress={onClose} className="px-3 py-1.5 bg-card border border-border rounded-lg">
-        <Text className="text-muted-foreground text-sm">Close</Text>
+    <View className="flex-row items-center justify-between px-5" style={{ height: 56 }}>
+      <View className="flex-row items-center" style={{ gap: 12 }}>
+        <Pressable onPress={onBack} hitSlop={12} className="active:opacity-60">
+          <ArrowLeft size={22} color="#15110D" strokeWidth={2} />
+        </Pressable>
+        {rightLabel && (
+          <Text className="font-sans-medium" style={{ fontSize: 12, color: MUTED }}>{rightLabel}</Text>
+        )}
+      </View>
+      <Pressable onPress={onClose} hitSlop={12} className="active:opacity-60">
+        <X size={24} color={MUTED} strokeWidth={2} />
       </Pressable>
     </View>
+  );
+}
+
+function PrimaryButton({ label, onPress, disabled, style }: { label: string; onPress: () => void; disabled?: boolean; style?: any }) {
+  return (
+    <Pressable
+      onPress={disabled ? undefined : onPress}
+      disabled={disabled}
+      className="rounded-2xl h-[52px] items-center justify-center active:opacity-90"
+      style={[{ backgroundColor: "#0F0D0B", opacity: disabled ? 0.5 : 1 }, style]}
+    >
+      <Text className="font-sans-bold" style={{ fontSize: 15, color: "#FFFFFF" }}>{label}</Text>
+    </Pressable>
+  );
+}
+
+function SecondaryButton({ label, onPress, disabled, style }: { label: string; onPress: () => void; disabled?: boolean; style?: any }) {
+  return (
+    <Pressable
+      onPress={disabled ? undefined : onPress}
+      disabled={disabled}
+      className="rounded-2xl h-[52px] items-center justify-center bg-card active:opacity-80"
+      style={[{ borderWidth: 1.5, borderColor: "#E8E8E8", opacity: disabled ? 0.5 : 1 }, style]}
+    >
+      <Text className="font-sans-bold" style={{ fontSize: 15, color: "#15110D" }}>{label}</Text>
+    </Pressable>
   );
 }
