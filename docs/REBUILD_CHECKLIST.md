@@ -60,6 +60,16 @@ Then install the new APK from the printed build URL, and restart Metro with:
   a system face (so those elements may look slightly off, not broken).
 - **After rebuild:** the 600 faces load → semibold renders at the correct weight.
 
+### 4. Android notification channels
+- **Status:** `lib/notificationChannels.ts` creates Milestones / Check-ins /
+  Re-engagement channels (brand light colour #7FC200, per-type importance +
+  vibration); `ensureNotificationChannels()` runs at launch, and each scheduled
+  notification attaches its `channelId`. Titles polished (milestones → "Milestone
+  unlocked", check-in → "Daily check-in") so they don't just repeat the app name.
+- **After rebuild:** channels register on Android; notifications post to the named
+  branded channel instead of the OS default, and users can tune each type in OS
+  settings. (No-op on iOS — channels are Android-only.)
+
 ---
 
 ## Notes

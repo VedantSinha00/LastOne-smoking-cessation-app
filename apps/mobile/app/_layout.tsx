@@ -28,6 +28,7 @@ import { persistOptions } from "../lib/queryPersister";
 import { queryKeys } from "../lib/queryKeys";
 import { supabase } from "../lib/supabase";
 import { syncPushTokenIfGranted, reconcileNotifications } from "../lib/notifications";
+import { ensureNotificationChannels } from "../lib/notificationChannels";
 import { handleNotificationResponse } from "../lib/notificationHandler";
 import "../global.css";
 
@@ -48,6 +49,11 @@ Notifications.setNotificationHandler({
     shouldSetBadge: false,
   }),
 });
+
+// Create the Android notification channels (Milestones / Check-ins / Re-engagement)
+// once at module load so scheduled notifications post to a named, branded channel
+// instead of the OS default. Idempotent; no-op on iOS.
+ensureNotificationChannels().catch(() => {});
 
 function RootLayoutNav() {
   const { user, loading: authLoading } = useAuth();

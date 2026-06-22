@@ -25,9 +25,6 @@ export interface NotificationContent {
   body: string
 }
 
-/** Title shown for milestone + prompt notifications that lead with a single line. */
-const APP_TITLE = 'LastOne'
-
 // ── N-CON-01…12 — Health milestones (§7, 3 voice variants each) ──────────────
 // Body leads with the time anchor so it stands alone on the lock screen; tapping
 // opens the full card (YB-01…12, Content Cards spec). Max 12 words per spec.
@@ -160,12 +157,14 @@ export function resolveVoice(voice: VoiceStyle | null | undefined): VoiceStyle {
   return voice ?? FALLBACK_VOICE
 }
 
-/** Copy for a health milestone (N-CON-01…12), voice-matched. */
+/** Copy for a health milestone (N-CON-01…12), voice-matched. The title names the
+ *  event (the OS already shows the app name in the header, so a generic "LastOne"
+ *  title would just repeat it); the body carries the voice-matched message. */
 export function healthMilestoneContent(
   code: HealthMilestoneCode,
   voice: VoiceStyle | null | undefined,
 ): NotificationContent {
-  return { title: APP_TITLE, body: HEALTH_MILESTONE_COPY[code][resolveVoice(voice)] }
+  return { title: 'Milestone unlocked', body: HEALTH_MILESTONE_COPY[code][resolveVoice(voice)] }
 }
 
 /** Copy for a pause re-engagement notification (N-PAU-01…04), voice-matched. */
