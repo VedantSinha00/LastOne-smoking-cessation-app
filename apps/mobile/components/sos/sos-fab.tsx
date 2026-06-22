@@ -27,7 +27,7 @@ import Animated, {
  * whenever a (modals) route is on top.
  */
 const SIZE = 64;
-const PULSE_MS = 1100; // duration of a single snappy ring
+const PULSE_MS = 2200; // duration of a single ring's expand-and-fade
 const START_MS = 5000; // first full cycle (ring + gap)
 const STEP_MS = 5000;
 const MAX_MS = 15000;
