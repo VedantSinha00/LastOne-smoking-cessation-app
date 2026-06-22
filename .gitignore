@@ -35,3 +35,6 @@ session_notes.md
 # Supabase CLI local link state (machine-specific; not the migrations)
 supabase/.temp/
 supabase/.branches/
+
+# Graphify outputs and cache
+graphify-out/
