@@ -1,9 +1,11 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { View, Text, TextInput } from 'react-native'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useProfile } from '../../hooks/useProfile'
 import { useSettings } from '../../hooks/useSettings'
 import { EditScreen } from '../../components/settings/EditScreen'
 import { Pills } from '../../components/settings/Pills'
+import { Toggle } from '../../components/settings/Toggle'
 import { Button } from '../../components/ui/button'
 import { VOICE_OPTIONS, CATEGORY_OPTIONS } from '../../lib/settings'
 import type { VoiceStyle, RelatableCategory } from '../../types/database'
@@ -13,7 +15,7 @@ import type { VoiceStyle, RelatableCategory } from '../../types/database'
  *  margin for the leading section. */
 const Label: React.FC<{ children: React.ReactNode; first?: boolean }> = ({ children, first }) => (
   <Text
-    className={`text-muted-foreground text-[10px] font-sans-bold uppercase tracking-[0.18em] mb-3 ${
+    className={`text-muted-foreground text-[10px] font-sans-semibold uppercase tracking-[0.18em] mb-3 ${
       first ? '' : 'mt-6'
     }`}
   >
@@ -21,18 +23,17 @@ const Label: React.FC<{ children: React.ReactNode; first?: boolean }> = ({ child
   </Text>
 )
 
-/**
- * Settings → Preferences (category sub-screen). Reworked to the design's inline
- * controls: voice + spending-category PILLS and a display-name TEXT INPUT live
- * directly on this page instead of pushing to leaf edit screens. App richness is
- * kept — below the pills we still show the selected option's example/description
- * (the leaf screens had these), and the name input keeps the same validation.
- * Voice / category autosave on tap (the selection IS the decision, §5 Flows 5–6).
- * Spacing follows the design's mt-6/mb-3 section rhythm so it doesn't read cramped.
- *
- * Skipped from the design (no real backing, logic-wins): the display toggles
- * (Show savings / Show streak / Dark mode) and "View onboarding answers".
- */
+const ToggleRow: React.FC<{
+  label: string
+  value: boolean
+  onChange: (v: boolean) => void
+}> = ({ label, value, onChange }) => (
+  <View className="flex-row items-center justify-between rounded-2xl bg-card border border-border px-4 py-3.5 mb-2">
+    <Text className="text-sm text-foreground font-sans-medium">{label}</Text>
+    <Toggle on={value} onChange={onChange} />
+  </View>
+)
+
 export default function PreferencesSettings() {
   const { data: profile } = useProfile()
   const { updateProfile } = useSettings()
@@ -45,18 +46,49 @@ export default function PreferencesSettings() {
   const pickVoice = (v: VoiceStyle) => {
     if (v !== voice) updateProfile.mutate({ voice_style: v })
   }
+
   const pickCategory = (v: RelatableCategory) => {
     if (v !== category) updateProfile.mutate({ relatable_category: v })
   }
 
+  // Display states persisted in AsyncStorage
+  const [showSavings, setShowSavings] = useState(true)
+  const [showStreak, setShowStreak] = useState(true)
+
+  useEffect(() => {
+    AsyncStorage.getItem('show_savings_equivalent').then((val) => {
+      if (val !== null) setShowSavings(val === 'true')
+    })
+    AsyncStorage.getItem('show_streak_home').then((val) => {
+      if (val !== null) setShowStreak(val === 'true')
+    })
+  }, [])
+
+  const toggleSavings = (val: boolean) => {
+    setShowSavings(val)
+    AsyncStorage.setItem('show_savings_equivalent', String(val)).catch(() => {})
+  }
+
+  const toggleStreak = (val: boolean) => {
+    setShowStreak(val)
+    AsyncStorage.setItem('show_streak_home', String(val)).catch(() => {})
+  }
+
   // Display name — prefill from display_name, falling back to onboarding
   // first_name (the name we actually collected). Saves on the Save button.
-  const [name, setName] = useState(
-    profile?.display_name?.trim() || profile?.first_name?.trim() || '',
-  )
+  const [name, setName] = useState('')
+  const [hasPrefilled, setHasPrefilled] = useState(false)
   const [nameError, setNameError] = useState<string | null>(null)
+
   const savedName = profile?.display_name?.trim() || profile?.first_name?.trim() || ''
-  const nameDirty = name.trim() !== savedName
+  const nameDirty = name.trim() !== savedName && hasPrefilled
+
+  useEffect(() => {
+    if (savedName && !hasPrefilled) {
+      setName(savedName)
+      setHasPrefilled(true)
+    }
+  }, [savedName, hasPrefilled])
 
   const saveName = () => {
     const trimmed = name.trim()
@@ -69,9 +101,7 @@ export default function PreferencesSettings() {
   }
 
   return (
-    <EditScreen title="Preferences" showSos>
-      {/* One wrapper so EditScreen's gap-4 applies once; the section rhythm below
-          is driven entirely by our own mt-7/mb-3 margins (matches the design). */}
+    <EditScreen title="Preferences" showSos showNav>
       <View>
         <Label first>Voice style</Label>
         <Pills options={VOICE_OPTIONS} value={voice} onChange={pickVoice} />
@@ -88,7 +118,11 @@ export default function PreferencesSettings() {
           <Text className="text-muted-foreground text-xs mt-2">{categoryDesc}</Text>
         )}
 
-        <Label>Display name</Label>
+        <Label>Display</Label>
+        <ToggleRow label="Show savings in equivalent" value={showSavings} onChange={toggleSavings} />
+        <ToggleRow label="Show streak on home" value={showStreak} onChange={toggleStreak} />
+
+        <Label>Name</Label>
         <TextInput
           value={name}
           onChangeText={(t) => {
@@ -98,7 +132,7 @@ export default function PreferencesSettings() {
           maxLength={30}
           placeholder="Your name"
           placeholderTextColor="#A8A29E"
-          className="bg-card border border-border rounded-2xl px-4 py-3.5 text-foreground text-base"
+          className="bg-card border border-border rounded-2xl px-4 py-3 text-foreground text-sm font-sans-medium"
         />
         <View className="flex-row items-center justify-between mt-2">
           <Text className="text-muted-foreground text-xs">{name.length}/30</Text>

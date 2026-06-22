@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, ScrollView, Pressable, ActivityIndicator } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "../../hooks/useAuth";
 import { useProfile } from "../../hooks/useProfile";
 import { useStage } from "../../hooks/useStage";
@@ -45,6 +46,15 @@ export default function Home() {
   // Return-modal gate. The option handlers apply the real streak writes
   // (lib/returnModal) then clear the gate so home renders with fresh values.
   const [returnResolved, setReturnResolved] = useState(false);
+  const [showStreakHome, setShowStreakHome] = useState(true);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      AsyncStorage.getItem('show_streak_home').then((val) => {
+        if (val !== null) setShowStreakHome(val === 'true');
+      });
+    }, [])
+  );
 
   const refreshStreak = () => {
     if (!user) return;
@@ -141,10 +151,12 @@ export default function Home() {
       <ContentCarousel />
 
       {/* 3 — Streak Bar */}
-      <View>
-        <SectionLabel>Streaks</SectionLabel>
-        <StreakBar stage={stage} streak={streak} />
-      </View>
+      {showStreakHome && (
+        <View>
+          <SectionLabel>Streaks</SectionLabel>
+          <StreakBar stage={stage} streak={streak} />
+        </View>
+      )}
 
       {/* 4 — Coping Surface Card: renders only at alert_level=2 (Insights §B2.8) */}
       <CopingSurfaceCard />

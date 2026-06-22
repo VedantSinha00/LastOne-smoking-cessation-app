@@ -20,7 +20,7 @@ export const VOICE_OPTIONS: {
   },
   {
     value: 'emotional_and_understanding',
-    label: 'Emotional & Understanding',
+    label: 'Warm & Grounding',
     sublabel: 'Empathetic. Acknowledges the hard moments.',
     example: "This is a hard moment, and that's okay. Take a breath.",
   },

@@ -19,12 +19,12 @@ interface RowProps {
 export const Row: React.FC<RowProps> = ({ label, value, onPress, danger, valueAccent }) => {
   const body = (
     <View
-      className={`flex-row items-center justify-between rounded-2xl bg-card border px-4 py-3.5 mb-2 min-h-[56px] ${
+      className={`flex-row items-center justify-between rounded-2xl bg-card border px-4 py-3.5 mb-2 ${
         danger ? 'border-destructive/40' : 'border-border'
       }`}
     >
       <Text
-        className={`flex-shrink text-base ${danger ? 'text-destructive font-sans-bold' : 'text-foreground font-sans-medium'}`}
+        className={`flex-shrink text-sm ${danger ? 'text-destructive font-sans-bold' : 'text-foreground font-sans-medium'}`}
       >
         {label}
       </Text>
@@ -33,7 +33,7 @@ export const Row: React.FC<RowProps> = ({ label, value, onPress, danger, valueAc
           <Text
             className={
               valueAccent
-                ? 'text-primary text-sm font-sans-bold'
+                ? 'text-primary text-sm font-sans-semibold'
                 : 'text-muted-foreground text-sm'
             }
             numberOfLines={1}
@@ -62,7 +62,7 @@ export const Section: React.FC<{ title: string; children: React.ReactNode }> = (
   children,
 }) => (
   <View>
-    <Text className="text-muted-foreground text-[11px] font-sans-bold uppercase tracking-[0.18em] mb-3 ml-1">
+    <Text className="text-muted-foreground text-[10px] font-sans-semibold uppercase tracking-[0.18em] mb-3 ml-1">
       {title}
     </Text>
     {children}

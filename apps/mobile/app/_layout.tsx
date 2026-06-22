@@ -6,11 +6,13 @@ import * as SplashScreen from "expo-splash-screen";
 import * as Notifications from "expo-notifications";
 import {
   useFonts,
+  SpaceGrotesk_600SemiBold,
   SpaceGrotesk_700Bold,
 } from "@expo-google-fonts/space-grotesk";
 import {
   DMSans_400Regular,
   DMSans_500Medium,
+  DMSans_600SemiBold,
   DMSans_700Bold,
 } from "@expo-google-fonts/dm-sans";
 import {
@@ -139,9 +141,11 @@ export default function RootLayout() {
   // never flashes in a fallback face. Tokens reference these family names in
   // tailwind.config.js (font-display / font-sans).
   const [fontsLoaded] = useFonts({
+    SpaceGrotesk_600SemiBold,
     SpaceGrotesk_700Bold,
     DMSans_400Regular,
     DMSans_500Medium,
+    DMSans_600SemiBold,
     DMSans_700Bold,
     PlayfairDisplay_600SemiBold,
     PlayfairDisplay_700Bold,

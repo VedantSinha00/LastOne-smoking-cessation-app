@@ -1,6 +1,7 @@
 import React from 'react'
 import { View, Text, Pressable } from 'react-native'
-import { useRouter } from 'expo-router'
+import { useRouter, useFocusEffect } from 'expo-router'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Wallet, CigaretteOff } from 'lucide-react-native'
 import { Card } from '../ui/Card'
 import type { Stage } from '../../lib/stage'
@@ -66,6 +67,16 @@ export const ProgressDashboard: React.FC<{ stage: Stage }> = ({ stage }) => {
   const d = useDashboard()
   const isPreQuit = stage === 0
 
+  const [showSavingsEquivalent, setShowSavingsEquivalent] = React.useState(true)
+
+  useFocusEffect(
+    React.useCallback(() => {
+      AsyncStorage.getItem('show_savings_equivalent').then((val) => {
+        if (val !== null) setShowSavingsEquivalent(val === 'true')
+      })
+    }, [])
+  )
+
   // Home progress cards open the Progress "WHAT YOU'VE GAINED" main view (the 3
   // hero cards), not a specific counter's drill-down — the overview is the natural
   // landing, and the user taps into a counter from there.
@@ -116,7 +127,7 @@ export const ProgressDashboard: React.FC<{ stage: Stage }> = ({ stage }) => {
         Icon={Wallet}
         value={d.moneyLabel}
         label="saved"
-        subline={d.moneyEquivalentLine}
+        subline={showSavingsEquivalent ? d.moneyEquivalentLine : undefined}
         onPress={openProgress}
       />
       <GridCard

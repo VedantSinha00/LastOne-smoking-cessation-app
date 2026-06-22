@@ -49,6 +49,17 @@ Then install the new APK from the printed build URL, and restart Metro with:
   ```
   (Confirm/author the splash asset path in `assets/` before adding.)
 
+### 3. DM Sans + Space Grotesk 600 (SemiBold) weights
+- **Status:** `DMSans_600SemiBold` + `SpaceGrotesk_600SemiBold` now imported and
+  registered in `app/_layout.tsx` `useFonts`, with `font-sans-semibold` /
+  `font-display-semibold` tokens in `tailwind.config.js`. Used across the profile
+  settings screens (section labels, names, pills, Edit/Call/Delete actions) where
+  the design is weight 600 — previously fell back to 700 (too heavy).
+- **Why a rebuild:** new font faces are bundled assets; a Metro `--clear` reload
+  alone won't register them. Until the rebuild, `font-sans-semibold` falls back to
+  a system face (so those elements may look slightly off, not broken).
+- **After rebuild:** the 600 faces load → semibold renders at the correct weight.
+
 ---
 
 ## Notes

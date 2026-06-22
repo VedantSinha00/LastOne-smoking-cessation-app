@@ -96,8 +96,14 @@ module.exports = {
       fontFamily: {
         // Space Grotesk for display/headings, DM Sans for body.
         display: ["SpaceGrotesk_700Bold"],
+        "display-semibold": ["SpaceGrotesk_600SemiBold"],
         sans: ["DMSans_400Regular"],
         "sans-medium": ["DMSans_500Medium"],
+        // 600 weight — the design uses semibold for section labels, names,
+        // pills, and "Edit"/"Call" actions. RN can't synthesise weight from a
+        // custom font, so this maps to the actual 600 face (vs the heavier 700
+        // font-sans-bold it was falling back to).
+        "sans-semibold": ["DMSans_600SemiBold"],
         "sans-bold": ["DMSans_700Bold"],
         // Playfair Display (serif) — tool-family card titles.
         serif: ["PlayfairDisplay_600SemiBold"],
