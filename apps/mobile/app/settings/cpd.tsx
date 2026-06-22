@@ -23,7 +23,9 @@ export default function EditCpd() {
       return
     }
     await updateCpd.mutateAsync(n)
-    router.navigate('/(tabs)/profile')
+    // Pop back to where we came from (Your Journey), not all the way to root.
+    if (router.canGoBack()) router.back()
+    else router.navigate('/(tabs)/profile')
   }
 
   return (

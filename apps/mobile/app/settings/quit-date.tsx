@@ -44,7 +44,11 @@ export default function EditQuitDate() {
         <Text className="text-muted-foreground text-sm">
           Your quit date is locked once your journey begins. Use Take a break or Start fresh instead.
         </Text>
-        <Button title="Back" variant="secondary" onPress={() => router.navigate('/(tabs)/profile')} />
+        <Button
+          title="Back"
+          variant="secondary"
+          onPress={() => (router.canGoBack() ? router.back() : router.navigate('/(tabs)/profile'))}
+        />
       </EditScreen>
     )
   }
@@ -56,7 +60,9 @@ export default function EditQuitDate() {
 
   const save = async () => {
     await updateQuitDate.mutateAsync(selected.toISOString().slice(0, 10))
-    router.navigate('/(tabs)/profile')
+    // Pop back to where we came from (Your Journey), not all the way to root.
+    if (router.canGoBack()) router.back()
+    else router.navigate('/(tabs)/profile')
   }
 
   return (
