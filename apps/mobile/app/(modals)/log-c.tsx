@@ -70,6 +70,15 @@ export default function LogC() {
     streakBeforeSlip.current = streakRecord.current_streak_days;
   }
 
+  // Success rate BEFORE this slip — captured once, same as the streak. Committing
+  // the slip invalidates the logs → metrics.resistanceRate recomputes; reading it
+  // live made the "still winning" number visibly tick down to the post-slip value
+  // while the user watched. Freeze it so the screen shows a stable figure.
+  const successRateBeforeSlip = useRef<number | null>(null);
+  if (successRateBeforeSlip.current === null && metrics.resistanceRate != null) {
+    successRateBeforeSlip.current = metrics.resistanceRate;
+  }
+
   const [screen, setScreen] = useState<Screen>("C1");
   const [slipType, setSlipType] = useState<SlipType | null>(null);
   const [count, setCount] = useState<number | null>(1); // Default to 1 cigarette
@@ -469,7 +478,9 @@ export default function LogC() {
   // data; the freeze-applied line is intentionally omitted (a one-off slip only
   // sometimes consumes a freeze, so a blanket claim would be inaccurate).
   if (slipType === "one_off") {
-    const successRate = metrics.resistanceRate != null ? `${Math.round(metrics.resistanceRate)}%` : null;
+    // Use the frozen pre-slip rate so the figure doesn't animate to the new value.
+    const frozenRate = successRateBeforeSlip.current;
+    const successRate = frozenRate != null ? `${Math.round(frozenRate)}%` : null;
     const daysBefore = streakBeforeSlip.current;
     const cigs = count === CIGARETTE_COUNT_SENTINEL ? "5+" : count ?? 1;
     const cigWord = cigs === 1 ? "cigarette" : "cigarettes";
