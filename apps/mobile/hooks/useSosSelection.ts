@@ -108,16 +108,22 @@ export function useSosSelection(craving: CravingInput, enabled = true, exclude: 
 
   const tools = useMemo(() => {
     if (!data.data) return undefined
+    // Defensive: an old persisted cache entry can lack `scores`/`tools` (shape
+    // changed). Fall back to [] so we never crash on `.map` — a fresh fetch
+    // replaces it shortly after.
+    const rawScores = data.data.scores ?? []
+    const rawTools = data.data.tools ?? []
+    if (!rawTools.length) return undefined // nothing to rank yet → wait for fetch
     // Build the score Map here (not in the cached data — see SosData note).
     const scoreMap = new Map<string, ToolScore>(
-      data.data.scores.map((s) => [s.tool_id, s]),
+      rawScores.map((s) => [s.tool_id, s]),
     )
     return selectSOSTools({
-      tools: data.data.tools,
+      tools: rawTools,
       scores: scoreMap,
       craving,
-      stage: data.data.stage,
-      profile: data.data.profile,
+      stage: data.data.stage ?? 0,
+      profile: data.data.profile ?? 'regular_moderate_heavy',
       hasBuddy: false, // Quit Buddy is a V2/Step-18 concept — MIN-03 excluded for now.
       exclude,
     })

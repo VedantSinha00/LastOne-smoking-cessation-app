@@ -27,7 +27,8 @@ export function clearPersistedQueryCache() {
 
 // Bump when the cache shape changes incompatibly (query keys / stored types) to
 // drop stale persisted data instead of rehydrating something the app can't read.
-const BUSTER = 'v1'
+// v2: sosData no longer stores a Map (was crashing on rehydration).
+const BUSTER = 'v2'
 
 export const persistOptions: Omit<PersistQueryClientOptions, 'queryClient'> = {
   persister,
