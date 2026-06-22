@@ -1,5 +1,5 @@
 import React from 'react'
-import { View, Text, ScrollView, ActivityIndicator, Dimensions } from 'react-native'
+import { View, Text, ScrollView, Dimensions } from 'react-native'
 import { useContentCarousel } from '../../hooks/useContentCarousel'
 import { Card } from '../ui/Card'
 import { Chip } from '../ui/Chip'
@@ -19,14 +19,22 @@ const CARD_WIDTH = Dimensions.get('window').width - HOME_PADDING * 2 - PEEK
 export const ContentCarousel: React.FC = () => {
   const { cards, isLoading } = useContentCarousel()
 
+  // Skeleton placeholder while loading — mirrors the real card's shape so content
+  // swaps in without a layout jump (smoother than a spinner). With disk-persisted
+  // cache this only shows on a genuine cold/first load.
   if (isLoading) {
     return (
-      <Card>
-        <Text className="text-muted-foreground text-xs font-sans-bold uppercase tracking-wider mb-2">
+      <View>
+        <Text className="text-muted-foreground text-xs font-sans-bold uppercase tracking-wider mb-2 px-1">
           For you today
         </Text>
-        <ActivityIndicator color="#7FC200" />
-      </Card>
+        <Card elevation="soft" style={{ width: CARD_WIDTH, minHeight: 188 }} className="p-6">
+          <View className="bg-muted rounded-full" style={{ width: 72, height: 22 }} />
+          <View className="bg-muted rounded-md mt-4" style={{ width: '85%', height: 18 }} />
+          <View className="bg-muted rounded-md mt-3" style={{ width: '95%', height: 14 }} />
+          <View className="bg-muted rounded-md mt-2" style={{ width: '60%', height: 14 }} />
+        </Card>
+      </View>
     )
   }
 

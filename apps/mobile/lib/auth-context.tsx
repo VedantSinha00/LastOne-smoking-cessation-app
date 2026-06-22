@@ -4,6 +4,7 @@ import * as WebBrowser from "expo-web-browser";
 import * as Linking from "expo-linking";
 import { supabase } from "./supabase";
 import { queryClient } from "./queryClient";
+import { clearPersistedQueryCache } from "./queryPersister";
 
 // Required for the OAuth redirect to close the browser tab on iOS/Android
 WebBrowser.maybeCompleteAuthSession();
@@ -101,6 +102,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signOut = async () => {
     await supabase.auth.signOut();
     queryClient.clear();
+    // Also drop the on-disk cache so the next launch/user never rehydrates this
+    // user's data before auth resolves.
+    Promise.resolve(clearPersistedQueryCache()).catch(() => {});
   };
 
   return (
