@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from "react";
 import { Pressable, Text, View } from "react-native";
 import { useRouter, useSegments } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useLogSheet } from "../../hooks/useLogSheet";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -36,9 +37,11 @@ export const SosFab: React.FC = () => {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const segments = useSegments();
-  // A transparent modal (log sheet, SOS popup) leaves the screen beneath mounted,
-  // so hide the FAB while one is on top rather than floating it over the popup.
-  const overlayOpen = (segments as string[]).includes("(modals)");
+  const { isOpen: logSheetOpen } = useLogSheet();
+  // Hide the FAB while an overlay is on top rather than floating it over the popup.
+  // Two cases: a (modals) route (the SOS popup itself, log-a..d flows), OR the log
+  // "+" picker — now an in-tree overlay, not a route, so it isn't in `segments`.
+  const overlayOpen = (segments as string[]).includes("(modals)") || logSheetOpen;
 
   // Position driven by inline style (immune to NativeWind class purge/ordering).
   const bottom = 62 + insets.bottom + 40;

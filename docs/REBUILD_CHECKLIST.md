@@ -18,15 +18,22 @@ Then install the new APK from the printed build URL, and restart Metro with:
 
 ## Pending items (do all in the next rebuild)
 
-### 1. `expo-blur` — the Log menu blur
-- **Status:** `expo-blur` added to `package.json` in commit `616e116`, used in
-  `app/(modals)/log.tsx`, but the native module is NOT in the currently-installed
-  APK → caused the "+" log menu to crash.
-- **Mitigation already shipped:** the guard in `log.tsx` now checks
-  `requireOptionalNativeModule('ExpoBlurView')` and degrades to **dim-only** (no
-  blur) when the native side is absent, so it no longer crashes.
-- **After rebuild:** the native module will be present → the guard lights up and
-  the real blur renders automatically. No further code change needed.
+### 1. `expo-blur` — the Log "+" menu + SOS blur  ✅ DONE (no rebuild needed)
+- **History:** `expo-blur` added in `616e116`; native module ships in every build
+  since (June 23 APK `f71c0b3` onward).
+- **Two bugs found 2026-06-23, both fixed:**
+  1. **Android needs `experimentalBlurMethod`.** `expo-blur` renders NOTHING on
+     Android with the default method (`'none'`) — only `'dimezisBlurView'` actually
+     blurs. `components/ui/BlurBackdrop.tsx` now sets it per-platform.
+  2. **A modal route can't blur the screen behind it on Android.** The "+" picker
+     used to be a `transparentModal` route, which wipes the screen underneath →
+     nothing to blur (flat grey). Fixed by making the picker an **in-tree overlay**
+     (`components/log/LogSheetOverlay.tsx`) rendered as a sibling of the live screen
+     content, toggled via `hooks/useLogSheet.tsx`, so BlurView samples real content.
+- **Net:** `/(modals)/log` route removed; both "+" buttons (tab bar + settings nav
+  bar) call `open()`; SOS popup keeps its own `transparentModal` (its blur was
+  always over the dimmed home, which the SOS-1 popup paints itself).
+- **Pure JS** — Metro reload picks it up; no rebuild required.
 
 ### 2. `expo-splash-screen` — faster/cleaner startup
 - **Status:** package installed (`~31.0.13`) and now wired in `app/_layout.tsx`

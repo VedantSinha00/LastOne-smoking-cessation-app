@@ -5,6 +5,7 @@ import { useRouter, useFocusEffect } from 'expo-router'
 import { TopBar } from '../home/TopBar'
 import { SosFab } from '../sos/sos-fab'
 import { BottomNavBar } from '../navigation/BottomNavBar'
+import { LogSheetOverlay } from '../log/LogSheetOverlay'
 
 /** Shared chrome for a settings edit screen: the pinned LastOne TopBar, then a
  *  small uppercase eyebrow back-link (matching the Lovable ProfileScreen
@@ -92,6 +93,10 @@ export const EditScreen: React.FC<{
       {footer != null && <View className="px-6 pt-3 pb-8 bg-background">{footer}</View>}
       {showSos && <SosFab />}
       {showNav && <BottomNavBar />}
+      {/* Log "+" picker overlay for the settings nav bar's "+". Mounted here (the
+          foreground tree on a category screen) so it blurs THIS screen, not the
+          tabs tree behind it. Only where the nav bar's "+" exists. */}
+      {showNav && <LogSheetOverlay />}
     </View>
   )
 }

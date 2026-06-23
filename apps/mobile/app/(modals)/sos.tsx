@@ -14,6 +14,7 @@ import { useCreateLog } from "../../hooks/useCreateLog";
 import { useUpdateLog } from "../../hooks/useUpdateLog";
 import { useDailyCheckIn } from "../../hooks/useDailyCheckIn";
 import { ToolRunner } from "../../components/coping/ToolRunner";
+import { BlurBackdrop } from "../../components/ui/BlurBackdrop";
 import { queryKeys } from "../../lib/queryKeys";
 import {
   updateToolScore,
@@ -409,10 +410,11 @@ export default function SosModal() {
       );
     }
 
-    // Default (SOS FAB) → centered popup card over the dimmed home.
+    // Default (SOS FAB) → centered popup card over the blurred + dimmed home.
     return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(13,13,13,0.45)" }}>
-        {/* Tap the dim backdrop to dismiss. */}
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        {/* Blur the home behind, then dim it; tapping the backdrop dismisses. */}
+        <BlurBackdrop intensity={35} tint="dark" dim="rgba(13,13,13,0.2)" />
         <Pressable style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} onPress={() => router.back()} />
         <View style={{ width: POPUP_WIDTH, backgroundColor: "#FFFFFF", borderRadius: 28, ...POPUP_SHADOW }}>
           {/* Numeric maxHeight on the ScrollView (not the card) so it scrolls only for

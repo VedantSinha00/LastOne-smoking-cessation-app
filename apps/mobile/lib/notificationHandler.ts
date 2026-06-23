@@ -16,7 +16,10 @@ import type { NotificationType } from '../types/database'
  */
 
 const ROUTE_BY_TYPE: Partial<Record<NotificationType, Parameters<Router['push']>[0]>> = {
-  'N-STK-01': '/(modals)/log', // daily check-in → log sheet
+  // Daily check-in → the "I feel like smoking" flow (log-a) directly. The log
+  // picker is no longer a route (it's an in-tree overlay that can't be opened from
+  // a router callback), so the notification lands on the most relevant flow.
+  'N-STK-01': '/(modals)/log-a',
   'N-PROF-01': '/(tabs)/profile', // voice-style prompt → Settings
   // Health milestones + pause track → Home (default below).
 }

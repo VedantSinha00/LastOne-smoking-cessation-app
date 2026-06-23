@@ -3,6 +3,7 @@ import { View, Pressable } from 'react-native'
 import { useRouter, type Href } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Home, BarChart3, Heart, Plus, Users, Sparkle } from 'lucide-react-native'
+import { useLogSheet } from '../../hooks/useLogSheet'
 
 /**
  * Presentational bottom nav bar — the design's 5-slot layout
@@ -34,6 +35,7 @@ const RIGHT: Slot[] = [
 export const BottomNavBar: React.FC<{ activeKey?: SlotKey }> = ({ activeKey }) => {
   const router = useRouter()
   const insets = useSafeAreaInsets()
+  const { open } = useLogSheet()
 
   const renderSlot = ({ key, label, href, Icon, twinkle }: Slot) => {
     const isFocused = key === activeKey
@@ -83,7 +85,7 @@ export const BottomNavBar: React.FC<{ activeKey?: SlotKey }> = ({ activeKey }) =
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Log"
-          onPress={() => router.push('/(modals)/log')}
+          onPress={open}
           hitSlop={{ top: 32, bottom: 8, left: 8, right: 8 }}
           className="w-14 h-14 rounded-full bg-foreground items-center justify-center active:scale-95"
           style={{

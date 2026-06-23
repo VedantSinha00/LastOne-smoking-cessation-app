@@ -22,6 +22,7 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { AuthProvider } from "../lib/auth-context";
+import { LogSheetProvider } from "../hooks/useLogSheet";
 import { useAuth } from "../hooks/useAuth";
 import { queryClient } from "../lib/queryClient";
 import { persistOptions } from "../lib/queryPersister";
@@ -176,9 +177,14 @@ export default function RootLayout() {
   return (
     <PersistQueryClientProvider client={queryClient} persistOptions={persistOptions}>
       <AuthProvider>
-        {/* Dark status-bar icons for the light theme background */}
-        <StatusBar style="dark" />
-        <RootLayoutNav />
+        {/* Shared open/close state for the Log "+" picker overlay. Mounted at the
+            root so any "+" (tab bar, settings nav bar) can open it; the overlay UI
+            itself is rendered inside each screen tree that shows a bottom bar. */}
+        <LogSheetProvider>
+          {/* Dark status-bar icons for the light theme background */}
+          <StatusBar style="dark" />
+          <RootLayoutNav />
+        </LogSheetProvider>
       </AuthProvider>
     </PersistQueryClientProvider>
   );

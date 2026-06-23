@@ -1,9 +1,10 @@
 import { Tabs } from "expo-router";
 import { View, Pressable } from "react-native";
-import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Home, BarChart3, Heart, Plus, Users, Sparkle } from "lucide-react-native";
 import { SosFab } from "../../components/sos/sos-fab";
+import { LogSheetOverlay } from "../../components/log/LogSheetOverlay";
+import { useLogSheet } from "../../hooks/useLogSheet";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 
 /**
@@ -45,7 +46,7 @@ const RIGHT: TabDef[] = [
 ];
 
 function CustomTabBar({ state, navigation }: BottomTabBarProps) {
-  const router = useRouter();
+  const { open } = useLogSheet();
   const insets = useSafeAreaInsets();
 
   const renderTab = ({ name, label, Icon, twinkle }: TabDef) => {
@@ -107,7 +108,7 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Log"
-          onPress={() => router.push("/(modals)/log")}
+          onPress={open}
           // hitSlop extends the touch target up over the raised area as a belt-and-
           // suspenders backup to overflow: visible.
           hitSlop={{ top: 32, bottom: 8, left: 8, right: 8 }}
@@ -169,6 +170,11 @@ export default function TabsLayout() {
 
       {/* SOS — persistent floating FAB on every main screen (Architecture Guide §8.5). */}
       <SosFab />
+
+      {/* Log "+" picker — in-place overlay (NOT a route) so it blurs the live tabs
+          content behind it. Sibling of <Tabs>, so the tab content stays mounted
+          underneath for BlurView to sample. Renders null unless opened. */}
+      <LogSheetOverlay />
     </View>
   );
 }
