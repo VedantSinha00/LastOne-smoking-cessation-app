@@ -87,6 +87,10 @@ export default function LogC() {
   const [route, setRoute] = useState<SlipRoute>("warm");
   const logIdRef = useRef<string | null>(null);
   const [committing, setCommitting] = useState(false);
+  // Guards the C3 restart-nudge actions: both restartAttempt and pauseStreak await
+  // DB writes before exitToHome, so without this a double-tap fires the write twice
+  // (restartAttempt would leave a stray extra closed quit_attempts row).
+  const resolvingNudge = useRef(false);
 
   const invalidateStreak = () => {
     if (!user) return;
@@ -114,30 +118,41 @@ export default function LogC() {
     }
   };
 
+  // Tracks whether the streak/threshold side effects already ran, so a retry after
+  // a mid-sequence failure doesn't re-apply them (double freeze decrement / double
+  // red-flag count). Paired with logIdRef, which prevents a duplicate slip row.
+  const sideEffectsDoneRef = useRef(false);
+
   // C2 commit — requires slip_type. Pre-quit: slip_type stays null (Logging §B4).
+  // Resumable: if a prior attempt created the log but a later step threw, the retry
+  // reuses the existing log row and skips already-applied side effects.
   const commitC2 = async (chosen: SlipType) => {
     if (!user) return;
     setCommitting(true);
     try {
-      const row = await createLog.mutateAsync({
-        log_type: "slip",
-        entry_method: "fab",
-        slip_type: isPreQuit ? null : chosen,
-        cigarette_count: count,
-        slip_triggers: triggers.length ? triggers : null,
-        other_text: otherText.trim() || null,
-        source: "flow_c",
-      });
-      logIdRef.current = row.log_id;
+      if (!logIdRef.current) {
+        const row = await createLog.mutateAsync({
+          log_type: "slip",
+          entry_method: "fab",
+          slip_type: isPreQuit ? null : chosen,
+          cigarette_count: count,
+          slip_triggers: triggers.length ? triggers : null,
+          other_text: otherText.trim() || null,
+          source: "flow_c",
+        });
+        logIdRef.current = row.log_id;
+      }
       await markSatisfied();
 
       // Streak/threshold side effects. Skipped entirely pre-quit (Logging §B4).
-      if (!isPreQuit) {
+      // Applied at most once even across retries (sideEffectsDoneRef).
+      if (!isPreQuit && !sideEffectsDoneRef.current) {
         if (chosen === "return_to_smoking") {
           await fullRelapse(user.id);
         } else {
           setRoute(await routeAfterSlip(user.id, chosen));
         }
+        sideEffectsDoneRef.current = true;
         invalidateStreak();
       }
       setScreen("C3");
@@ -395,11 +410,15 @@ export default function LogC() {
   // ── C3 Restart Nudge — pattern confirmed (Slip Threshold §4) ────────────────
   if (route === "restart_nudge") {
     const handleRestart = async () => {
+      if (resolvingNudge.current) return;
+      resolvingNudge.current = true;
       if (user) await restartAttempt(user.id);
       invalidateStreak();
       exitToHome();
     };
     const handleBreak = async () => {
+      if (resolvingNudge.current) return;
+      resolvingNudge.current = true;
       if (user) await pauseStreak(user.id);
       invalidateStreak();
       exitToHome();

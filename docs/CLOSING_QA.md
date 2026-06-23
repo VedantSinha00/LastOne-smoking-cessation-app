@@ -27,9 +27,9 @@ Started 2026-06-23, branch `UI-Implementations`.
 ### Batch B — Core loop
 | Flow | Status | Notes |
 |---|---|---|
-| Log A — craving | ⬜ | |
-| Log B — overcome | ⬜ | |
-| Log C — slip | ⬜ | |
+| Log A — craving | ✅ | commitA1 re-entry-guarded by logIdRef (no dup); Next disabled while pending; back A2→A1 safe; X on A1 leaves nothing logged (correct). |
+| Log B — overcome | ✅ | optimistic commit fires once (committedRef); fast Done awaits commitPromise; offline → silent loss (known optimistic-design limitation, consistent w/ check-in). |
+| Log C — slip | ✅ | BUG-2 + BUG-3 fixed (see below). Pre-quit skips side-effects; return_to_smoking→fullRelapse; route vs slipType render precedence correct. |
 
 ### Batch C — Crisis
 | Flow | Status | Notes |
@@ -68,6 +68,18 @@ _(running log — flow, symptom, fix, verified-by)_
 - **Root cause:** `confirmSmokeFreeDay`'s docstring names its 3 callers (Flow B, daily check-in, SOS 'Better'); the check-in caller was missing. Flow B does `createLog → confirmSmokeFreeDay("log") → markSatisfied`; the card only did `markSatisfied`.
 - **Fix:** `DailyCheckInCard.handleAllGood` now calls `confirmSmokeFreeDay(user.id, "log")` + invalidates `streakRecord` before `markSatisfied`. No log row created (no event occurred). Idempotent per day, respects pause, defensively wrapped. `apps/mobile/components/home/DailyCheckInCard.tsx`.
 - **Verified:** typecheck clean. ⏳ device confirm pending: "All good today" moves the counter + suppresses next-day return modal.
+
+### BUG-2 — Flow C slip: retry after mid-sequence failure created a duplicate slip + double side-effects
+- **Flow:** Log C (slip)
+- **Symptom:** In `commitC2`, if `createLog` succeeded but a later step (`markSatisfied`/`routeAfterSlip`/`fullRelapse`) threw (network blip), the catch reset `committing` and left the user on C2. Tapping Continue again called `createLog` a 2nd time → **duplicate slip row**, and re-ran the freeze/break side-effects → **double freeze decrement or double red-flag count** (data corruption — `routeAfterSlip`'s consumeFreeze/breakStreak are not idempotent).
+- **Fix:** `commitC2` is now resumable — reuses `logIdRef` if a row already exists (skips the duplicate insert) and gates side-effects behind a new `sideEffectsDoneRef` so they apply at most once across retries. `apps/mobile/app/(modals)/log-c.tsx`.
+- **Verified:** typecheck clean.
+
+### BUG-3 — Flow C restart nudge: double-tap fired restart/pause twice
+- **Flow:** Log C (slip) → C3 restart nudge
+- **Symptom:** `handleRestart`/`handleBreak` awaited a DB write before `exitToHome` with no in-flight guard. A double-tap fired `restartAttempt` twice, leaving a stray extra closed `quit_attempts` row (untidy; "one open attempt" invariant held but data was messy).
+- **Fix:** added a `resolvingNudge` ref guard, matching the `committing`/`processing`/`isPending` pattern used elsewhere. `apps/mobile/app/(modals)/log-c.tsx`.
+- **Verified:** typecheck clean.
 
 ---
 
