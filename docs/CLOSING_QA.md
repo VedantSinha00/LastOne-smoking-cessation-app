@@ -89,17 +89,24 @@ BUG-1 (check-in didn't advance streak), BUG-2 (slip retry double-applied side-ef
 BUG-3 (slip nudge double-tap). Batches C–F clean. Typecheck clean throughout.
 
 **Open ship items (need user decision, not code):**
-- `delete_user_account` RPC: migration `20260614000001` present locally; deploy to remote
-  (`npx supabase db push`, permission-gated) or Delete Account errors. Memory said not-deployed.
+- ✅ DONE `delete_user_account` RPC: deployed to remote 2026-06-23 via `supabase db query --linked -f`
+  (applied the fn only, NOT `db push` — the remote migration ledger tracks just the first 2
+  migrations; the other 8 incl. seeds/RPCs were applied out-of-band via SQL editor, so a full
+  push would re-run seeds and risk dup-key errors). Verified `delete_user_account(p_user_id uuid)`
+  exists in pg_proc. Ledger drift is pre-existing (all 8), not introduced here.
 - Refer "not published yet" note — intentional, fine for a demo build (decide in Phase 2).
 - Known optimistic-write limitation (A/B/check-in show success even if write silently fails
   offline) — by design, consistent, out of scope for closing.
 
-## Phase 2 — Strip dev tooling
-- [ ] Remove `apps/mobile/components/home/DevPanel.tsx`
-- [ ] Remove `__DEV__` blocks + "Restart onboarding" button in `apps/mobile/app/(tabs)/index.tsx`
-- [ ] Decide on Refer "not published yet" note (`apps/mobile/app/settings/refer.tsx`)
-- [ ] Sweep for stray `console.log` / `__DEV__` leaks
+## Phase 2 — Strip dev tooling ✅
+- [x] Removed `apps/mobile/components/home/DevPanel.tsx` (git rm)
+- [x] Removed `__DEV__` block + "Restart onboarding" button + orphaned `handleRestartOnboarding` and now-unused imports (router/supabase/Text/Pressable) in `(tabs)/index.tsx`
+- [x] Removed the dev-only occasion backdoor in `lib/occasions.ts` (`DEV_OCCASION_KEY` + the `findActiveOccasion` branch that injected a "Test Occasion" bypassing the 3–5 day window) — this was a dev backdoor in SHIPPING logic, not just UI
+- [x] Removed orphaned `resetGuSessionGuard` export (`useGivingUpTrigger.ts`); kept the underlying session guard used by real logic
+- [x] Cleaned stale DevPanel-referencing comments (`useDailyCheckIn.ts`, `database.ts`)
+- [x] Refer "not published yet" note: KEPT — it's accurate for an unpublished demo; removing it would imply a working referral link that doesn't exist
+- [x] Swept console.log/debugger/dev-TODO: none. Remaining `console.warn` are intentional best-effort error diagnostics in catch blocks (kept — improve prod observability); all `Alert.alert` are user-facing error/confirm UX (kept)
+- [x] Typecheck clean after removal
 
 ## Phase 3 — Clean build
 - [ ] App icon + splash logo

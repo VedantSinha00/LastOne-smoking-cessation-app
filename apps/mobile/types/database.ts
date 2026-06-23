@@ -1017,7 +1017,6 @@ export interface Database {
           tapped_learn_more?: boolean
         }
         Update: {
-          // shown_at writable for DevPanel interval-backdating only.
           shown_at?: string
           dismissed_at?: string | null
           tapped_learn_more?: boolean

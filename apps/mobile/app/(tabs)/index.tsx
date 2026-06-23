@@ -1,13 +1,12 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, ScrollView, Pressable, ActivityIndicator } from "react-native";
-import { useRouter, useFocusEffect } from "expo-router";
+import { View, ScrollView, ActivityIndicator } from "react-native";
+import { useFocusEffect } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "../../hooks/useAuth";
 import { useProfile } from "../../hooks/useProfile";
 import { useStage } from "../../hooks/useStage";
 import { useStreakRecord } from "../../hooks/useStreakRecord";
 import { useReturnModal } from "../../hooks/useReturnModal";
-import { supabase } from "../../lib/supabase";
 import { queryClient } from "../../lib/queryClient";
 import { queryKeys } from "../../lib/queryKeys";
 import { resolveStk2, resolveStk3 } from "../../lib/returnModal";
@@ -31,11 +30,9 @@ import { useDailyCheckIn } from "../../hooks/useDailyCheckIn";
 import { useGivingUpTrigger } from "../../hooks/useGivingUpTrigger";
 import { ReturnModalShort, type Stk2Choice } from "../../components/home/ReturnModalShort";
 import { ReturnModalLong, type Stk3Choice } from "../../components/home/ReturnModalLong";
-import { DevPanel } from "../../components/home/DevPanel";
 
 export default function Home() {
   const { user } = useAuth();
-  const router = useRouter();
   const { data: profile } = useProfile();
   const { stage, daysSinceQuit, quitDate, isLoading: stageLoading } = useStage();
   const { data: streak, isLoading: streakLoading } = useStreakRecord();
@@ -86,16 +83,6 @@ export default function Home() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, quitDate]);
-
-  // DEV ONLY: re-walk onboarding without re-authenticating. Flips
-  // onboarding_complete=false and routes back to OB-01 (stays signed in, so OB-05
-  // auto-skips). Existing quit_attempts/streak rows are kept and reused.
-  const handleRestartOnboarding = async () => {
-    if (!user) return;
-    await supabase.from("profiles").update({ onboarding_complete: false }).eq("id", user.id);
-    await queryClient.invalidateQueries({ queryKey: queryKeys.profile(user.id) });
-    router.replace("/onboarding");
-  };
 
   // ── Loading gate ──────────────────────────────────────────────────────────
   if (stageLoading || streakLoading || returnModal.isLoading) {
@@ -194,24 +181,6 @@ export default function Home() {
 
       {/* 8 — Health Milestones — full staged accordion inline on Home (design 1:1) */}
       <HealthMilestonesAccordion />
-
-      {__DEV__ && (
-        <>
-          <DevPanel
-            onUnlockReturnGate={() => setReturnResolved(false)}
-            onResetCheckIn={refreshCheckIn}
-          />
-          <Pressable
-            onPress={handleRestartOnboarding}
-            className="border border-border rounded-2xl p-4 items-center active:bg-muted"
-          >
-            <Text className="text-craving text-sm font-sans-bold">DEV · Restart onboarding</Text>
-            <Text className="text-muted-foreground text-xs mt-1 text-center leading-relaxed">
-              Resets onboarding_complete and returns to OB-01. Stays signed in; keeps your data.
-            </Text>
-          </Pressable>
-        </>
-      )}
       </ScrollView>
     </View>
   );

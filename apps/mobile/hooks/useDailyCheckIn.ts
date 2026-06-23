@@ -46,9 +46,9 @@ export function useDailyCheckIn(): DailyCheckIn {
   const storageKey = user ? `${STORAGE_PREFIX}${user.id}` : null
 
   // Re-read the stored flag against today's key. Re-run on mount, on storageKey/tz
-  // change, AND whenever the app returns to the foreground — the latter catches both
-  // midnight rollover and an external clear (e.g. the DevPanel reset button), neither
-  // of which would otherwise update this hook's in-memory state until a full remount.
+  // change, AND whenever the app returns to the foreground — the latter catches a
+  // midnight rollover, which would not otherwise update this hook's in-memory state
+  // until a full remount.
   useEffect(() => {
     let cancelled = false
     const read = () => {
