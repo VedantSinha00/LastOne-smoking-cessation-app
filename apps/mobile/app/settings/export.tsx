@@ -4,7 +4,6 @@ import { useRouter } from 'expo-router'
 import { useAuth } from '../../hooks/useAuth'
 import { EditScreen } from '../../components/settings/EditScreen'
 import { Button } from '../../components/ui/button'
-import { useToast } from '../../hooks/useToast'
 
 /**
  * PROF-13 — Data Export (§5 Flow 12). V1: confirmation only. The actual export
@@ -14,13 +13,13 @@ import { useToast } from '../../hooks/useToast'
 export default function DataExport() {
   const router = useRouter()
   const { user } = useAuth()
-  const toast = useToast()
   const [done, setDone] = useState(false)
   const email = user?.email ?? 'your email'
 
+  // The inline "Requested — it'll arrive… shortly." line below is the single
+  // confirmation (no toast — avoid two things confirming the same action).
   const requestExport = () => {
     setDone(true)
-    toast.show(`Your data will be sent to ${email} within a few minutes.`, { durationMs: 4000 })
   }
 
   return (

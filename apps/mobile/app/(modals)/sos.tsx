@@ -457,10 +457,17 @@ export default function SosModal() {
   // this is the same "how did that go?" close-out as GU-7, kept in-flow so it
   // never lands the user on a stale cross-modal screen.
   if (screen === "POSTCALL") {
-    const finishPostCall = () => {
+    // Match the tone to the outcome: if reaching out didn't help, acknowledge that
+    // it's hard rather than chirping "glad that helped" at someone still struggling.
+    const finishPostCall = (helped: boolean) => {
       router.back();
-      toast.show("Good that you reached out.");
+      toast.show(helped ? "Good that you reached out." : "This is tough, but you'll get through it.");
     };
+    const POSTCALL_OPTIONS: { label: string; helped: boolean }[] = [
+      { label: "Helped a lot", helped: true },
+      { label: "Helped a little", helped: true },
+      { label: "Didn't really help", helped: false },
+    ];
     return (
       <View className="flex-1 bg-secondary px-8 justify-center">
         <Pressable onPress={() => router.back()} hitSlop={12} className="absolute top-14 right-6">
@@ -468,10 +475,10 @@ export default function SosModal() {
         </Pressable>
         <Text className="text-foreground font-display text-2xl mb-8">How did that go?</Text>
         <View className="gap-3">
-          {["Helped a lot", "Helped a little", "Didn't really help"].map((label) => (
+          {POSTCALL_OPTIONS.map(({ label, helped }) => (
             <Pressable
               key={label}
-              onPress={finishPostCall}
+              onPress={() => finishPostCall(helped)}
               className="bg-card border-[1.5px] border-border rounded-2xl py-4 items-center active:bg-muted"
             >
               <Text className="text-foreground font-sans-bold text-[15px]">{label}</Text>

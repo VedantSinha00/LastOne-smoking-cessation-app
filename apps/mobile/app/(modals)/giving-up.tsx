@@ -144,7 +144,13 @@ export default function GivingUpExperience() {
   const logCallOutcome = (outcome: GuCallOutcome) => {
     patch({ support_call_outcome: outcome })
     close()
-    toast.show('Good that you reached out.')
+    // Match the tone to the outcome: if reaching out didn't help, acknowledge that
+    // it's hard rather than chirping "glad that helped" at someone still struggling.
+    if (outcome === 'didnt_help') {
+      toast.show("This is tough, but you'll get through it.")
+    } else {
+      toast.show('Good that you reached out.')
+    }
   }
 
   // ── GU-2 — Beat 1: Validation ───────────────────────────────────────────────

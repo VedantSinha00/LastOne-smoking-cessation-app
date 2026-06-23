@@ -9,7 +9,6 @@ import { exitToHome } from "../../lib/navigation";
 import { useStage } from "../../hooks/useStage";
 import { useCreateLog } from "../../hooks/useCreateLog";
 import { useDailyCheckIn } from "../../hooks/useDailyCheckIn";
-import { useToast } from "../../hooks/useToast";
 
 const MOODS = [
   { value: 1, emoji: "😞" },
@@ -45,7 +44,6 @@ export default function LogD() {
   const { markSatisfied } = useDailyCheckIn();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const toast = useToast();
   const { from } = useLocalSearchParams<{ from?: string }>();
 
   // Return to wherever the note flow was opened from. router.back() is
@@ -80,7 +78,8 @@ export default function LogD() {
         has_photo: false, // photo capture deferred
       });
       await markSatisfied();
-      toast.show("Note saved");
+      // No toast here — the full-screen "Saved." confirmation below is the single
+      // confirmation for this action (avoid a toast + screen saying the same thing).
       setIsSaved(true);
     } catch (e: any) {
       Alert.alert("Couldn't save", e.message);
