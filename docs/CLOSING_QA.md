@@ -34,16 +34,16 @@ Started 2026-06-23, branch `UI-Implementations`.
 ### Batch C — Crisis
 | Flow | Status | Notes |
 |---|---|---|
-| Log D — journal | ⬜ | |
-| SOS | ⬜ | |
-| Giving Up | ⬜ | |
+| Log D — journal | ✅ | Save disabled until text non-empty + while pending (no dup); mood optional; `from` param routes exit correctly (journal / settings-journal / home). |
+| SOS | ✅ | All SOS-3 outcome handlers guarded by `processing`; `same` re-enables + returns to SOS1; `smoked`→slip (no SOS confirm to reverse); escalation 24h window expiry on read; tool-score/outcome writes best-effort (never block flow); `selectTool` re-entry creates a fresh sos log per attempt (correct). No bugs. |
+| Giving Up | ✅ | evaluateGuTrigger gate ordering + condition precedence correct; resistance null-skips GU-3 (never shows 0); progress patches fire-and-forget; mid-flow exit leaves `dismissed_mid_flow` (spec-correct); registerShown/begin dismissal-count interaction nets to "max 3 no-tap sessions". useSupportPerson `configured`/`person` derive from one source (can't disagree). Defensive precall→resources fall-through if `person` goes null mid-flow — degrades gracefully, not a bug. No fixes. |
 
 ### Batch D — Data views
 | Flow | Status | Notes |
 |---|---|---|
-| Progress Dashboard | ⬜ | |
-| Insights | ⬜ | |
-| Tools | ⬜ | |
+| Progress Dashboard | ✅ | Read-only; memoized savings recalc via cache invalidation. savings.ts: paise integers (no float drift), smoke-free-days & cigarettes-smoked share the SAME attempt-window filter (deductions can't disagree), "5+"→5, all counters floor at 0, zero-states avoid "0 orders". Empty cpd/price → "set your scale" prompt. No bugs. |
+| Insights | ✅ | Read-only derivation; resistanceRate null (not NaN) at 0 denominator; journal filters empty notes; feed-order snapshot holds while a card is read (by design). Micro-issue: expandCard could double-count engagement +2 on rapid double-tap — analytics-only, self-correcting, not fixed. No user-facing bugs. |
+| Tools | ✅ | Library tool run calls ONLY updateToolScore — does NOT recordSosOutcome / getSosEscalation / confirmSmokeFreeDay / markSatisfied. Library use ≠ SOS use ≠ streak confirm, exactly per spec. No bugs. |
 
 ### Batch E — Goals / Games
 | Flow | Status | Notes |
