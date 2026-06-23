@@ -9,6 +9,7 @@ import { queryClient } from "../../lib/queryClient";
 import { deriveStage } from "../../lib/stage";
 import { FREEZE_MATRIX } from "../../lib/streak";
 import { reconcileNotifications } from "../../lib/notifications";
+import { channelFor } from "../../lib/notificationChannels";
 import { pauseStreak, resumeStreak } from "../../lib/streak";
 import { DEV_OCCASION_KEY } from "../../lib/occasions";
 import { clearSupportPerson } from "../../lib/givingUp";
@@ -291,6 +292,36 @@ export const DevPanel: React.FC<DevPanelProps> = ({ onUnlockReturnGate, onResetC
         return `• ${type} — ${when}`;
       });
       setLastResult(`scheduled (${scheduled.length}):\n${lines.join("\n")}`);
+    } catch (e: any) {
+      setLastResult(`ERROR: ${e.message}`);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  /**
+   * Fire a real notification in ~2s so the actual banner/look is observable
+   * (branded channel, title, icon) without waiting for a real trigger. Copy
+   * mirrors production. Background or lock the device after tapping to see the
+   * heads-up/lock-screen presentation. data.type sets the channel + tap route.
+   */
+  const fireTestNotification = async (
+    label: string,
+    title: string,
+    body: string,
+    type: string,
+  ) => {
+    setBusy(label);
+    try {
+      await Notifications.scheduleNotificationAsync({
+        content: { title, body, data: { type } },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+          seconds: 2,
+          channelId: channelFor(type),
+        },
+      });
+      setLastResult(`'${title}' fires in ~2s (channel: ${channelFor(type)}). Background the app to see the banner.`);
     } catch (e: any) {
       setLastResult(`ERROR: ${e.message}`);
     } finally {
@@ -950,6 +981,14 @@ export const DevPanel: React.FC<DevPanelProps> = ({ onUnlockReturnGate, onResetC
       <Text className="text-muted-foreground text-[11px] mb-1.5">
         Phase 5 — Notifications (set a Stage above, then Reconcile, then Dump)
       </Text>
+      <Text className="text-muted-foreground text-[11px] mb-1.5">
+        Preview the LOOK — fires a real notification in ~2s, then background the app
+      </Text>
+      <View className="flex-row gap-2 mb-2">
+        <View className="flex-1"><Btn label="Milestone" onPress={() => fireTestNotification("Milestone", "Milestone unlocked", "One week smoke-free — your lungs are already clearing.", "N-CON-01")} /></View>
+        <View className="flex-1"><Btn label="Check-in" onPress={() => fireTestNotification("Check-in", "Daily check-in", "Have you checked in today? A quick tap keeps your streak honest.", "N-STK-01")} /></View>
+        <View className="flex-1"><Btn label="Re-engage" onPress={() => fireTestNotification("Re-engage", "Still here for you", "Ready to pick things back up? Today's a good day to restart.", "N-PAU-01")} /></View>
+      </View>
       <View className="flex-row gap-2 mb-2">
         <View className="flex-1"><Btn label="Reconcile now" onPress={() => reconcileNow("Reconcile now")} /></View>
         <View className="flex-1"><Btn label="Dump scheduled" onPress={() => dumpScheduled("Dump scheduled")} /></View>
