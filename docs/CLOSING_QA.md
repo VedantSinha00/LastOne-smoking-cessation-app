@@ -48,14 +48,14 @@ Started 2026-06-23, branch `UI-Implementations`.
 ### Batch E — Goals / Games
 | Flow | Status | Notes |
 |---|---|---|
-| Personal Goals | ⬜ | |
-| Mini-Games | ⬜ | |
+| Personal Goals | ✅ | current_amount always SUM(top_up_log) (never stale col); 3-active cap; allocate over-limit disables Confirm + scoped-mode counts others against pool (sum≤total holds); all-zero short-circuits write; URL parse handles full/partial/fail/offline → manual via replace (no dead back-target); parseRupees ₹1 floor. Button disables onPress while loading → no double-tap dup. No bugs. |
+| Mini-Games | ✅ | lib/games pure (Fisher-Yates, match-by-faceId not glyph, echo length floor). useGameStreak: gap==0 → alreadyToday (no double-count, no week re-inc); gap==1 → +1; gap>1 → reset; milestone push fires only `!alreadyToday && isStreakMilestone` (no re-fire on replay). Idempotent day-keyed upsert. No bugs. |
 
 ### Batch F — Profile / Settings
 | Flow | Status | Notes |
 |---|---|---|
-| Profile root | ⬜ | |
-| Settings leaf screens | ⬜ | |
+| Profile root | ✅ | Reached from Home TopBar; category nav into settings/*. No bugs. |
+| Settings leaf screens | ✅ | Delete: requires exact "DELETE", clears SecureStore contact + cache + signOut, error resets busy. Support-person: phone SecureStore-only, normalizePhone validation, contact saved on every exit. CPD/price edits write change-log first (only if changed) then PATCH then dashboard-invalidate; quit-date → open attempt. ALL settings writes go through useSettings — delete.tsx is the ONLY direct supabase/signOut call in settings/ (no unguarded destructive action bypasses the hook). Button loading-guard blocks double-submit. No code bugs. ⚠ SHIP ITEM: delete_user_account RPC migration present locally but deploy status unverified — if not deployed on remote, Delete Account errors. |
 
 ---
 
@@ -82,6 +82,18 @@ _(running log — flow, symptom, fix, verified-by)_
 - **Verified:** typecheck clean.
 
 ---
+
+## Phase 1 — Result
+All 6 batches reviewed. 3 bugs found + fixed (all at the logging↔streak boundary):
+BUG-1 (check-in didn't advance streak), BUG-2 (slip retry double-applied side-effects),
+BUG-3 (slip nudge double-tap). Batches C–F clean. Typecheck clean throughout.
+
+**Open ship items (need user decision, not code):**
+- `delete_user_account` RPC: migration `20260614000001` present locally; deploy to remote
+  (`npx supabase db push`, permission-gated) or Delete Account errors. Memory said not-deployed.
+- Refer "not published yet" note — intentional, fine for a demo build (decide in Phase 2).
+- Known optimistic-write limitation (A/B/check-in show success even if write silently fails
+  offline) — by design, consistent, out of scope for closing.
 
 ## Phase 2 — Strip dev tooling
 - [ ] Remove `apps/mobile/components/home/DevPanel.tsx`
