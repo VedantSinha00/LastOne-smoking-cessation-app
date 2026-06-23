@@ -41,20 +41,12 @@ Then install the new APK from the printed build URL, and restart Metro with:
   no-op safely if the native module isn't in the running build.
 - **After rebuild:** native splash module guaranteed present → the held-splash
   behavior is reliable.
-- **STILL TODO at rebuild time (native config — not yet added):** add the splash
-  config + plugin to `app.json` so the OS shows the brand splash *instantly on
-  icon tap* (removes the blank gap before JS boots). Suggested:
-  ```jsonc
-  "plugins": [
-    // ...existing...
-    ["expo-splash-screen", {
-      "backgroundColor": "#FBFAF9",
-      "image": "./assets/<splash-image>.png",
-      "imageWidth": 200
-    }]
-  ]
-  ```
-  (Confirm/author the splash asset path in `assets/` before adding.)
+- **DONE (2026-06-24):** `expo-splash-screen` plugin added to `app.json` with the
+  brand logo — image `./assets/splash-icon.png` (1024 transparent lungs logo),
+  `imageWidth: 200`, `backgroundColor: #FFFFFF` (white, per design choice). Takes
+  effect on the next EAS build (native config). Pairs with the launcher icon
+  `./assets/icon.png` (1024, logo at 66% on white, Android-mask-safe). Clean
+  transparent master kept at `./assets/logo-source.png`.
 
 ### 3. DM Sans + Space Grotesk 600 (SemiBold) weights
 - **Status:** `DMSans_600SemiBold` + `SpaceGrotesk_600SemiBold` now imported and

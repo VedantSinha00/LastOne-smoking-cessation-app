@@ -109,5 +109,10 @@ BUG-3 (slip nudge double-tap). Batches C–F clean. Typecheck clean throughout.
 - [x] Typecheck clean after removal
 
 ## Phase 3 — Clean build
-- [ ] App icon + splash logo
-- [ ] EAS build
+- [x] App icon — `assets/icon.png` 1024×1024 true PNG; lungs+dot logo at ~66% on white,
+      verified safe under Android circle/squircle/square masks. Source: user's remove.bg
+      cut-out → padded/centered. Clean transparent master kept at `assets/logo-source.png`.
+- [x] Splash logo — `assets/splash-icon.png` (1024 transparent) + `expo-splash-screen`
+      plugin in app.json (white bg, imageWidth 200). Takes effect on next EAS build.
+- [ ] EAS production build (user runs) — will also bake in 3 other rebuild-gated items
+      already coded: splash, SemiBold(600) font weights, Android notification channels.
