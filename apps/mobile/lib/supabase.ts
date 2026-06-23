@@ -116,16 +116,32 @@ async function clearChunks(key: string): Promise<void> {
   }
 }
 
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || "https://placeholder-url.supabase.co";
-const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || "placeholder-anon-key";
+const PLACEHOLDER_URL = "https://placeholder-url.supabase.co";
+const PLACEHOLDER_KEY = "placeholder-anon-key";
 
-if (
-  supabaseUrl === "https://placeholder-url.supabase.co" ||
-  supabaseAnonKey === "placeholder-anon-key"
-) {
-  console.warn(
-    "Warning: Supabase credentials are not configured. Set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY in your env configuration."
-  );
+const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || PLACEHOLDER_URL;
+const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || PLACEHOLDER_KEY;
+
+// Misconfiguration guard. EXPO_PUBLIC_* vars are inlined AT BUILD TIME — a cloud
+// (EAS) build that lacks them ships this placeholder and the app can't reach the
+// backend (auth shows "address not found"). This is exactly how the first clean
+// preview build broke (2026-06-24). We do NOT throw here — a module-load throw
+// would hard-crash the app on launch, which is worse than a reachable error. We
+// log LOUDLY instead, and escalate to console.error in release builds (where the
+// old console.warn was invisible). To fix: register the vars with EAS
+// (`eas env:list --environment preview`) and rebuild. See docs/REBUILD_CHECKLIST.md.
+export const supabaseConfigInvalid =
+  supabaseUrl === PLACEHOLDER_URL || supabaseAnonKey === PLACEHOLDER_KEY;
+
+if (supabaseConfigInvalid) {
+  const msg =
+    "Supabase credentials are NOT configured — using a placeholder URL, so the " +
+    "backend is unreachable. Set EXPO_PUBLIC_SUPABASE_URL and " +
+    "EXPO_PUBLIC_SUPABASE_ANON_KEY (local .env for dev; EAS env vars for cloud builds).";
+  // Release builds previously swallowed this (console.warn is invisible in a
+  // shipped APK's default logs) — use console.error so it surfaces everywhere.
+  if (__DEV__) console.warn(msg);
+  else console.error(msg);
 }
 
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {

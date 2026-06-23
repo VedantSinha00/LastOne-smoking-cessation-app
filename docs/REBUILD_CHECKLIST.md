@@ -16,6 +16,30 @@ Then install the new APK from the printed build URL, and restart Metro with:
 
 ---
 
+## ⚠️ BEFORE ANY CLOUD (preview/production) BUILD — env vars
+
+`EXPO_PUBLIC_*` vars are **inlined at build time**. A local `.env` is **NOT** uploaded
+to EAS, so a cloud build with no EAS env vars silently bakes in the placeholder in
+`lib/supabase.ts` → the shipped app can't reach the backend (auth shows
+**"address not found" / placeholder-url.supabase.co**). This is exactly how the first
+clean preview build broke (2026-06-24).
+
+**Required vars:** `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY`
+(see `apps/mobile/.env.example`). Anon/publishable key is public by design (RLS
+protects data) → safe to store on EAS as `plaintext`.
+
+**Already registered** on EAS for `preview` + `production` (2026-06-24). To verify
+before building:
+```
+cd apps/mobile
+npx eas-cli@latest env:list --environment preview
+```
+The build log must say *"Environment variables … loaded … EXPO_PUBLIC_SUPABASE_*"*
+(NOT *"No environment variables … found"*). `development` env is intentionally
+empty — dev-client builds read the local `.env` via Metro.
+
+---
+
 ## Pending items (do all in the next rebuild)
 
 ### 1. `expo-blur` — the Log "+" menu + SOS blur  ✅ DONE (no rebuild needed)
