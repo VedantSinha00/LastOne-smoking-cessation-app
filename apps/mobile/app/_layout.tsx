@@ -23,6 +23,7 @@ import { useQuery } from "@tanstack/react-query";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { AuthProvider } from "../lib/auth-context";
 import { LogSheetProvider } from "../hooks/useLogSheet";
+import { ToastProvider } from "../hooks/useToast";
 import { useAuth } from "../hooks/useAuth";
 import { queryClient } from "../lib/queryClient";
 import { persistOptions } from "../lib/queryPersister";
@@ -181,9 +182,13 @@ export default function RootLayout() {
             root so any "+" (tab bar, settings nav bar) can open it; the overlay UI
             itself is rendered inside each screen tree that shows a bottom bar. */}
         <LogSheetProvider>
-          {/* Dark status-bar icons for the light theme background */}
-          <StatusBar style="dark" />
-          <RootLayoutNav />
+          {/* Branded in-app toast — any screen calls useToast().show(); the pill
+              renders at root so it floats above all screens. */}
+          <ToastProvider>
+            {/* Dark status-bar icons for the light theme background */}
+            <StatusBar style="dark" />
+            <RootLayoutNav />
+          </ToastProvider>
         </LogSheetProvider>
       </AuthProvider>
     </PersistQueryClientProvider>

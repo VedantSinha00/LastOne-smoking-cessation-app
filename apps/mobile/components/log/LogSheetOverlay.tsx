@@ -94,54 +94,56 @@ export function LogSheetOverlay() {
     <View
       // Absolute fill over the live screen. zIndex/elevation above the SOS FAB
       // (which is hidden anyway while the sheet is open, but be explicit).
+      // The WHOLE container owns the drag gesture, so a downward swipe anywhere on
+      // the screen — over the blur, the backdrop, or the sheet — dismisses it. The
+      // PanResponder only claims a deliberate downward move, so a plain tap still
+      // falls through to the backdrop Pressable (tap-to-close) and the cards.
+      {...panResponder.panHandlers}
       style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, justifyContent: "flex-end", zIndex: 100, elevation: 100 }}
     >
       {/* Blur + dim the live screen behind; the Pressable catches taps to dismiss. */}
       <BlurBackdrop intensity={35} tint="dark" dim="rgba(0,0,0,0.12)" />
       <Pressable style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} onPress={close} />
 
-      {/* Animated.View carries the slide; the inner plain View owns the drag (the
-          config that reliably captures the gesture), wrapping the WHOLE sheet so
-          the user can grab it anywhere. */}
+      {/* Animated.View carries the slide transform; the drag is owned by the
+          full-screen container above. */}
       <Animated.View
         className="bg-card px-5 pt-3"
         style={{ borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingBottom: 32 + insets.bottom, transform: [{ translateY }] }}
       >
-        <View {...panResponder.panHandlers}>
-          <View className="self-center w-10 h-1 rounded-full bg-border" style={{ marginBottom: 20 }} />
+        <View className="self-center w-10 h-1 rounded-full bg-border" style={{ marginBottom: 20 }} />
 
-          <View style={{ marginBottom: 20 }}>
-            <Text className="text-foreground font-sans-bold" style={{ fontSize: 28, letterSpacing: -0.5 }}>
-              Log
-            </Text>
-          </View>
+        <View style={{ marginBottom: 20 }}>
+          <Text className="text-foreground font-sans-bold" style={{ fontSize: 28, letterSpacing: -0.5 }}>
+            Log
+          </Text>
+        </View>
 
-          {/* 2×2 grid of square option cards (design: 2px black border, radius 20) */}
-          <View className="flex-row flex-wrap" style={{ gap: 12 }}>
-            {OPTIONS.map((o) => (
-              <Pressable
-                key={o.route}
-                onPress={() => pick(o.route)}
-                className="bg-card active:opacity-90"
-                style={{
-                  width: "47.5%",
-                  aspectRatio: 1,
-                  borderWidth: 2,
-                  borderColor: "#0D0D0D",
-                  borderRadius: 20,
-                  padding: 22,
-                  justifyContent: "center",
-                }}
-              >
-                <Text className="font-sans-bold" style={{ fontSize: 18, lineHeight: 23, letterSpacing: -0.3, color: "#0D0D0D" }}>
-                  {o.title}
-                </Text>
-                <Text className="font-sans-medium" style={{ fontSize: 14, marginTop: 6, color: "#888888" }}>
-                  {o.subtitle}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
+        {/* 2×2 grid of square option cards (design: 2px black border, radius 20) */}
+        <View className="flex-row flex-wrap" style={{ gap: 12 }}>
+          {OPTIONS.map((o) => (
+            <Pressable
+              key={o.route}
+              onPress={() => pick(o.route)}
+              className="bg-card active:opacity-90"
+              style={{
+                width: "47.5%",
+                aspectRatio: 1,
+                borderWidth: 2,
+                borderColor: "#0D0D0D",
+                borderRadius: 20,
+                padding: 22,
+                justifyContent: "center",
+              }}
+            >
+              <Text className="font-sans-bold" style={{ fontSize: 18, lineHeight: 23, letterSpacing: -0.3, color: "#0D0D0D" }}>
+                {o.title}
+              </Text>
+              <Text className="font-sans-medium" style={{ fontSize: 14, marginTop: 6, color: "#888888" }}>
+                {o.subtitle}
+              </Text>
+            </Pressable>
+          ))}
         </View>
       </Animated.View>
     </View>

@@ -10,6 +10,7 @@ import { useUpdateLog } from "../../hooks/useUpdateLog";
 import { useDailyCheckIn } from "../../hooks/useDailyCheckIn";
 import { queryKeys } from "../../lib/queryKeys";
 import { WHAT_HELPED_TOKENS } from "../../lib/logOptions";
+import { FADE_IN_MS, FADE_OUT_MS, holdForText } from "../../lib/fadeTiming";
 import { confirmSmokeFreeDay } from "../../lib/streak";
 
 /**
@@ -258,9 +259,9 @@ export default function LogB() {
  * whole screen away and exits (onDone). Matches the SOS success screen: 0.5s in →
  * 3s hold → 3s out.
  */
-const LOGGED_FADE_IN = 500;
-const LOGGED_HOLD = 3000;
-const LOGGED_FADE_OUT = 3000;
+// Body copy drives the hold (reading time scales with length) — see lib/fadeTiming.
+const LOGGED_BODY = "Keep going. You're building something real.";
+const LOGGED_HOLD = holdForText(LOGGED_BODY);
 
 const LoggedScreen: React.FC<{ onDone: () => void }> = ({ onDone }) => {
   const insets = useSafeAreaInsets();
@@ -268,9 +269,9 @@ const LoggedScreen: React.FC<{ onDone: () => void }> = ({ onDone }) => {
 
   useEffect(() => {
     const anim = Animated.sequence([
-      Animated.timing(opacity, { toValue: 1, duration: LOGGED_FADE_IN, easing: Easing.out(Easing.ease), useNativeDriver: true }),
+      Animated.timing(opacity, { toValue: 1, duration: FADE_IN_MS, easing: Easing.out(Easing.ease), useNativeDriver: true }),
       Animated.delay(LOGGED_HOLD),
-      Animated.timing(opacity, { toValue: 0, duration: LOGGED_FADE_OUT, easing: Easing.in(Easing.ease), useNativeDriver: true }),
+      Animated.timing(opacity, { toValue: 0, duration: FADE_OUT_MS, easing: Easing.in(Easing.ease), useNativeDriver: true }),
     ]);
     anim.start(({ finished }) => {
       if (finished) onDone();
@@ -293,7 +294,7 @@ const LoggedScreen: React.FC<{ onDone: () => void }> = ({ onDone }) => {
         Logged.
       </Text>
       <Text className="text-muted-foreground text-center" style={{ fontSize: 15, lineHeight: 24, maxWidth: 240 }}>
-        Keep going. You&apos;re building something real.
+        {LOGGED_BODY}
       </Text>
     </Animated.View>
   );

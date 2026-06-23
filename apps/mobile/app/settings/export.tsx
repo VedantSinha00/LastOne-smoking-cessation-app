@@ -1,9 +1,10 @@
 import React, { useState } from 'react'
-import { Text, Platform, ToastAndroid, Alert } from 'react-native'
+import { Text } from 'react-native'
 import { useRouter } from 'expo-router'
 import { useAuth } from '../../hooks/useAuth'
 import { EditScreen } from '../../components/settings/EditScreen'
 import { Button } from '../../components/ui/button'
+import { useToast } from '../../hooks/useToast'
 
 /**
  * PROF-13 — Data Export (§5 Flow 12). V1: confirmation only. The actual export
@@ -13,14 +14,13 @@ import { Button } from '../../components/ui/button'
 export default function DataExport() {
   const router = useRouter()
   const { user } = useAuth()
+  const toast = useToast()
   const [done, setDone] = useState(false)
   const email = user?.email ?? 'your email'
 
   const requestExport = () => {
     setDone(true)
-    const msg = `Your data will be sent to ${email} within a few minutes.`
-    if (Platform.OS === 'android') ToastAndroid.show(msg, ToastAndroid.LONG)
-    else Alert.alert('Export requested', msg)
+    toast.show(`Your data will be sent to ${email} within a few minutes.`, { durationMs: 4000 })
   }
 
   return (

@@ -1,5 +1,7 @@
-import React, { useState } from "react";
-import { View, Text, ScrollView, Pressable, TextInput, ToastAndroid, Platform, Alert } from "react-native";
+import React, { useEffect, useState } from "react";
+import { View, Text, ScrollView, Pressable, TextInput, Alert } from "react-native";
+import Animated, { useSharedValue, useAnimatedStyle, withSequence, withDelay, withTiming, Easing, runOnJS } from "react-native-reanimated";
+import { FADE_IN_MS, FADE_OUT_MS, holdForText } from "../../lib/fadeTiming";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ArrowLeft, Check } from "lucide-react-native";
@@ -7,6 +9,7 @@ import { exitToHome } from "../../lib/navigation";
 import { useStage } from "../../hooks/useStage";
 import { useCreateLog } from "../../hooks/useCreateLog";
 import { useDailyCheckIn } from "../../hooks/useDailyCheckIn";
+import { useToast } from "../../hooks/useToast";
 
 const MOODS = [
   { value: 1, emoji: "😞" },
@@ -42,6 +45,7 @@ export default function LogD() {
   const { markSatisfied } = useDailyCheckIn();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const toast = useToast();
   const { from } = useLocalSearchParams<{ from?: string }>();
 
   // Return to wherever the note flow was opened from. router.back() is
@@ -76,7 +80,7 @@ export default function LogD() {
         has_photo: false, // photo capture deferred
       });
       await markSatisfied();
-      if (Platform.OS === "android") ToastAndroid.show("Note saved", ToastAndroid.SHORT);
+      toast.show("Note saved");
       setIsSaved(true);
     } catch (e: any) {
       Alert.alert("Couldn't save", e.message);
@@ -84,56 +88,10 @@ export default function LogD() {
   };
 
   // ---- Saved confirmation screen ----
+  // No button: it fades in, holds long enough to read, then fades itself away and
+  // exits the flow — matching the SOS success screen's auto-dismiss.
   if (isSaved) {
-    return (
-      <View className="flex-1 bg-background justify-center items-center px-6" style={{ paddingTop: insets.top }}>
-        {/* Green circle checkmark */}
-        <View
-          style={{
-            width: 64,
-            height: 64,
-            borderRadius: 32,
-            backgroundColor: "#84C524",
-            alignItems: "center",
-            justifyContent: "center",
-            marginBottom: 24,
-            shadowColor: "#84C524",
-            shadowOpacity: 0.2,
-            shadowRadius: 8,
-            shadowOffset: { width: 0, height: 4 },
-            elevation: 4,
-          }}
-        >
-          <Check size={28} color="#FFFFFF" strokeWidth={3} />
-        </View>
-
-        <Text className="text-foreground font-display text-3xl text-center" style={{ marginBottom: 10 }}>
-          Saved.
-        </Text>
-
-        <Text className="text-muted-foreground text-base text-center font-sans" style={{ marginBottom: 40, maxWidth: 240 }}>
-          Good to get it out.
-        </Text>
-
-        <Pressable
-          onPress={exit}
-          style={{
-            width: "100%",
-            maxWidth: 320,
-            backgroundColor: "#0F0D0B",
-            borderRadius: 16,
-            height: 52,
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-          className="active:opacity-90"
-        >
-          <Text className="text-white font-sans-bold" style={{ fontSize: 15 }}>
-            Done
-          </Text>
-        </Pressable>
-      </View>
-    );
+    return <SavedScreen onDone={exit} insetTop={insets.top} />;
   }
 
   // ---- Note writing screen ----
@@ -256,3 +214,65 @@ export default function LogD() {
     </View>
   );
 }
+
+/**
+ * Saved confirmation — no button. Fades in, holds long enough to read, then fades
+ * the whole screen away and exits the flow (onDone). Mirrors the SOS success
+ * screen's timing: 0.5s in → 2.2s hold → 0.8s out.
+ */
+// Body copy drives the hold (reading time scales with length) — see lib/fadeTiming.
+const SAVED_BODY = "Good to get it out.";
+const SAVED_HOLD = holdForText(SAVED_BODY);
+
+const SavedScreen: React.FC<{ onDone: () => void; insetTop: number }> = ({ onDone, insetTop }) => {
+  const opacity = useSharedValue(0);
+
+  useEffect(() => {
+    opacity.value = withSequence(
+      withTiming(1, { duration: FADE_IN_MS, easing: Easing.out(Easing.ease) }),
+      withDelay(
+        SAVED_HOLD,
+        withTiming(0, { duration: FADE_OUT_MS, easing: Easing.in(Easing.ease) }, (finished) => {
+          if (finished) runOnJS(onDone)();
+        }),
+      ),
+    );
+  }, [opacity, onDone]);
+
+  const style = useAnimatedStyle(() => ({ opacity: opacity.value }));
+
+  return (
+    <Animated.View
+      className="flex-1 bg-background justify-center items-center px-6"
+      style={[{ paddingTop: insetTop }, style]}
+    >
+      {/* Green circle checkmark */}
+      <View
+        style={{
+          width: 64,
+          height: 64,
+          borderRadius: 32,
+          backgroundColor: "#84C524",
+          alignItems: "center",
+          justifyContent: "center",
+          marginBottom: 24,
+          shadowColor: "#84C524",
+          shadowOpacity: 0.2,
+          shadowRadius: 8,
+          shadowOffset: { width: 0, height: 4 },
+          elevation: 4,
+        }}
+      >
+        <Check size={28} color="#FFFFFF" strokeWidth={3} />
+      </View>
+
+      <Text className="text-foreground font-display text-3xl text-center" style={{ marginBottom: 10 }}>
+        Saved.
+      </Text>
+
+      <Text className="text-muted-foreground text-base text-center font-sans" style={{ maxWidth: 240 }}>
+        {SAVED_BODY}
+      </Text>
+    </Animated.View>
+  );
+};

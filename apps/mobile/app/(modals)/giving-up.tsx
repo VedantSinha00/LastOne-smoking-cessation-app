@@ -4,9 +4,6 @@ import {
   Text,
   Pressable,
   Linking,
-  Platform,
-  ToastAndroid,
-  Alert,
 } from 'react-native'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { useQuery } from '@tanstack/react-query'
@@ -26,15 +23,11 @@ import {
   whatsappUrl,
 } from '../../lib/givingUp'
 import { Button } from '../../components/ui/button'
+import { useToast } from '../../hooks/useToast'
 import type { Database, GuCallOutcome } from '../../types/database'
 
 type GuEventUpdate = Database['public']['Tables']['giving_up_event']['Update']
 type Screen = 'beat1' | 'beat2' | 'beat3' | 'talk' | 'precall' | 'postcall' | 'resources'
-
-const toast = (msg: string) => {
-  if (Platform.OS === 'android') ToastAndroid.show(msg, ToastAndroid.SHORT)
-  else Alert.alert(msg)
-}
 
 /**
  * Tier 1–3 Giving Up experience (GU-2 → GU-8). Entered from the GU-1 home
@@ -46,6 +39,7 @@ const toast = (msg: string) => {
  */
 export default function GivingUpExperience() {
   const router = useRouter()
+  const toast = useToast()
   const params = useLocalSearchParams<{ eventId?: string; screen?: string }>()
   const { user } = useAuth()
   const { data: profile } = useProfile()
@@ -150,7 +144,7 @@ export default function GivingUpExperience() {
   const logCallOutcome = (outcome: GuCallOutcome) => {
     patch({ support_call_outcome: outcome })
     close()
-    toast('Good that you reached out.')
+    toast.show('Good that you reached out.')
   }
 
   // ── GU-2 — Beat 1: Validation ───────────────────────────────────────────────

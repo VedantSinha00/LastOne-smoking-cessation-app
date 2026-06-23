@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { View, Text, ScrollView, Pressable, ActivityIndicator, Dimensions, Linking, Platform, ToastAndroid, Alert } from "react-native";
+import { View, Text, ScrollView, Pressable, ActivityIndicator, Dimensions, Linking } from "react-native";
 import Animated, { useSharedValue, useAnimatedStyle, withTiming, withSequence, withDelay, Easing, runOnJS } from "react-native-reanimated";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -15,6 +15,8 @@ import { useUpdateLog } from "../../hooks/useUpdateLog";
 import { useDailyCheckIn } from "../../hooks/useDailyCheckIn";
 import { ToolRunner } from "../../components/coping/ToolRunner";
 import { BlurBackdrop } from "../../components/ui/BlurBackdrop";
+import { useToast } from "../../hooks/useToast";
+import { FADE_IN_MS, FADE_OUT_MS, holdForText } from "../../lib/fadeTiming";
 import { queryKeys } from "../../lib/queryKeys";
 import {
   updateToolScore,
@@ -104,6 +106,7 @@ function SosHeader({ onClose }: { onClose: () => void }) {
 export default function SosModal() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const toast = useToast();
   const { from } = useLocalSearchParams<{ from?: string }>();
   // Entered from Flow A "get help": skip the popup gate and show the design's
   // full-page A3 tool list instead of the centered popup card. Same data/logic.
@@ -456,9 +459,7 @@ export default function SosModal() {
   if (screen === "POSTCALL") {
     const finishPostCall = () => {
       router.back();
-      const msg = "Good that you reached out.";
-      if (Platform.OS === "android") ToastAndroid.show(msg, ToastAndroid.SHORT);
-      else Alert.alert(msg);
+      toast.show("Good that you reached out.");
     };
     return (
       <View className="flex-1 bg-secondary px-8 justify-center">
@@ -543,19 +544,20 @@ export default function SosModal() {
  * the whole screen away and dismisses the flow (onDone). Timing: 0.5s in → 3s
  * hold → 3s out (≈6.5s total), so the user has ample time to read before it goes.
  */
-const SUCCESS_FADE_IN = 500;
-const SUCCESS_HOLD = 3000;
-const SUCCESS_FADE_OUT = 3000;
+// Body copy drives the hold (reading time scales with length) — see lib/fadeTiming.
+const SUCCESS_BODY =
+  "You rode it out — that's one more time the urge didn't win. Each one rewires it a little.";
+const SUCCESS_HOLD = holdForText(SUCCESS_BODY);
 
 const SuccessScreen: React.FC<{ onDone: () => void }> = ({ onDone }) => {
   const opacity = useSharedValue(0);
 
   useEffect(() => {
     opacity.value = withSequence(
-      withTiming(1, { duration: SUCCESS_FADE_IN, easing: Easing.out(Easing.ease) }),
+      withTiming(1, { duration: FADE_IN_MS, easing: Easing.out(Easing.ease) }),
       withDelay(
         SUCCESS_HOLD,
-        withTiming(0, { duration: SUCCESS_FADE_OUT, easing: Easing.in(Easing.ease) }, (finished) => {
+        withTiming(0, { duration: FADE_OUT_MS, easing: Easing.in(Easing.ease) }, (finished) => {
           if (finished) runOnJS(onDone)();
         }),
       ),
@@ -573,7 +575,7 @@ const SuccessScreen: React.FC<{ onDone: () => void }> = ({ onDone }) => {
         Craving beaten.
       </Text>
       <Text className="text-muted-foreground text-[15px] text-center leading-relaxed" style={{ maxWidth: 280 }}>
-        You rode it out — that&apos;s one more time the urge didn&apos;t win. Each one rewires it a little.
+        {SUCCESS_BODY}
       </Text>
     </Animated.View>
   );
