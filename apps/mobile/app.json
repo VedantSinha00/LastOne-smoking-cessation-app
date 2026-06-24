@@ -9,9 +9,7 @@
     "updates": {
       "url": "https://u.expo.dev/68e4bfb9-8c96-4758-9baf-37c35cf4a80b"
     },
-    "runtimeVersion": {
-      "policy": "fingerprint"
-    },
+    "runtimeVersion": "1.0.0",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.lastone.app",

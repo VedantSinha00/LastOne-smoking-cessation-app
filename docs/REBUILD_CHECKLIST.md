@@ -85,11 +85,17 @@ empty — dev-client builds read the local `.env` via Metro.
 
 ### 5. `expo-updates` — OTA updates + in-app "Update ready" banner
 - **Status:** `expo-updates@29.0.18` installed (SDK 54). `app.json` has
-  `updates.url` (EAS Update endpoint for this project) + `runtimeVersion.policy:
-  "fingerprint"`. `eas.json` build profiles carry a `channel` (`preview` /
-  `production`). `components/UpdateBanner.tsx` checks for a new JS bundle on
-  launch + foreground, downloads it, and shows a one-tap "Restart" banner;
-  mounted at root in `app/_layout.tsx`. No-ops in dev / Expo Go.
+  `updates.url` (EAS Update endpoint for this project) + an EXPLICIT
+  `runtimeVersion: "1.0.0"`. `eas.json` build profiles carry a `channel`
+  (`preview` / `production`). `components/UpdateBanner.tsx` checks for a new JS
+  bundle on launch + foreground, downloads it, and shows a one-tap "Restart"
+  banner; mounted at root in `app/_layout.tsx`. No-ops in dev / Expo Go.
+- **runtimeVersion is an explicit string, NOT the `fingerprint` policy.** The
+  fingerprint policy failed the "Configure expo-updates" EAS build phase
+  (build `a505dfa3`, 2026-06-24). An explicit string is bulletproof; the tradeoff
+  is YOU must bump it (e.g. → "1.1.0") whenever a native change ships, so OTA
+  updates aren't delivered to binaries that can't run them. Bump it together with
+  the items in this checklist.
 - **Why a rebuild:** `expo-updates` is a native module + native config (the
   update URL/runtimeVersion are baked into the binary). It is INERT until the
   **first build that includes it** is installed. Until then, `Updates.isEnabled`
