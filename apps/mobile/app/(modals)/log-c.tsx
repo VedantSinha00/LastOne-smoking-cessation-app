@@ -1,7 +1,8 @@
 import React, { useRef, useState } from "react";
-import { View, Text, ScrollView, Pressable, Alert } from "react-native";
+import { View, Text, ScrollView, Pressable } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Heart, X, Plus, Minus, Check, ArrowLeft, AlertTriangle } from "lucide-react-native";
+import { useToast } from "../../hooks/useToast";
 import { exitToHome } from "../../lib/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
@@ -62,6 +63,7 @@ export default function LogC() {
   const qc = useQueryClient();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const toast = useToast();
 
   // Streak length BEFORE this slip — captured once on mount so the "still winning"
   // card can say "after N smoke-free days" (the slip itself may reset it).
@@ -157,7 +159,7 @@ export default function LogC() {
       }
       setScreen("C3");
     } catch (e: any) {
-      Alert.alert("Couldn't save", e.message);
+      toast.show(e.message ?? "Couldn't save. Please try again.", { variant: "error" });
     } finally {
       setCommitting(false);
     }

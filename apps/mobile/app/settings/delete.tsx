@@ -1,7 +1,8 @@
 import React, { useState } from 'react'
-import { View, Text, TextInput, Alert } from 'react-native'
+import { View, Text, TextInput } from 'react-native'
 import { useRouter } from 'expo-router'
 import { useAuth } from '../../hooks/useAuth'
+import { useToast } from '../../hooks/useToast'
 import { deleteAccount } from '../../hooks/useSettings'
 import { clearSupportPerson } from '../../lib/givingUp'
 import { queryClient } from '../../lib/queryClient'
@@ -18,6 +19,7 @@ import { DELETE_CONFIRM_WORD } from '../../lib/settings'
 export default function DeleteAccount() {
   const router = useRouter()
   const { user, signOut } = useAuth()
+  const toast = useToast()
   const [confirm, setConfirm] = useState('')
   const [busy, setBusy] = useState(false)
 
@@ -34,7 +36,9 @@ export default function DeleteAccount() {
       await signOut() // routes back to onboarding/landing
     } catch (e) {
       setBusy(false)
-      Alert.alert('Could not delete account', e instanceof Error ? e.message : 'Try again.')
+      toast.show(e instanceof Error ? e.message : 'Could not delete account. Try again.', {
+        variant: 'error',
+      })
     }
   }
 

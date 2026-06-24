@@ -12,6 +12,8 @@
  * counters which compute in paise. Conversion happens once, at the GOAL-10 boundary.
  */
 
+import AsyncStorage from '@react-native-async-storage/async-storage'
+import { differenceInCalendarDays, parseISO } from 'date-fns'
 import type { Database } from '../types/database'
 
 export type GoalRow = Database['public']['Tables']['goal']['Row']
@@ -146,4 +148,57 @@ export function allocationState(
 /** Percentage mode: rupee_equivalent = (pct / 100) × total_saved (Spec §B2). */
 export function pctToRupees(pct: number, totalSavedRupees: number): number {
   return Math.floor((pct / 100) * totalSavedRupees)
+}
+
+// ── Home "set a personal goal" prompt dismissal (device-side) ─────────────────
+// The Home prompt that nudges goalless users to create their first goal. Dismiss
+// behaviour: each dismiss hides it for the session and snoozes it for a cooldown;
+// it reappears on the next app open AFTER the cooldown. The SECOND dismiss
+// suppresses it permanently. Only relevant while the user has no active goal —
+// once a goal exists the real goal card takes over regardless of this state.
+
+const GOAL_PROMPT_COOLDOWN_DAYS = 4
+const goalPromptKey = (userId: string) => `goal_prompt_dismiss:${userId}`
+
+interface GoalPromptDismissState {
+  count: number
+  /** ISO timestamp of the most recent dismiss. */
+  lastDismissedAt: string
+}
+
+export async function getGoalPromptDismiss(userId: string): Promise<GoalPromptDismissState | null> {
+  const raw = await AsyncStorage.getItem(goalPromptKey(userId))
+  if (!raw) return null
+  try {
+    return JSON.parse(raw) as GoalPromptDismissState
+  } catch {
+    return null
+  }
+}
+
+/** Record a dismiss (called on cross tap). Returns the new state. */
+export async function dismissGoalPrompt(
+  userId: string,
+  now: Date = new Date(),
+): Promise<GoalPromptDismissState> {
+  const prev = await getGoalPromptDismiss(userId)
+  const next: GoalPromptDismissState = {
+    count: (prev?.count ?? 0) + 1,
+    lastDismissedAt: now.toISOString(),
+  }
+  await AsyncStorage.setItem(goalPromptKey(userId), JSON.stringify(next))
+  return next
+}
+
+/**
+ * Whether the prompt may show right now, given its dismiss state. Permanently
+ * hidden after 2 dismisses; otherwise hidden until the cooldown elapses.
+ */
+export function goalPromptVisible(
+  state: GoalPromptDismissState | null,
+  now: Date = new Date(),
+): boolean {
+  if (!state) return true
+  if (state.count >= 2) return false
+  return differenceInCalendarDays(now, parseISO(state.lastDismissedAt)) >= GOAL_PROMPT_COOLDOWN_DAYS
 }

@@ -1,9 +1,10 @@
 import React, { useState } from 'react'
-import { View, Text, Pressable, TextInput, ScrollView, Modal, Alert } from 'react-native'
+import { View, Text, Pressable, TextInput, ScrollView, Modal } from 'react-native'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { format, parseISO } from 'date-fns'
 import { useGoals, useTopUp, useTopUpHistory, useUpdateGoal } from '../../hooks/useGoals'
 import { useDashboard } from '../../hooks/useDashboard'
+import { useConfirm } from '../../hooks/useConfirm'
 import { formatGoalRupees, parseRupees } from '../../lib/goals'
 import { GoalProgressBar, GoalThumb } from '../../components/goals/GoalCard'
 import { Card } from '../../components/ui/Card'
@@ -26,6 +27,7 @@ export default function GoalDetail() {
   const d = useDashboard()
   const topUp = useTopUp()
   const updateGoal = useUpdateGoal()
+  const confirm = useConfirm()
   const { data: topUps } = useTopUpHistory(goalId ?? null)
 
   const [topUpVisible, setTopUpVisible] = useState(false)
@@ -73,18 +75,16 @@ export default function GoalDetail() {
     router.dismissTo('/goals')
   }
 
-  const retire = () => {
-    Alert.alert('Retire this goal?', 'It moves to your history and frees up a goal slot.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Retire',
-        style: 'destructive',
-        onPress: async () => {
-          await updateGoal.mutateAsync({ goalId: goal.goal_id, patch: { status: 'retired' } })
-          router.dismissTo('/goals')
-        },
-      },
-    ])
+  const retire = async () => {
+    const ok = await confirm({
+      title: 'Retire this goal?',
+      message: 'It moves to your history and frees up a goal slot.',
+      confirmLabel: 'Retire',
+      destructive: true,
+    })
+    if (!ok) return
+    await updateGoal.mutateAsync({ goalId: goal.goal_id, patch: { status: 'retired' } })
+    router.dismissTo('/goals')
   }
 
   return (

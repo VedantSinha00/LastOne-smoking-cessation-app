@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react'
-import { View, Text, ScrollView, Pressable, ActivityIndicator, Alert } from 'react-native'
+import { View, Text, ScrollView, Pressable, ActivityIndicator } from 'react-native'
 import { useQuery } from '@tanstack/react-query'
 import { useFocusEffect, useLocalSearchParams } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -9,6 +9,7 @@ import { useInsights, useInsightActions } from '../../hooks/useInsights'
 import { useStage } from '../../hooks/useStage'
 import { useStreakRecord } from '../../hooks/useStreakRecord'
 import { useDeleteNote } from '../../hooks/useDeleteNote'
+import { useToast } from '../../hooks/useToast'
 import { supabase } from '../../lib/supabase'
 import { queryKeys } from '../../lib/queryKeys'
 import {
@@ -79,6 +80,7 @@ export default function Insights() {
   const { stage, quitDate } = useStage()
   const { data: streak } = useStreakRecord()
   const deleteNote = useDeleteNote()
+  const toast = useToast()
 
   // coping_tools catalog (id -> name/family + total count) for the Top tools view.
   const { data: toolCatalog } = useQuery({
@@ -284,7 +286,8 @@ export default function Insights() {
         onAddNote={() => router.push({ pathname: '/(modals)/log-d', params: { from: 'journal' } })}
         onDelete={(logId) =>
           deleteNote.mutate(logId, {
-            onError: (e: any) => Alert.alert("Couldn't delete", e?.message ?? 'Please try again.'),
+            onError: (e: any) =>
+              toast.show(e?.message ?? "Couldn't delete. Please try again.", { variant: 'error' }),
           })
         }
       />

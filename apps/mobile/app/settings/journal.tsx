@@ -1,8 +1,9 @@
 import React from 'react'
-import { View, Alert } from 'react-native'
+import { View } from 'react-native'
 import { useRouter } from 'expo-router'
 import { useInsights } from '../../hooks/useInsights'
 import { useDeleteNote } from '../../hooks/useDeleteNote'
+import { useToast } from '../../hooks/useToast'
 import { JournalView } from '../../components/insights/JournalView'
 import { SosFab } from '../../components/sos/sos-fab'
 
@@ -23,6 +24,7 @@ export default function JournalScreen() {
   const router = useRouter()
   const { logs } = useInsights()
   const deleteNote = useDeleteNote()
+  const toast = useToast()
 
   return (
     <View className="flex-1 bg-background">
@@ -35,7 +37,7 @@ export default function JournalScreen() {
         onDelete={(logId) =>
           deleteNote.mutate(logId, {
             onError: (e: any) =>
-              Alert.alert("Couldn't delete", e?.message ?? 'Please try again.'),
+              toast.show(e?.message ?? "Couldn't delete. Please try again.", { variant: 'error' }),
           })
         }
       />
