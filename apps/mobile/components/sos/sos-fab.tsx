@@ -1,11 +1,11 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import { Pressable, Text, View } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useSegments } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useLogSheet } from "../../hooks/useLogSheet";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
-  withRepeat,
   withTiming,
   Easing,
   interpolate,
@@ -16,29 +16,69 @@ import Animated, {
  * screen). Visual follows Lovable's CravingFAB: a 56px craving-orange circle that
  * floats clear above the bottom bar, with a pulsing halo ring.
  *
- * Lovable uses a CSS `pulse-ring` animation (an expanding, fading box-shadow).
- * RN has no animated box-shadow, so the ring is recreated with Reanimated: a halo
- * View behind the button loops scale-up + fade-out on the UI thread (2s, matching
- * Lovable's `pulse-ring 2s infinite`).
+ * Pulse cadence: each ring is a quick, consistent expand-and-fade (PULSE_MS). The
+ * GAP between rings grows each cycle — total period 5s, 10s, 15s — then holds at
+ * 15s indefinitely. So the halo is attention-grabbing at first and
+ * settles into a calm, infrequent pulse over time, without the pulse itself ever
+ * slowing down. (Reanimated ring on the UI thread; the growing gap is a JS timer.)
+ *
+ * Overlay-aware: the FAB is mounted on tab/browse screens that stay alive UNDER a
+ * transparent modal (the log "+" sheet, the SOS popup itself). Without this, the
+ * FAB would float on top of / beside that popup — nagging. So it self-hides
+ * whenever a (modals) route is on top.
  */
 const SIZE = 64;
+const PULSE_MS = 2200; // duration of a single ring's expand-and-fade
+const START_MS = 5000; // first full cycle (ring + gap)
+const STEP_MS = 5000;
+const MAX_MS = 15000;
 
 export const SosFab: React.FC = () => {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const segments = useSegments();
+  const { isOpen: logSheetOpen } = useLogSheet();
+  // Hide the FAB while an overlay is on top rather than floating it over the popup.
+  // Two cases: a (modals) route (the SOS popup itself, log-a..d flows), OR the log
+  // "+" picker — now an in-tree overlay, not a route, so it isn't in `segments`.
+  const overlayOpen = (segments as string[]).includes("(modals)") || logSheetOpen;
 
   // Position driven by inline style (immune to NativeWind class purge/ordering).
   const bottom = 62 + insets.bottom + 40;
   const right = 28;
 
-  // 0 → 1 loop drives the halo's scale + opacity.
+  // 0 → 1 drives the halo's scale + opacity for a single snappy ring.
   const progress = useSharedValue(0);
+  // Current full cycle period (ms) = ring + gap, bumped by STEP each cycle to MAX.
+  const periodRef = useRef(START_MS);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mountedRef = useRef(true);
+
   useEffect(() => {
-    progress.value = withRepeat(
-      withTiming(1, { duration: 2000, easing: Easing.out(Easing.ease) }),
-      -1, // infinite
-      false,
-    );
+    mountedRef.current = true;
+
+    // Fire one quick ring, then wait out the remainder of the current period
+    // before the next — so the GAP grows while the ring stays a constant speed.
+    const runCycle = () => {
+      if (!mountedRef.current) return;
+      progress.value = 0;
+      progress.value = withTiming(1, { duration: PULSE_MS, easing: Easing.out(Easing.ease) });
+
+      // Next ring starts one full period after this one started (the ring's
+      // PULSE_MS plays first, then dead time fills the rest of the period).
+      const wait = periodRef.current;
+      timerRef.current = setTimeout(() => {
+        periodRef.current = Math.min(periodRef.current + STEP_MS, MAX_MS);
+        runCycle();
+      }, wait);
+    };
+
+    runCycle();
+
+    return () => {
+      mountedRef.current = false;
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
   }, [progress]);
 
   const haloStyle = useAnimatedStyle(() => ({
@@ -46,6 +86,10 @@ export const SosFab: React.FC = () => {
     transform: [{ scale: interpolate(progress.value, [0, 1], [1, 1.65]) }],
     opacity: interpolate(progress.value, [0, 0.7, 1], [0.5, 0, 0]),
   }));
+
+  // Hidden while a modal/popup is on top (kept AFTER all hooks so hook order is
+  // stable across renders).
+  if (overlayOpen) return null;
 
   return (
     <View

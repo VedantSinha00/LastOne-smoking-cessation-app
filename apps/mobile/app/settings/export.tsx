@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Text, Platform, ToastAndroid, Alert } from 'react-native'
+import { Text } from 'react-native'
 import { useRouter } from 'expo-router'
 import { useAuth } from '../../hooks/useAuth'
 import { EditScreen } from '../../components/settings/EditScreen'
@@ -16,11 +16,10 @@ export default function DataExport() {
   const [done, setDone] = useState(false)
   const email = user?.email ?? 'your email'
 
+  // The inline "Requested — it'll arrive… shortly." line below is the single
+  // confirmation (no toast — avoid two things confirming the same action).
   const requestExport = () => {
     setDone(true)
-    const msg = `Your data will be sent to ${email} within a few minutes.`
-    if (Platform.OS === 'android') ToastAndroid.show(msg, ToastAndroid.LONG)
-    else Alert.alert('Export requested', msg)
   }
 
   return (

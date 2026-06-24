@@ -44,9 +44,6 @@ const WINDOW_MAX = 5
 const dismissKey = (occasionId: string, year: number) =>
   `occasion_dismissed_${occasionId}_${year}`
 
-/** DEV-ONLY: DevPanel writes an ISO date here to inject a test occasion. */
-export const DEV_OCCASION_KEY = 'dev_occasion_override'
-
 export interface ActiveOccasion {
   id: string
   name: string
@@ -68,12 +65,6 @@ export async function findActiveOccasion(
   if (stage < 1) return null
 
   const candidates: ActiveOccasion[] = []
-
-  const devDate = await AsyncStorage.getItem(DEV_OCCASION_KEY)
-  if (devDate) {
-    const days = differenceInCalendarDays(parseISO(devDate), now)
-    candidates.push({ id: 'dev_occasion', name: 'Test Occasion', date: devDate, daysUntil: days })
-  }
 
   for (const occ of OCCASION_CALENDAR) {
     for (const date of occ.dates) {

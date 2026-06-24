@@ -22,6 +22,7 @@ import {
   type PauseCode,
 } from './notificationCopy'
 import { revertExpiredAutoReduce } from './notificationState'
+import { channelFor } from './notificationChannels'
 
 // Best-effort token fetch + store. Never throws — onboarding/app launch must not
 // break if there's no EAS projectId yet (push sending is wired in Phase 5) or the
@@ -186,7 +187,7 @@ export async function scheduleHealthMilestoneNotifications(
       await Notifications.scheduleNotificationAsync({
         identifier: ID.milestone(code),
         content: { title: content.title, body: content.body, data: { type: code } },
-        trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: when },
+        trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: when, channelId: channelFor(code) },
       })
       await logQueued(userId, code, when)
     } catch (err) {
@@ -220,8 +221,10 @@ export async function scheduleDailyCheckinReminder(
   const hour = riskWindowHour ?? 20 // fallback 20:00 local
   // Streak-owned copy (Streak Spec §7). Kept inline — it is the only N-STK copy
   // Step 15 schedules locally and is not duplicated elsewhere.
+  // Title names the action (the OS header already shows the app name) — the body
+  // carries the nudge.
   const content = {
-    title: 'LastOne',
+    title: 'Daily check-in',
     body: 'Have you checked in today? A quick tap keeps your streak honest.',
   }
   try {
@@ -232,6 +235,7 @@ export async function scheduleDailyCheckinReminder(
         type: Notifications.SchedulableTriggerInputTypes.DAILY,
         hour,
         minute: 0,
+        channelId: channelFor('N-STK-01'),
       },
     })
   } catch (err) {
@@ -278,7 +282,7 @@ export async function schedulePauseNotifications(
       await Notifications.scheduleNotificationAsync({
         identifier: ID.pause(code),
         content: { title: content.title, body: content.body, data: { type: code } },
-        trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: fireAt },
+        trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: fireAt, channelId: channelFor(code) },
       })
       await logQueued(userId, code, fireAt)
     } catch (err) {
@@ -363,7 +367,7 @@ export async function scheduleVoiceStylePrompt(at: Date): Promise<void> {
     await Notifications.scheduleNotificationAsync({
       identifier: ID.voicePrompt,
       content: { title: content.title, body: content.body, data: { type: 'N-PROF-01' } },
-      trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: at },
+      trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: at, channelId: channelFor('N-PROF-01') },
     })
   } catch (err) {
     console.warn('Schedule N-PROF-01 skipped:', err)

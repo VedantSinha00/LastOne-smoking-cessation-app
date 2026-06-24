@@ -1,13 +1,14 @@
 import React from 'react'
-import { View, Text, ScrollView, ActivityIndicator, Dimensions } from 'react-native'
+import { View, Text, ScrollView, Dimensions } from 'react-native'
 import { useContentCarousel } from '../../hooks/useContentCarousel'
 import { Card } from '../ui/Card'
 import { Chip } from '../ui/Chip'
 
-// Home wraps content in p-6 (24px each side). Size each card so one fills the screen
+// Home wraps content in px-5 (20px each side). Size each card so one fills the screen
 // with the next peeking out — the peek signals the row is horizontally scrollable.
-const HOME_PADDING = 24
-const PEEK = 36
+// A smaller peek = wider card (cards bumped ~20% larger per design feedback).
+const HOME_PADDING = 20
+const PEEK = 24
 const CARD_WIDTH = Dimensions.get('window').width - HOME_PADDING * 2 - PEEK
 
 /**
@@ -18,14 +19,22 @@ const CARD_WIDTH = Dimensions.get('window').width - HOME_PADDING * 2 - PEEK
 export const ContentCarousel: React.FC = () => {
   const { cards, isLoading } = useContentCarousel()
 
+  // Skeleton placeholder while loading — mirrors the real card's shape so content
+  // swaps in without a layout jump (smoother than a spinner). With disk-persisted
+  // cache this only shows on a genuine cold/first load.
   if (isLoading) {
     return (
-      <Card>
-        <Text className="text-muted-foreground text-xs font-sans-bold uppercase tracking-wider mb-2">
+      <View>
+        <Text className="text-muted-foreground text-xs font-sans-bold uppercase tracking-wider mb-2 px-1">
           For you today
         </Text>
-        <ActivityIndicator color="#7FC200" />
-      </Card>
+        <Card elevation="soft" style={{ width: CARD_WIDTH, minHeight: 188 }} className="p-6">
+          <View className="bg-muted rounded-full" style={{ width: 72, height: 22 }} />
+          <View className="bg-muted rounded-md mt-4" style={{ width: '85%', height: 18 }} />
+          <View className="bg-muted rounded-md mt-3" style={{ width: '95%', height: 14 }} />
+          <View className="bg-muted rounded-md mt-2" style={{ width: '60%', height: 14 }} />
+        </Card>
+      </View>
     )
   }
 
@@ -37,18 +46,31 @@ export const ContentCarousel: React.FC = () => {
       <Text className="text-muted-foreground text-xs font-sans-bold uppercase tracking-wider mb-2 px-1">
         For you today
       </Text>
+      {/* The soft card shadow extends ~14px below/around the card; the horizontal
+          ScrollView clips its content box, so we give the content container vertical
+          padding (and negative margins to keep the row visually flush) so shadows
+          render fully instead of being cut at the scroll edge. */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerClassName="gap-3 pr-2"
+        contentContainerStyle={{ gap: 12, paddingVertical: 8, paddingRight: 8 }}
+        style={{ marginVertical: -8, overflow: 'visible' }}
       >
         {cards.map(({ card, body }) => (
-          <Card key={card.card_id} style={{ width: CARD_WIDTH }}>
+          <Card
+            key={card.card_id}
+            elevation="soft"
+            style={{ width: CARD_WIDTH, minHeight: 188 }}
+            className="p-6"
+          >
             <Chip label={card.pill_tag} variant="muted" />
-            <Text className="text-foreground font-display text-base mt-1.5 leading-snug">
+            <Text
+              className="text-foreground font-display mt-4 tracking-tight"
+              style={{ fontSize: 20, lineHeight: 24 }}
+            >
               {card.title}
             </Text>
-            <Text className="text-muted-foreground text-sm mt-2 leading-relaxed">{body}</Text>
+            <Text className="text-muted-foreground text-[15px] mt-3 leading-relaxed">{body}</Text>
           </Card>
         ))}
       </ScrollView>

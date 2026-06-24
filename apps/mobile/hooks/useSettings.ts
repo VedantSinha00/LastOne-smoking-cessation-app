@@ -104,7 +104,24 @@ export function useSettings() {
     },
   })
 
-  return { updateProfile, updateCpd, updatePrice, updateQuitDate }
+  /** Update the pending dependency level (Smoking category) on the streak record. */
+  const updateDependencyLevel = useMutation({
+    mutationFn: async (newValue: 'light' | 'moderate' | 'heavy') => {
+      if (!user) throw new Error('No authenticated user')
+      await supabase
+        .from('streak_record')
+        .update({ dependency_level_pending: newValue })
+        .eq('user_id', user.id)
+        .throwOnError()
+    },
+    onSuccess: () => {
+      if (user) {
+        qc.invalidateQueries({ queryKey: queryKeys.streakRecord(user.id) })
+      }
+    },
+  })
+
+  return { updateProfile, updateCpd, updatePrice, updateQuitDate, updateDependencyLevel }
 }
 
 /** PROF-14 — delete account: RPC purges all data, then sign out + clear device. */

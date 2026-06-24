@@ -1017,7 +1017,6 @@ export interface Database {
           tapped_learn_more?: boolean
         }
         Update: {
-          // shown_at writable for DevPanel interval-backdating only.
           shown_at?: string
           dismissed_at?: string | null
           tapped_learn_more?: boolean
@@ -1044,6 +1043,11 @@ export interface Database {
       // then auth.users. security definer. Deployed via migration (Step 20 DB).
       delete_user_account: {
         Args: { p_user_id: string }
+        Returns: undefined
+      }
+      // Deletes one of the caller's own journal notes (log_type='note').
+      delete_note_log: {
+        Args: { p_log_id: string }
         Returns: undefined
       }
     }

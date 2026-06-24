@@ -1,24 +1,27 @@
 import React, { useEffect, useRef, useState } from "react";
-import { View, Text, ScrollView, Pressable, ActivityIndicator, Dimensions, Linking, Platform, ToastAndroid, Alert } from "react-native";
-import { useRouter } from "expo-router";
+import { View, Text, ScrollView, Pressable, ActivityIndicator, Dimensions, Linking } from "react-native";
+import Animated, { useSharedValue, useAnimatedStyle, withTiming, withSequence, withDelay, Easing, runOnJS } from "react-native-reanimated";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { subDays } from "date-fns";
-import { Wind, Activity, Puzzle, Shuffle, ChevronRight, ThumbsUp, ThumbsDown, Check } from "lucide-react-native";
+import { Wind, Activity, Puzzle, Shuffle, ChevronRight, ThumbsUp, ThumbsDown, Check, ArrowLeft, X } from "lucide-react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { exitToHome } from "../../lib/navigation";
 import { useAuth } from "../../hooks/useAuth";
 import { useProfile } from "../../hooks/useProfile";
-import { useSosSelection } from "../../hooks/useSosSelection";
+import { useSosSelection, prefetchSosData } from "../../hooks/useSosSelection";
 import { useCreateLog } from "../../hooks/useCreateLog";
 import { useUpdateLog } from "../../hooks/useUpdateLog";
 import { useDailyCheckIn } from "../../hooks/useDailyCheckIn";
-import { ChipMultiSelect } from "../../components/logging/chip-multi-select";
 import { ToolRunner } from "../../components/coping/ToolRunner";
+import { BlurBackdrop } from "../../components/ui/BlurBackdrop";
+import { useToast } from "../../hooks/useToast";
+import { FADE_IN_MS, FADE_OUT_MS, holdForText } from "../../lib/fadeTiming";
 import { queryKeys } from "../../lib/queryKeys";
-import { WHAT_HELPED_TOKENS } from "../../lib/logOptions";
 import {
   updateToolScore,
   recordSosOutcome,
   getSosEscalationLevel,
-  resetSosWindow,
   type SosEscalationLevel,
 } from "../../lib/sos";
 import { confirmSmokeFreeDay } from "../../lib/streak";
@@ -32,6 +35,11 @@ type CopingTool = Database["public"]["Tables"]["coping_tools"]["Row"];
 type Screen = "GATE" | "SOS1" | "SOS2" | "SOS3" | "SUCCESS" | "POSTCALL";
 
 const CRAVING = "#F15025";
+// SOS-1 accent is GREEN ("you're safe / this is working"), not craving-orange —
+// per Lovable SOSFlow SOS-1 (badge, tool-icon tints, first-card left border,
+// bottom CTA). Bright pill green + dark green icon stroke.
+const SOS_GREEN = "#84C524";
+const SOS_GREEN_DARK = "#27500A";
 
 /**
  * Soft drop shadow for the SOS-1 / gate popup cards. Matches Lovable's
@@ -53,22 +61,24 @@ const SCREEN = Dimensions.get("window");
 const POPUP_WIDTH = Math.min(368, SCREEN.width - 40);
 const POPUP_SCROLL_MAX = Math.round(SCREEN.height * 0.82);
 
-/** Lovable maps each tool family to a circular orange line icon (SOS-1 cards). */
+/** Lovable maps each tool family to a circular GREEN line icon (SOS-1 cards). */
 function ToolFamilyIcon({ family }: { family: ToolFamily }) {
   const Icon = family === "breathing" ? Wind : family === "mini_games" ? Puzzle : Activity;
-  return <Icon size={22} color={CRAVING} strokeWidth={1.8} />;
+  return <Icon size={22} color={SOS_GREEN_DARK} strokeWidth={1.8} />;
 }
 
 /**
- * Popup header: compact orange "SOS" pill + 36px grey round close — matching
- * Lovable's exact chrome (badge padding 7×14, 13px bold; close #F0EFED circle).
+ * Popup header: compact green "SOS" pill + 36px grey round close — matching
+ * Lovable's exact chrome (badge #84C524, padding 7×14, 13px bold; close #F0EFED
+ * circle). The SOS-1 accent is green ("you're safe / this is working"), not the
+ * craving-orange used elsewhere — see Lovable SOSFlow SOS-1.
  */
 function SosHeader({ onClose }: { onClose: () => void }) {
   return (
     <View className="flex-row justify-between items-center" style={{ marginBottom: 22 }}>
       <View
-        className="bg-craving rounded-full"
-        style={{ paddingVertical: 7, paddingHorizontal: 14, alignSelf: "flex-start" }}
+        className="rounded-full"
+        style={{ backgroundColor: SOS_GREEN, paddingVertical: 7, paddingHorizontal: 14, alignSelf: "flex-start" }}
       >
         <Text className="text-white font-sans-bold" style={{ fontSize: 13, letterSpacing: 1.5 }}>
           SOS
@@ -95,6 +105,12 @@ function SosHeader({ onClose }: { onClose: () => void }) {
  */
 export default function SosModal() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const toast = useToast();
+  const { from } = useLocalSearchParams<{ from?: string }>();
+  // Entered from Flow A "get help": skip the popup gate and show the design's
+  // full-page A3 tool list instead of the centered popup card. Same data/logic.
+  const fromFlowA = from === "flow_a";
   const { user } = useAuth();
   const { data: profile } = useProfile();
   const firstName = profile?.first_name?.trim() || null;
@@ -103,14 +119,13 @@ export default function SosModal() {
   const { markSatisfied } = useDailyCheckIn();
   const qc = useQueryClient();
 
-  const [screen, setScreen] = useState<Screen>("GATE");
+  const [screen, setScreen] = useState<Screen>(fromFlowA ? "SOS1" : "GATE");
   const [context, setContext] = useState<CravingContext>("unknown");
   const [tool, setTool] = useState<CopingTool | null>(null);
   const [escalation, setEscalation] = useState<SosEscalationLevel>(0);
   const [processing, setProcessing] = useState(false); // guards the check-in buttons
   const logIdRef = useRef<string | null>(null);
   const startedAtRef = useRef<number>(0);
-  const [whatHelped, setWhatHelped] = useState<string[]>([]);
   // Tools already shown this session — fed to the waterfall so "Show me other things"
   // surfaces a different valid trio. Cleared (wrap-around) when the pool runs dry.
   const [excludeIds, setExcludeIds] = useState<string[]>([]);
@@ -132,6 +147,13 @@ export default function SosModal() {
       return next.length >= 9 ? [] : next; // 12-tool catalogue → reset before exhaustion
     });
   };
+
+  // Warm the SOS data cache as soon as the modal mounts (while the user is still
+  // on the context gate), so the tool list is ready the instant they pick one —
+  // no network wait on the hot path. No-op if already cached + fresh.
+  useEffect(() => {
+    if (user) prefetchSosData(qc, user.id);
+  }, [user, qc]);
 
   // Read escalation level when we leave the gate (§8.1 ladder).
   useEffect(() => {
@@ -184,7 +206,7 @@ export default function SosModal() {
     setProcessing(true);
     if (!user) return router.back();
     if (logIdRef.current) {
-      await updateLog.mutateAsync({ logId: logIdRef.current, patch: { tool_helpful: true, post_tool_state: "better", what_helped: whatHelped.length ? whatHelped : null } });
+      await updateLog.mutateAsync({ logId: logIdRef.current, patch: { tool_helpful: true, post_tool_state: "better", what_helped: null } });
     }
     if (tool) await updateToolScore(user.id, tool.tool_id, +1, "better");
     await recordSosOutcome(user.id, "better");
@@ -205,6 +227,9 @@ export default function SosModal() {
     }
     if (tool) await updateToolScore(user.id, tool.tool_id, -1, "same");
     await recordSosOutcome(user.id, "same");
+    // The score just changed — drop the cached SOS data so the next ranking (we
+    // return to SOS1) reflects it rather than the 5-min-cached scores.
+    qc.invalidateQueries({ queryKey: queryKeys.sosData(user.id) });
     // Re-read escalation so the next surface reflects the new failed_sos_count (§8.1).
     setEscalation(await getSosEscalationLevel(user.id));
     setProcessing(false); // returns to the tool list — re-enable for the next session
@@ -222,27 +247,6 @@ export default function SosModal() {
     }
     // Compressed Flow C — slip log handles acknowledgement + support.
     router.replace("/(modals)/log-c");
-  };
-
-  // DEV ONLY: the escalation placeholder cards aren't yet tappable into a real tool
-  // (Step 18), so there's no way to drive failed_sos_count past level 1 by hand. This
-  // simulates one more failed SOS session so the 2→3 ladder transition is testable.
-  const devSimulateFailure = async () => {
-    if (!user || processing) return;
-    setProcessing(true);
-    await recordSosOutcome(user.id, "same");
-    setEscalation(await getSosEscalationLevel(user.id));
-    setProcessing(false);
-  };
-
-  // DEV ONLY: clear the failed-SOS window so escalation drops back to level 0 (normal
-  // waterfall), so the 0→1→2 progression can be re-tested from scratch.
-  const devResetEscalation = async () => {
-    if (!user || processing) return;
-    setProcessing(true);
-    await resetSosWindow(user.id);
-    setEscalation(0);
-    setProcessing(false);
   };
 
   // ── Context gate (spec: two large tap targets) — Lovable popup-over-home look ──
@@ -277,11 +281,143 @@ export default function SosModal() {
     );
   }
 
-  // ── SOS-1 — Tool Selection: centered popup card over dimmed home (Lovable) ─────
+  // ── SOS-1 — Tool Selection ───────────────────────────────────────────────────
+  // Two visual variants of the SAME data/logic: from the SOS FAB it's a centered
+  // popup card over the dimmed home (Lovable SOS-1); from Flow A "get help" it's
+  // the design's full-page A3 layout ("These can help right now."). Tool list,
+  // shuffle, selection, escalation and links are identical in both.
   if (screen === "SOS1") {
+    const heading = fromFlowA ? (
+      <>
+        <Text className="text-foreground font-sans-bold mb-2.5" style={{ fontSize: 28, lineHeight: 32 }}>
+          These can help right now.
+        </Text>
+        <Text className="text-muted-foreground mb-8" style={{ fontSize: 16, lineHeight: 24 }}>
+          Picked for this moment. Try one.
+        </Text>
+      </>
+    ) : (
+      <>
+        <Text className="text-foreground font-sans-bold mb-3" style={{ fontSize: 22, lineHeight: 27 }}>
+          {firstName ? `Hey ${firstName} — what'll work right now?` : "What'll work right now?"}
+        </Text>
+        <Text className="text-muted-foreground mb-6" style={{ fontSize: 13, lineHeight: 20 }}>
+          Pick one — that&apos;s all. Cravings peak and pass in a few minutes.
+        </Text>
+      </>
+    );
+
+    const body = (
+      <>
+        {!fromFlowA && <SosHeader onClose={() => router.back()} />}
+        {heading}
+
+        {/* Escalation level 2 (3+ failures): suspend the waterfall, escalation only (§8.1). */}
+        {escalation === 2 ? (
+          <EscalationOnly onCallPerson={() => setScreen("POSTCALL")} />
+        ) : isLoading ? (
+          <ActivityIndicator color="#F15025" className="mt-8" />
+        ) : !tools?.length ? (
+          <View className="bg-card border border-border rounded-2xl p-6">
+            <Text className="text-muted-foreground text-sm leading-relaxed">
+              No coping tools are available right now.
+            </Text>
+          </View>
+        ) : (
+          <View style={{ gap: 14 }}>
+            {/* Level 1 (2 failures): Call a Friend pinned to slot 1, tools fill 2–3. */}
+            {escalation === 1 && <CallAFriendCard onCallPerson={() => setScreen("POSTCALL")} />}
+            {tools.map((t, idx) => (
+              <Pressable
+                key={t.tool_id}
+                onPress={() => selectTool(t)}
+                className="bg-card flex-row items-center active:bg-muted"
+                // 1px border, 16 radius, 17×18 padding. The first (top-ranked)
+                // tool gets a 3px green left border as the "best pick" accent
+                // (Lovable SOS-1 slot 0).
+                style={{
+                  borderWidth: 1,
+                  borderColor: "#E5E7EB",
+                  borderLeftWidth: idx === 0 ? 3 : 1,
+                  borderLeftColor: idx === 0 ? SOS_GREEN : "#E5E7EB",
+                  borderRadius: 16,
+                  paddingVertical: 17,
+                  paddingHorizontal: 18,
+                }}
+              >
+                <View
+                  className="rounded-full items-center justify-center"
+                  style={{ width: 42, height: 42, marginRight: 14, backgroundColor: "rgba(132,197,36,0.18)" }}
+                >
+                  <ToolFamilyIcon family={t.family} />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-foreground font-sans-bold" style={{ fontSize: 15, marginBottom: 4 }}>
+                    {t.name}
+                  </Text>
+                  <Text className="text-muted-foreground" style={{ fontSize: 12 }}>
+                    {Math.round(t.duration_seconds / 60) || 1} min · {t.category.replace(/_/g, " ")}
+                  </Text>
+                </View>
+                <ChevronRight size={20} color="#D9D6D2" strokeWidth={2} />
+              </Pressable>
+            ))}
+          </View>
+        )}
+
+        {/* "Show me other things that worked" — re-rolls to a different valid trio. */}
+        {escalation !== 2 && (tools?.length ?? 0) > 0 && (
+          <Pressable
+            onPress={shuffle}
+            className="mt-6 flex-row items-center justify-center active:opacity-60"
+            style={{ minHeight: 28 }}
+          >
+            <Shuffle size={16} color="#76706C" strokeWidth={1.8} />
+            <Text className="text-muted-foreground font-sans-medium text-[13px] ml-2.5">
+              Show me other things that worked
+            </Text>
+          </Pressable>
+        )}
+
+        {/* "It passed on its own — log it →" → the overcome log (Flow B / log-b). */}
+        <View className="mt-5 pt-5 border-t border-border items-center">
+          <Pressable onPress={() => router.replace("/(modals)/log-b")} className="active:opacity-60">
+            <Text className="font-sans-medium text-[13px]" style={{ color: SOS_GREEN_DARK }}>
+              It passed on its own — log it →
+            </Text>
+          </Pressable>
+        </View>
+      </>
+    );
+
+    // Flow A entry → full-page A3 layout (TopBar over secondary bg).
+    if (fromFlowA) {
+      return (
+        <View className="flex-1 bg-secondary" style={{ paddingTop: insets.top }}>
+          <View className="flex-row items-center justify-between px-5" style={{ height: 56 }}>
+            <Pressable onPress={() => router.back()} hitSlop={12} className="active:opacity-60">
+              <ArrowLeft size={22} color="#15110D" strokeWidth={2} />
+            </Pressable>
+            <Pressable onPress={() => exitToHome()} hitSlop={12} className="active:opacity-60">
+              <X size={24} color="#888888" strokeWidth={2} />
+            </Pressable>
+          </View>
+          <ScrollView
+            className="flex-1"
+            contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 24, paddingBottom: insets.bottom + 24 }}
+            showsVerticalScrollIndicator={false}
+          >
+            {body}
+          </ScrollView>
+        </View>
+      );
+    }
+
+    // Default (SOS FAB) → centered popup card over the blurred + dimmed home.
     return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(13,13,13,0.45)" }}>
-        {/* Tap the dim backdrop to dismiss. */}
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        {/* Blur the home behind, then dim it; tapping the backdrop dismisses. */}
+        <BlurBackdrop intensity={35} tint="dark" dim="rgba(13,13,13,0.2)" />
         <Pressable style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} onPress={() => router.back()} />
         <View style={{ width: POPUP_WIDTH, backgroundColor: "#FFFFFF", borderRadius: 28, ...POPUP_SHADOW }}>
           {/* Numeric maxHeight on the ScrollView (not the card) so it scrolls only for
@@ -291,121 +427,7 @@ export default function SosModal() {
             contentContainerClassName="px-6 pt-6 pb-6"
             showsVerticalScrollIndicator={false}
           >
-            {/* Orange SOS badge + grey round close (Lovable chrome). */}
-            <SosHeader onClose={() => router.back()} />
-
-            <Text
-              className="text-foreground font-sans-bold mb-3"
-              style={{ fontSize: 22, lineHeight: 27 }}
-            >
-              {firstName ? `Hey ${firstName} — what'll work right now?` : "What'll work right now?"}
-            </Text>
-            <Text
-              className="text-muted-foreground mb-6"
-              style={{ fontSize: 13, lineHeight: 20 }}
-            >
-              Pick one — that&apos;s all. Cravings peak and pass in a few minutes.
-            </Text>
-
-            {/* Escalation level 2 (3+ failures): suspend the waterfall, escalation only (§8.1). */}
-            {escalation === 2 ? (
-              <EscalationOnly onCallPerson={() => setScreen("POSTCALL")} />
-            ) : isLoading ? (
-              <ActivityIndicator color="#F15025" className="mt-8" />
-            ) : !tools?.length ? (
-              <View className="bg-card border border-border rounded-2xl p-6">
-                <Text className="text-muted-foreground text-sm leading-relaxed">
-                  No coping tools are available right now.
-                </Text>
-              </View>
-            ) : (
-              <View style={{ gap: 14 }}>
-                {/* Level 1 (2 failures): Call a Friend pinned to slot 1, tools fill 2–3. */}
-                {escalation === 1 && <CallAFriendCard onCallPerson={() => setScreen("POSTCALL")} />}
-                {tools.map((t) => (
-                  <Pressable
-                    key={t.tool_id}
-                    onPress={() => selectTool(t)}
-                    className="bg-card flex-row items-center active:bg-muted"
-                    // Uniform card styling: 1px border, 16 radius, 17×18 padding (no
-                    // per-slot accent — every tool reads the same).
-                    style={{
-                      borderWidth: 1,
-                      borderColor: "#E5E7EB",
-                      borderRadius: 16,
-                      paddingVertical: 17,
-                      paddingHorizontal: 18,
-                    }}
-                  >
-                    <View
-                      className="rounded-full items-center justify-center"
-                      style={{ width: 42, height: 42, marginRight: 14, backgroundColor: "rgba(241,80,37,0.15)" }}
-                    >
-                      <ToolFamilyIcon family={t.family} />
-                    </View>
-                    <View className="flex-1">
-                      <Text className="text-foreground font-sans-bold" style={{ fontSize: 15, marginBottom: 4 }}>
-                        {t.name}
-                      </Text>
-                      <Text className="text-muted-foreground" style={{ fontSize: 12 }}>
-                        {Math.round(t.duration_seconds / 60) || 1} min · {t.category.replace(/_/g, " ")}
-                      </Text>
-                    </View>
-                    <ChevronRight size={20} color="#D9D6D2" strokeWidth={2} />
-                  </Pressable>
-                ))}
-              </View>
-            )}
-
-            {/* "Show me other things that worked" — re-rolls to a different valid trio. */}
-            {escalation !== 2 && (tools?.length ?? 0) > 0 && (
-              <Pressable
-                onPress={shuffle}
-                className="mt-6 flex-row items-center justify-center active:opacity-60"
-                style={{ minHeight: 28 }}
-              >
-                <Shuffle size={16} color="#76706C" strokeWidth={1.8} />
-                <Text className="text-muted-foreground font-sans-medium text-[13px] ml-2.5">
-                  Show me other things that worked
-                </Text>
-              </Pressable>
-            )}
-
-            {/* "It passed on its own — log it →" → the overcome log (Flow B / log-b). */}
-            <View className="mt-5 pt-5 border-t border-border items-center">
-              <Pressable onPress={() => router.replace("/(modals)/log-b")} className="active:opacity-60">
-                <Text className="text-craving font-sans-medium text-[13px]">
-                  It passed on its own — log it →
-                </Text>
-              </Pressable>
-            </View>
-
-            {/* DEV ONLY — drive + reset the escalation ladder (no tappable escalation tool
-                exists yet; that surfacing is Step 18). */}
-            {__DEV__ && (
-              <View className="mt-6 gap-2">
-                {escalation > 0 && (
-                  <Pressable
-                    onPress={devSimulateFailure}
-                    disabled={processing}
-                    className="border border-border rounded-xl p-3 active:bg-muted"
-                  >
-                    <Text className="text-muted-foreground text-xs font-semibold text-center">
-                      DEV · Simulate another failed SOS (level {escalation})
-                    </Text>
-                  </Pressable>
-                )}
-                <Pressable
-                  onPress={devResetEscalation}
-                  disabled={processing}
-                  className="border border-border rounded-xl p-3 active:bg-muted"
-                >
-                  <Text className="text-muted-foreground text-xs font-semibold text-center">
-                    DEV · Reset escalation → level 0
-                  </Text>
-                </Pressable>
-              </View>
-            )}
+            {body}
           </ScrollView>
         </View>
       </View>
@@ -418,31 +440,16 @@ export default function SosModal() {
       setScreen("SOS1");
       return null;
     }
-    return <ToolRunner tool={tool} onDone={finishTool} accent="craving" />;
+    // hideOwnCheckIn: bespoke tools (Finger Pulse / Physiological Sigh) skip their
+    // own end check-in here — SOS-3 below is the single shared check-in.
+    return <ToolRunner tool={tool} onDone={finishTool} accent="craving" hideOwnCheckIn />;
   }
 
   // ── SUCCESS — celebratory end screen after a "Better" check-in (Lovable) ──────
+  // No button: it fades in, holds long enough to read, then fades itself away and
+  // dismisses the flow automatically (see SuccessScreen).
   if (screen === "SUCCESS") {
-    return (
-      <View className="flex-1 bg-secondary px-8 items-center justify-center">
-        <View className="w-16 h-16 rounded-full bg-primary items-center justify-center mb-6">
-          <Check size={28} color="#FFFFFF" strokeWidth={2.5} />
-        </View>
-        <Text className="text-foreground font-display text-2xl text-center mb-2.5">
-          Craving beaten.
-        </Text>
-        <Text className="text-muted-foreground text-[15px] text-center leading-relaxed mb-10" style={{ maxWidth: 280 }}>
-          You rode it out — that&apos;s one more time the urge didn&apos;t win. Each one rewires it a little.
-        </Text>
-        <Pressable
-          onPress={() => router.back()}
-          className="w-full rounded-2xl h-[52px] items-center justify-center bg-foreground active:opacity-90"
-          style={{ maxWidth: 320 }}
-        >
-          <Text className="text-background font-sans-bold text-[15px]">Back to home</Text>
-        </Pressable>
-      </View>
-    );
+    return <SuccessScreen onDone={() => router.back()} />;
   }
 
   // ── GU-7 post-call log (inline) — after the SOS "Call [Name]" escalation ─────
@@ -450,12 +457,17 @@ export default function SosModal() {
   // this is the same "how did that go?" close-out as GU-7, kept in-flow so it
   // never lands the user on a stale cross-modal screen.
   if (screen === "POSTCALL") {
-    const finishPostCall = () => {
+    // Match the tone to the outcome: if reaching out didn't help, acknowledge that
+    // it's hard rather than chirping "glad that helped" at someone still struggling.
+    const finishPostCall = (helped: boolean) => {
       router.back();
-      const msg = "Good that you reached out.";
-      if (Platform.OS === "android") ToastAndroid.show(msg, ToastAndroid.SHORT);
-      else Alert.alert(msg);
+      toast.show(helped ? "Good that you reached out." : "This is tough, but you'll get through it.");
     };
+    const POSTCALL_OPTIONS: { label: string; helped: boolean }[] = [
+      { label: "Helped a lot", helped: true },
+      { label: "Helped a little", helped: true },
+      { label: "Didn't really help", helped: false },
+    ];
     return (
       <View className="flex-1 bg-secondary px-8 justify-center">
         <Pressable onPress={() => router.back()} hitSlop={12} className="absolute top-14 right-6">
@@ -463,10 +475,10 @@ export default function SosModal() {
         </Pressable>
         <Text className="text-foreground font-display text-2xl mb-8">How did that go?</Text>
         <View className="gap-3">
-          {["Helped a lot", "Helped a little", "Didn't really help"].map((label) => (
+          {POSTCALL_OPTIONS.map(({ label, helped }) => (
             <Pressable
               key={label}
-              onPress={finishPostCall}
+              onPress={() => finishPostCall(helped)}
               className="bg-card border-[1.5px] border-border rounded-2xl py-4 items-center active:bg-muted"
             >
               <Text className="text-foreground font-sans-bold text-[15px]">{label}</Text>
@@ -479,62 +491,102 @@ export default function SosModal() {
 
   // ── SOS-3 — Post-Tool Check-in (skippable), Lovable two-card layout ───────────
   return (
-    <ScrollView
-      className="flex-1 bg-secondary px-6 py-8"
-      contentContainerClassName="flex-grow"
-      // First-tap buttons while the keyboard is up (chips' "Other" input).
-      keyboardShouldPersistTaps="handled"
-    >
-      <View className="flex-row justify-end mb-2">
-        <Pressable onPress={skip} className="px-3 py-1.5">
-          <Text className="text-muted-foreground text-sm">Skip</Text>
-        </Pressable>
-      </View>
-      <Text className="text-foreground font-display text-2xl mb-1">How are you feeling?</Text>
-      <Text className="text-muted-foreground text-sm mb-8 leading-relaxed">
-        Be honest — your feed gets smarter every time you tell it the truth.
-      </Text>
-
-      <ChipMultiSelect
-        label="What else helped? (optional)"
-        options={WHAT_HELPED_TOKENS}
-        selected={whatHelped}
-        onChange={setWhatHelped}
-        allowOther={false}
-      />
-
-      {/* Two big icon cards (Lovable): Better (green) / Still there (orange). */}
-      <View className={`flex-row gap-3 mt-6 ${processing ? "opacity-50" : ""}`}>
-        <Pressable
-          disabled={processing}
-          onPress={better}
-          className="flex-1 bg-card border-[1.5px] border-border rounded-2xl items-center active:opacity-80"
-          style={{ paddingVertical: 24, paddingHorizontal: 16 }}
-        >
-          <ThumbsUp size={32} color="#7FC200" strokeWidth={1.8} />
-          <Text className="text-foreground font-sans-bold text-[15px] mt-3">Better</Text>
-        </Pressable>
-        <Pressable
-          disabled={processing}
-          onPress={same}
-          className="flex-1 bg-card border-[1.5px] border-border rounded-2xl items-center active:opacity-80"
-          style={{ paddingVertical: 24, paddingHorizontal: 16 }}
-        >
-          <ThumbsDown size={32} color={CRAVING} strokeWidth={1.8} />
-          <Text className="text-foreground font-sans-bold text-[15px] mt-3">Still there</Text>
-        </Pressable>
-      </View>
-
-      {/* "I smoked" kept (spec: routes to the slip log) but de-emphasized per Lovable. */}
-      <Pressable disabled={processing} onPress={smoked} className="mt-6 py-3 items-center active:opacity-60">
-        <Text className="text-muted-foreground font-sans-medium text-sm">I smoked</Text>
+    // Centered, minimal layout matching Lovable SOS-3: × top-right, centered
+    // title + subtitle, two cards, then "Skip for now" at the bottom. The "I
+    // smoked" link is kept (routes to the slip log) but de-emphasized.
+    <View className="flex-1 bg-secondary">
+      <Pressable onPress={skip} hitSlop={12} className="absolute right-5 active:opacity-60" style={{ top: 20, zIndex: 10 }}>
+        <Text style={{ fontSize: 24, color: "#888888" }}>×</Text>
       </Pressable>
 
-      {/* Tier-3 escalation link (GU §B2 SOS integration) — silent conditional. */}
-      <Tier3Link />
-    </ScrollView>
+      <View className="flex-1 items-center justify-center px-8">
+        <Text className="text-foreground font-sans-bold text-center mb-3" style={{ fontSize: 26, lineHeight: 31 }}>
+          {firstName ? `How are you feeling, ${firstName}?` : "How are you feeling?"}
+        </Text>
+        <Text className="text-muted-foreground text-center mb-12" style={{ fontSize: 14, lineHeight: 21 }}>
+          Be honest — your feed gets smarter every time you tell it the truth.
+        </Text>
+
+        {/* Two icon cards (Lovable): Better (green) / Still there (orange). */}
+        <View className={`flex-row mb-10 ${processing ? "opacity-50" : ""}`} style={{ gap: 12, width: "100%", maxWidth: 320 }}>
+          <Pressable
+            disabled={processing}
+            onPress={better}
+            className="flex-1 bg-card border-[1.5px] border-border items-center active:opacity-80"
+            style={{ borderRadius: 20, paddingVertical: 24, paddingHorizontal: 16, gap: 12 }}
+          >
+            <ThumbsUp size={32} color="#84C524" strokeWidth={1.8} />
+            <Text className="text-foreground font-sans-bold" style={{ fontSize: 15 }}>Better</Text>
+          </Pressable>
+          <Pressable
+            disabled={processing}
+            onPress={same}
+            className="flex-1 bg-card border-[1.5px] border-border items-center active:opacity-80"
+            style={{ borderRadius: 20, paddingVertical: 24, paddingHorizontal: 16, gap: 12 }}
+          >
+            <ThumbsDown size={32} color={CRAVING} strokeWidth={1.8} />
+            <Text className="text-foreground font-sans-bold" style={{ fontSize: 15 }}>Still there</Text>
+          </Pressable>
+        </View>
+
+        {/* "I smoked" kept (spec: routes to the slip log) but de-emphasized. */}
+        <Pressable disabled={processing} onPress={smoked} className="py-2 items-center active:opacity-60">
+          <Text className="text-muted-foreground font-sans-medium text-sm">I smoked</Text>
+        </Pressable>
+
+        {/* Tier-3 escalation link (GU §B2 SOS integration) — silent conditional. */}
+        <Tier3Link />
+      </View>
+
+      {/* "Skip for now" pinned near the bottom (Lovable). */}
+      <Pressable onPress={skip} className="items-center pb-10 pt-2 active:opacity-60">
+        <Text className="text-muted-foreground font-sans-medium" style={{ fontSize: 13 }}>Skip for now</Text>
+      </Pressable>
+    </View>
   );
 }
+
+/**
+ * SUCCESS end screen — no button. Fades in, holds long enough to read, then fades
+ * the whole screen away and dismisses the flow (onDone). Timing: 0.5s in → 3s
+ * hold → 3s out (≈6.5s total), so the user has ample time to read before it goes.
+ */
+// Body copy drives the hold (reading time scales with length) — see lib/fadeTiming.
+const SUCCESS_BODY =
+  "You rode it out — that's one more time the urge didn't win. Each one rewires it a little.";
+const SUCCESS_HOLD = holdForText(SUCCESS_BODY);
+
+const SuccessScreen: React.FC<{ onDone: () => void }> = ({ onDone }) => {
+  const opacity = useSharedValue(0);
+
+  useEffect(() => {
+    opacity.value = withSequence(
+      withTiming(1, { duration: FADE_IN_MS, easing: Easing.out(Easing.ease) }),
+      withDelay(
+        SUCCESS_HOLD,
+        withTiming(0, { duration: FADE_OUT_MS, easing: Easing.in(Easing.ease) }, (finished) => {
+          if (finished) runOnJS(onDone)();
+        }),
+      ),
+    );
+  }, [opacity, onDone]);
+
+  const style = useAnimatedStyle(() => ({ opacity: opacity.value }));
+
+  return (
+    <Animated.View className="flex-1 bg-secondary px-8 items-center justify-center" style={style}>
+      <View className="w-16 h-16 rounded-full bg-primary items-center justify-center mb-6">
+        <Check size={28} color="#FFFFFF" strokeWidth={2.5} />
+      </View>
+      <Text className="text-foreground font-display text-2xl text-center mb-2.5">
+        Craving beaten.
+      </Text>
+      <Text className="text-muted-foreground text-[15px] text-center leading-relaxed" style={{ maxWidth: 280 }}>
+        {SUCCESS_BODY}
+      </Text>
+    </Animated.View>
+  );
+};
 
 /**
  * Escalation tools — Call a Friend + Quit Specialist Line (Step 13 ladder,

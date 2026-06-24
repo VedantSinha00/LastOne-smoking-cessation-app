@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
-import { View, Text, Pressable, Switch, Platform } from 'react-native'
+import { View, Text, Pressable, Platform } from 'react-native'
 import DateTimePicker from '@react-native-community/datetimepicker'
+import { Toggle } from '../../components/settings/Toggle'
 import { useProfile } from '../../hooks/useProfile'
 import { useSettings } from '../../hooks/useSettings'
 import { EditScreen } from '../../components/settings/EditScreen'
@@ -72,7 +73,7 @@ export default function QuietHours() {
       <View className="bg-card border border-border rounded-3xl px-5 py-1">
         <View className="flex-row items-center justify-between py-3">
           <Text className="text-foreground text-base">Quiet hours</Text>
-          <Switch value={enabled} onValueChange={toggle} trackColor={{ true: '#7FC200' }} />
+          <Toggle on={enabled} onChange={toggle} />
         </View>
       </View>
 

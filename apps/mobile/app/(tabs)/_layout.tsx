@@ -1,51 +1,58 @@
 import { Tabs } from "expo-router";
 import { View, Pressable } from "react-native";
-import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Home, BarChart3, Heart, User, Plus } from "lucide-react-native";
+import { Home, BarChart3, Heart, Plus, Users, Sparkle } from "lucide-react-native";
 import { SosFab } from "../../components/sos/sos-fab";
+import { LogSheetOverlay } from "../../components/log/LogSheetOverlay";
+import { useLogSheet } from "../../hooks/useLogSheet";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 
 /**
  * Bottom navigation. Visual design follows the Lovable "Remix of LastOne Home
  * Screen" nav (light bar, hairline top border, lucide line icons, raised
- * near-black center button). Structure follows the code/spec:
+ * near-black center button). Five slots, matching the design's layout:
  *
- *   Home · Insights · [ + Log ] · Tools · Profile
+ *   Home · Community · [ + Log ] · Insights · Tools
  *
- * - Home / Insights / Tools / Profile are real screens. Insights (INS-1) is its
- *   own route — the self-awareness feed (Insights Spec: "the entry point from all
+ * - Home / Insights / Tools are tab screens. Insights (INS-1) is its own route —
+ *   the self-awareness feed (Insights Spec: "the entry point from all
  *   navigation"), distinct from the Progress Dashboard (motivation). Progress
  *   (DASH-2) is reached contextually from Home's counter / health cards via
  *   `/progress`; it is not a tab (no slot, and the two surfaces are intentionally
  *   separate — Insights Spec §1.1).
+ * - Community occupies the design's slot 2 but is V2 (Home Spec §P5) — it is a
+ *   real tab that opens a "coming soon" page (app/(tabs)/community.tsx), matching
+ *   the design's five-slot layout without shipping the feature.
+ * - Profile is NOT a tab — it is reached via the Home TopBar profile icon
+ *   (design nav model).
  * - The center control is the Log action (Architecture Guide §lines 25–27: Log is
  *   a central FAB), opening the log half-sheet rather than navigating to a tab.
  * - SOS is a separate persistent floating FAB (Architecture Guide §8.5).
- * - Community is intentionally absent — it is V2 (Home Spec §P5, line 147).
  */
 const ACTIVE = "#15110D"; // foreground
 const INACTIVE = "#76706C"; // muted-foreground
 
-type TabDef = { name: string; label: string; Icon: typeof Home };
+type TabDef = { name: string; label: string; Icon: typeof Home; twinkle?: boolean };
 
-// Two slots left of the center "+", two to the right.
+// Five slots around the center "+", mirroring the design: two left, two right.
+// Community is a real tab (opens a "coming soon" page) — see header note.
 const LEFT: TabDef[] = [
   { name: "index", label: "Home", Icon: Home },
-  { name: "insights", label: "Insights", Icon: BarChart3 },
+  { name: "community", label: "Community", Icon: Users },
 ];
 const RIGHT: TabDef[] = [
-  { name: "tools", label: "Tools", Icon: Heart },
-  { name: "profile", label: "Profile", Icon: User },
+  { name: "insights", label: "Insights", Icon: BarChart3 },
+  { name: "tools", label: "Tools", Icon: Heart, twinkle: true },
 ];
 
 function CustomTabBar({ state, navigation }: BottomTabBarProps) {
-  const router = useRouter();
+  const { open } = useLogSheet();
   const insets = useSafeAreaInsets();
 
-  const renderTab = ({ name, label, Icon }: TabDef) => {
+  const renderTab = ({ name, label, Icon, twinkle }: TabDef) => {
     const route = state.routes.find((r) => r.name === name);
     const isFocused = route ? state.index === state.routes.indexOf(route) : false;
+    const tint = isFocused ? ACTIVE : INACTIVE;
     return (
       <Pressable
         key={name}
@@ -54,11 +61,33 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
         onPress={() => navigation.navigate(name)}
         className="flex-1 h-full items-center justify-center"
       >
-        <Icon
-          size={24}
-          color={isFocused ? ACTIVE : INACTIVE}
-          strokeWidth={isFocused ? 2.4 : 1.9}
-        />
+        <View style={{ width: 21, height: 21, alignItems: "center", justifyContent: "center" }}>
+          <Icon
+            size={21}
+            color={tint}
+            strokeWidth={isFocused ? 2.5 : 2.0}
+          />
+          {/* Little twinkles around the heart — a bigger one top-right and a
+              smaller one bottom-left, tinted to match the icon's active state. */}
+          {twinkle && (
+            <>
+              <Sparkle
+                size={9}
+                color={tint}
+                fill={tint}
+                strokeWidth={1.5}
+                style={{ position: "absolute", top: -4, right: -5 }}
+              />
+              <Sparkle
+                size={6}
+                color={tint}
+                fill={tint}
+                strokeWidth={1.5}
+                style={{ position: "absolute", bottom: -2, left: -5 }}
+              />
+            </>
+          )}
+        </View>
       </Pressable>
     );
   };
@@ -66,19 +95,26 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
   return (
     <View
       className="flex-row items-center bg-background border-t border-border"
-      style={{ height: 62 + insets.bottom, paddingBottom: insets.bottom }}
+      // overflow visible so the raised center button's region that sticks up above
+      // the bar (via marginTop: -32) stays inside the touch tree — without this,
+      // Android clips touches to the parent bounds and the button's top ~32px is
+      // visible but NOT tappable (the "have to press the + twice" bug).
+      style={{ height: 62 + insets.bottom, paddingBottom: insets.bottom, overflow: "visible" }}
     >
       {LEFT.map(renderTab)}
 
       {/* Raised center Log button (Lovable's near-black "+"). Opens the log sheet. */}
-      <View className="items-center justify-center" style={{ width: 72 }}>
+      <View className="items-center justify-center" style={{ width: 72, overflow: "visible" }}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Log"
-          onPress={() => router.push("/(modals)/log")}
+          onPress={open}
+          // hitSlop extends the touch target up over the raised area as a belt-and-
+          // suspenders backup to overflow: visible.
+          hitSlop={{ top: 32, bottom: 8, left: 8, right: 8 }}
           className="w-14 h-14 rounded-full bg-foreground items-center justify-center active:scale-95"
           style={{
-            marginTop: -28,
+            marginTop: -32, // design raises the center button -mt-8 (32px)
             shadowColor: "#15110D",
             shadowOpacity: 0.2,
             shadowRadius: 14,
@@ -86,7 +122,7 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
             elevation: 8,
           }}
         >
-          <Plus size={26} color="#FBFAF9" strokeWidth={2.5} />
+          <Plus size={24} color="#FBFAF9" strokeWidth={2.5} />
         </Pressable>
       </View>
 
@@ -109,19 +145,36 @@ export default function TabsLayout() {
           headerTitleStyle: { fontFamily: "SpaceGrotesk_700Bold" },
         }}
       >
-        <Tabs.Screen name="index" options={{ title: "Home" }} />
-        <Tabs.Screen name="insights" options={{ title: "Insights" }} />
-        <Tabs.Screen name="tools" options={{ title: "Tools" }} />
-        <Tabs.Screen name="profile" options={{ title: "Profile" }} />
+        {/* Home renders the custom Lovable TopBar in-body, so the native header
+            is hidden here (avoids a double header). */}
+        <Tabs.Screen name="index" options={{ title: "Home", headerShown: false }} />
+        {/* Community (V2) — real tab opening a "coming soon" page (design slot 2). */}
+        {/* Community renders its own in-body TabHeader — hide the native one. */}
+        <Tabs.Screen name="community" options={{ title: "Community", headerShown: false }} />
+        {/* Insights renders its own in-body header (hub title / sub-view back). */}
+        <Tabs.Screen name="insights" options={{ title: "Insights", headerShown: false }} />
+        {/* Tools renders its own in-body "All tools" TopBar — hide the native one. */}
+        <Tabs.Screen name="tools" options={{ title: "Tools", headerShown: false }} />
+        {/* Profile — reached via the Home TopBar icon (design nav model), not a
+            tab. Kept as a route with href: null so navigation still resolves.
+            Renders its own in-body LastOne TopBar — hide the native one (else a
+            second "Profile" header stacks above it and pushes it down). */}
+        <Tabs.Screen name="profile" options={{ href: null, title: "Profile", headerShown: false }} />
         {/* Progress Dashboard (DASH-2) — reachable from Home's counter/health cards
-            via /progress, not a tab (Insights took the slot; surfaces are distinct). */}
-        <Tabs.Screen name="progress" options={{ href: null, title: "Progress" }} />
+            via /progress, not a tab (Insights took the slot; surfaces are distinct).
+            Renders its own in-body header (back + title), so the native one is hidden. */}
+        <Tabs.Screen name="progress" options={{ href: null, title: "Progress", headerShown: false }} />
         {/* No-op slot intercepted by the center Log button; never shown as a tab. */}
         <Tabs.Screen name="log-dummy" options={{ href: null }} />
       </Tabs>
 
       {/* SOS — persistent floating FAB on every main screen (Architecture Guide §8.5). */}
       <SosFab />
+
+      {/* Log "+" picker — in-place overlay (NOT a route) so it blurs the live tabs
+          content behind it. Sibling of <Tabs>, so the tab content stays mounted
+          underneath for BlurView to sample. Renders null unless opened. */}
+      <LogSheetOverlay />
     </View>
   );
 }

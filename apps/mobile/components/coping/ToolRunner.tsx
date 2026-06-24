@@ -1,7 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { View, Text, Pressable } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { X } from 'lucide-react-native'
 import type { Database } from '../../types/database'
+import { PhysiologicalSighTool } from './PhysiologicalSighTool'
+import { FingerPulseTool } from './FingerPulseTool'
+import { ReframeTool } from './ReframeTool'
 
 type CopingTool = Database['public']['Tables']['coping_tools']['Row']
 
@@ -26,13 +30,16 @@ const ACCENT: Record<RunnerAccent, AccentCfg> = {
 }
 
 /** Shared runner chrome (Lovable SOS-2): top ✕ bar, orange badge, primary button. */
-const RunnerTopBar: React.FC<{ onClose: () => void }> = ({ onClose }) => (
-  <View className="h-14 px-5 flex-row items-center justify-end">
-    <Pressable onPress={onClose} hitSlop={12} className="active:opacity-60">
-      <X size={22} color="#76706C" strokeWidth={2} />
-    </Pressable>
-  </View>
-)
+const RunnerTopBar: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+  const insets = useSafeAreaInsets()
+  return (
+    <View className="h-14 px-5 flex-row items-center justify-end" style={{ marginTop: insets.top }}>
+      <Pressable onPress={onClose} hitSlop={12} className="active:opacity-60">
+        <X size={22} color="#76706C" strokeWidth={2} />
+      </Pressable>
+    </View>
+  )
+}
 
 const RunnerBadge: React.FC<{ label: string; accent: AccentCfg }> = ({ label, accent }) => (
   <View className="rounded-full px-4 py-1.5 mb-8" style={{ backgroundColor: accent.tint }}>
@@ -62,6 +69,15 @@ interface RunnerProps {
   onDone: () => void
   /** Visual accent — defaults to calm (Tools library); SOS passes "craving". */
   accent?: RunnerAccent
+  /** Bespoke tools (Finger Pulse / Physiological Sigh) end with the design's own
+   *  "how does it feel?" check-in. When provided, that screen reports the result
+   *  here (helped=true → +score) instead of deferring to the caller's generic
+   *  check-in. Falls back to onDone() when absent (e.g. SOS). */
+  onComplete?: (helped: boolean) => void
+  /** Skip a bespoke tool's OWN end check-in screen and call onDone() at the point
+   *  the exercise completes. Set by the SOS flow, which has its own shared SOS-3
+   *  check-in right after — otherwise the user gets two back-to-back check-ins. */
+  hideOwnCheckIn?: boolean
 }
 
 // ── Breathing pacer ───────────────────────────────────────────────────────────
@@ -286,13 +302,23 @@ export const GameStub: React.FC<RunnerProps> = ({ tool, onDone, accent = 'calm' 
   )
 }
 
-/** Route a tool to its runner by family. */
+/** Route a tool to its runner. Two tools have bespoke screens (matching the
+ *  design's Physiological Sigh + Finger Pulse animations), keyed by data_model_id;
+ *  everything else falls back to the generic family runners. */
 export const ToolRunner: React.FC<RunnerProps & { repCount?: number }> = ({
   tool,
   onDone,
+  onComplete,
+  hideOwnCheckIn,
   repCount,
   accent = 'calm',
 }) => {
+  if (tool.data_model_id === 'physiological_sigh')
+    return <PhysiologicalSighTool tool={tool} onDone={onDone} onComplete={onComplete} hideOwnCheckIn={hideOwnCheckIn} />
+  if (tool.data_model_id === 'finger_pulse')
+    return <FingerPulseTool tool={tool} onDone={onDone} onComplete={onComplete} hideOwnCheckIn={hideOwnCheckIn} />
+  if (tool.category === 'cognitive_reframe')
+    return <ReframeTool tool={tool} onDone={onDone} onComplete={onComplete} />
   if (tool.family === 'breathing') return <BreathingTool tool={tool} onDone={onDone} accent={accent} />
   if (tool.family === 'physical')
     return <PhysicalTool tool={tool} onDone={onDone} repCount={repCount} accent={accent} />

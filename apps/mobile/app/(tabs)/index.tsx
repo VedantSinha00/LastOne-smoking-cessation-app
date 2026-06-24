@@ -1,25 +1,27 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, ScrollView, Pressable, ActivityIndicator } from "react-native";
-import { useRouter } from "expo-router";
+import { View, ScrollView, ActivityIndicator } from "react-native";
+import { useFocusEffect } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "../../hooks/useAuth";
 import { useProfile } from "../../hooks/useProfile";
 import { useStage } from "../../hooks/useStage";
 import { useStreakRecord } from "../../hooks/useStreakRecord";
 import { useReturnModal } from "../../hooks/useReturnModal";
-import { supabase } from "../../lib/supabase";
 import { queryClient } from "../../lib/queryClient";
 import { queryKeys } from "../../lib/queryKeys";
 import { resolveStk2, resolveStk3 } from "../../lib/returnModal";
 import { checkFreezePeriodAdvance } from "../../lib/streak";
+import { TopBar } from "../../components/home/TopBar";
 import { Greeting } from "../../components/home/Greeting";
 import { StreakBar } from "../../components/home/StreakBar";
 import { SectionLabel } from "../../components/ui/SectionLabel";
-import { HealthMilestonesCard } from "../../components/home/HealthMilestonesCard";
+import { HealthMilestonesAccordion } from "../../components/home/HealthMilestonesAccordion";
 import { CopingSurfaceCard } from "../../components/home/CopingSurfaceCard";
 import { InsightsPreview } from "../../components/home/InsightsPreview";
 import { ProgressDashboard } from "../../components/home/ProgressDashboard";
 import { ContentCarousel } from "../../components/home/ContentCarousel";
 import { SavingsMilestoneCard } from "../../components/home/SavingsMilestoneCard";
+import { HomePersonalGoalCard } from "../../components/home/HomePersonalGoalCard";
 import { DailyCheckInCard } from "../../components/home/DailyCheckInCard";
 import { GivingUpCard } from "../../components/home/GivingUpCard";
 import { SupportSetupPromptCard } from "../../components/home/SupportSetupPromptCard";
@@ -28,11 +30,9 @@ import { useDailyCheckIn } from "../../hooks/useDailyCheckIn";
 import { useGivingUpTrigger } from "../../hooks/useGivingUpTrigger";
 import { ReturnModalShort, type Stk2Choice } from "../../components/home/ReturnModalShort";
 import { ReturnModalLong, type Stk3Choice } from "../../components/home/ReturnModalLong";
-import { DevPanel } from "../../components/home/DevPanel";
 
 export default function Home() {
   const { user } = useAuth();
-  const router = useRouter();
   const { data: profile } = useProfile();
   const { stage, daysSinceQuit, quitDate, isLoading: stageLoading } = useStage();
   const { data: streak, isLoading: streakLoading } = useStreakRecord();
@@ -43,6 +43,15 @@ export default function Home() {
   // Return-modal gate. The option handlers apply the real streak writes
   // (lib/returnModal) then clear the gate so home renders with fresh values.
   const [returnResolved, setReturnResolved] = useState(false);
+  const [showStreakHome, setShowStreakHome] = useState(true);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      AsyncStorage.getItem('show_streak_home').then((val) => {
+        if (val !== null) setShowStreakHome(val === 'true');
+      });
+    }, [])
+  );
 
   const refreshStreak = () => {
     if (!user) return;
@@ -74,16 +83,6 @@ export default function Home() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, quitDate]);
-
-  // DEV ONLY: re-walk onboarding without re-authenticating. Flips
-  // onboarding_complete=false and routes back to OB-01 (stays signed in, so OB-05
-  // auto-skips). Existing quit_attempts/streak rows are kept and reused.
-  const handleRestartOnboarding = async () => {
-    if (!user) return;
-    await supabase.from("profiles").update({ onboarding_complete: false }).eq("id", user.id);
-    await queryClient.invalidateQueries({ queryKey: queryKeys.profile(user.id) });
-    router.replace("/onboarding");
-  };
 
   // ── Loading gate ──────────────────────────────────────────────────────────
   if (stageLoading || streakLoading || returnModal.isLoading) {
@@ -117,40 +116,62 @@ export default function Home() {
   const dayCount = stage === 0 ? undefined : daysSinceQuit;
 
   return (
-    <ScrollView className="flex-1 bg-background px-5 pt-6" contentContainerClassName="gap-7 pb-12">
-      {/* 1 — Greeting */}
-      <Greeting firstName={profile?.first_name} dayCount={dayCount} />
+    <View className="flex-1 bg-background">
+      {/* Top app bar — wordmark + bell + profile (design TopBar) */}
+      <TopBar />
 
-      {/* 2 — Streak Bar */}
-      <View>
-        <SectionLabel>Streaks</SectionLabel>
-        <StreakBar stage={stage} streak={streak} />
-      </View>
+      <ScrollView className="flex-1 bg-background px-5 pt-2" contentContainerClassName="gap-7 pb-12">
+      {/*
+        Home scroll order — design-led, reconciled with the Home Spec per-section
+        (user calls 2026-06-20, see [[project_home_design_vs_spec]]):
+          1 Greeting · 2 Content (Today) · 3 Streak Bar · 4 Coping (cond.) ·
+          5 Daily Check-In · 6 Progress (+savings, goals) · 7 Insights Preview ·
+          8 Health Milestones.
+        Design wins on: content-first (Today above Streak), Check-In before
+        Progress. Spec wins on: Insights at 7 (before Health Milestones).
+      */}
 
-      {/* 3 — Coping Surface Card: renders only at alert_level=2 (Insights §B2.8) */}
+      {/* 1 — Greeting (subline intentionally omitted — design preference) */}
+      <Greeting firstName={profile?.first_name} />
+
+      {/* 2 — Content Carousel (design leads with today's content above the streak) */}
+      <ContentCarousel />
+
+      {/* 3 — Streak Bar */}
+      {showStreakHome && (
+        <View>
+          <SectionLabel>Streaks</SectionLabel>
+          <StreakBar stage={stage} streak={streak} />
+        </View>
+      )}
+
+      {/* 4 — Coping Surface Card: renders only at alert_level=2 (Insights §B2.8) */}
       <CopingSurfaceCard />
 
-      {/* 4 — Progress Dashboard */}
-      <View>
-        <SectionLabel>Progress</SectionLabel>
-        <ProgressDashboard stage={stage} />
-      </View>
-
-      {/* 4b — Savings milestone celebration (inline, fires once per threshold) */}
-      <SavingsMilestoneCard />
-
-      {/* 5 — GU-1 trigger card (replaces the check-in this session when due),
-            else Daily Check-In (Stage 1+, until satisfied) */}
+      {/* 5 — Daily Check-In (design places it before Progress). GU-1 trigger card
+            takes priority and replaces the check-in this session when due. */}
       <GivingUpCard />
       {showDailyCheckIn && (
         <DailyCheckInCard dayCount={dayCount} onSatisfied={refreshCheckIn} />
       )}
 
-      {/* 6 — Content Carousel */}
-      <ContentCarousel />
+      {/* 6 — Progress Dashboard */}
+      <View>
+        <SectionLabel>Progress</SectionLabel>
+        <ProgressDashboard stage={stage} />
+      </View>
 
-      {/* 7 — Insights Preview */}
-      <InsightsPreview />
+      {/* 6b — Savings milestone celebration (inline, fires once per threshold) */}
+      <SavingsMilestoneCard />
+
+      {/* 6c — Personal Goals (design Home section; top active goal, taps to /goals) */}
+      <HomePersonalGoalCard />
+
+      {/* 7 — Insights Preview (spec position: before Health Milestones) */}
+      <View>
+        <SectionLabel>Recent Insights</SectionLabel>
+        <InsightsPreview />
+      </View>
 
       {/* 7b — One-time Stage-2 support person setup prompt (GU §B2, low priority) */}
       <SupportSetupPromptCard />
@@ -158,30 +179,9 @@ export default function Home() {
       {/* 7c — Stage-4 mini-game re-engagement nudge (MiniGames §B2, max 2 lifetime) */}
       <GameStreakNudgeCard />
 
-      {/* 8 — Health Milestones */}
-      <HealthMilestonesCard
-        stage={stage}
-        quitDate={quitDate}
-        onPress={() => router.push("/progress")}
-      />
-
-      {__DEV__ && (
-        <>
-          <DevPanel
-            onUnlockReturnGate={() => setReturnResolved(false)}
-            onResetCheckIn={refreshCheckIn}
-          />
-          <Pressable
-            onPress={handleRestartOnboarding}
-            className="border border-border rounded-2xl p-4 items-center active:bg-muted"
-          >
-            <Text className="text-craving text-sm font-sans-bold">DEV · Restart onboarding</Text>
-            <Text className="text-muted-foreground text-xs mt-1 text-center leading-relaxed">
-              Resets onboarding_complete and returns to OB-01. Stays signed in; keeps your data.
-            </Text>
-          </Pressable>
-        </>
-      )}
-    </ScrollView>
+      {/* 8 — Health Milestones — full staged accordion inline on Home (design 1:1) */}
+      <HealthMilestonesAccordion />
+      </ScrollView>
+    </View>
   );
 }

@@ -5,6 +5,10 @@ import { Check } from "lucide-react-native";
 import { Card } from "../ui/Card";
 import { SectionLabel } from "../ui/SectionLabel";
 import { useDailyCheckIn } from "../../hooks/useDailyCheckIn";
+import { useAuth } from "../../hooks/useAuth";
+import { confirmSmokeFreeDay } from "../../lib/streak";
+import { queryClient } from "../../lib/queryClient";
+import { queryKeys } from "../../lib/queryKeys";
 
 /** How long the success ("Day N. Clean.") state lingers before the card dismisses. */
 const SUCCESS_LINGER_MS = 1800;
@@ -28,6 +32,7 @@ export const DailyCheckInCard: React.FC<{
   onSatisfied?: () => void;
 }> = ({ dayCount, onSatisfied }) => {
   const router = useRouter();
+  const { user } = useAuth();
   const { markSatisfied } = useDailyCheckIn();
   const [confirmed, setConfirmed] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -40,6 +45,19 @@ export const DailyCheckInCard: React.FC<{
 
   const handleAllGood = async () => {
     setConfirmed(true);
+    // "All good today" is a no-craving daily confirmation (Streak Spec §B2 —
+    // confirmSmokeFreeDay's three callers are Flow B, daily check-in, SOS 'Better').
+    // No log row: there was no event. But it MUST advance the streak day, else the
+    // "Streak +1" copy lies and the next-day return modal misfires off a stale
+    // last_confirmed_date. Idempotent per day + respects pause.
+    if (user) {
+      try {
+        await confirmSmokeFreeDay(user.id, "log");
+        queryClient.invalidateQueries({ queryKey: queryKeys.streakRecord(user.id) });
+      } catch {
+        // Best-effort: the local satisfied flag below still dismisses the card.
+      }
+    }
     await markSatisfied();
     // Show the success moment, then tell Home to re-read the flag and unmount us.
     // (The card and Home hold separate useDailyCheckIn instances, so marking here

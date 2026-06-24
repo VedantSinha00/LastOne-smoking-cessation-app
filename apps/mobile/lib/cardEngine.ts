@@ -186,7 +186,13 @@ export function selectCarousel(opts: {
   }
 
   let picked = build(COOLDOWN_DAYS)
-  if (picked.length < min) picked = build(RELAX_COOLDOWN_DAYS) // §3.1 relax
+  if (picked.length < min) picked = build(RELAX_COOLDOWN_DAYS) // §3.1 relax 14d → 7d
+  // §4 — never show an empty carousel when cards exist: if even the relaxed
+  // cooldown leaves nothing (e.g. all scheduled cards were shown very recently),
+  // fall back to the least-recently-shown of the whole eligible pool, ignoring
+  // cooldown entirely (days = 0 passes every card). Mirrors selectCard's
+  // "rather than showing nothing" rule.
+  if (picked.length === 0) picked = build(0)
   return picked.map((card) => ({ card, body: resolveCardBody(card, opts.voice) }))
 }
 

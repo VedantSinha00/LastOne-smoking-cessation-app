@@ -24,4 +24,8 @@ export const queryKeys = {
   priceLog:       (userId: string) => ['price_log', userId] as const,
   gameStreak:     (userId: string) => ['game_streak', userId] as const,
   streakNudge:    (userId: string) => ['streak_nudge_log', userId] as const,
+  // Combined inputs the SOS waterfall needs (catalogue + scores + stage/profile).
+  // Cached so opening SOS doesn't re-fetch on every craving; the ranking itself
+  // recomputes in-memory from this.
+  sosData:        (userId: string) => ['sos_data', userId] as const,
 }

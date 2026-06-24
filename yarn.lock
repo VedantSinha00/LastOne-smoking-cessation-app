@@ -795,6 +795,11 @@
   resolved "https://registry.yarnpkg.com/@expo-google-fonts/dm-sans/-/dm-sans-0.4.2.tgz#76b73ba806c24f5b4188127485162603fb67de62"
   integrity sha512-e/fLH5aCJzkEenz7axvEn8N7IJAKhUwNjIxS75h9j+Ip1M9S7d22M19gJN3A7QW4egVkBJRyQh1hQFhngQn9yA==
 
+"@expo-google-fonts/playfair-display@^0.4.2":
+  version "0.4.2"
+  resolved "https://registry.yarnpkg.com/@expo-google-fonts/playfair-display/-/playfair-display-0.4.2.tgz#a2ce52b803eebf5e8fa62cdbb26e85b08f0665b7"
+  integrity sha512-mWhBV59RUjSS3aYpytUb7UyHHTnXcHh7epAn7gq+M4XAEh5PuMKUrP8eiUfkJLb6UwHZCi7EhQpUzxHu5OL96w==
+
 "@expo-google-fonts/space-grotesk@^0.4.1":
   version "0.4.1"
   resolved "https://registry.yarnpkg.com/@expo-google-fonts/space-grotesk/-/space-grotesk-0.4.1.tgz#cb1f58e17e9bc91d2b87270d37cb26cd6b6773ac"
@@ -1863,10 +1868,37 @@
   dependencies:
     defer-to-connect "^2.0.0"
 
+"@tanstack/query-async-storage-persister@^5":
+  version "5.101.0"
+  resolved "https://registry.yarnpkg.com/@tanstack/query-async-storage-persister/-/query-async-storage-persister-5.101.0.tgz#d2886ccf31f8e2115d4122109ce4ea6698ee7468"
+  integrity sha512-8Y8pwMVPh4kqU9m+MhbDYBuub+i5T2M9P/0+Ae3KccX1BwMIp6AdFAx3zDgLoZcEVI830mbJYf0sjAgsawCWVw==
+  dependencies:
+    "@tanstack/query-core" "5.101.0"
+    "@tanstack/query-persist-client-core" "5.101.0"
+
 "@tanstack/query-core@5.100.14":
   version "5.100.14"
   resolved "https://registry.npmjs.org/@tanstack/query-core/-/query-core-5.100.14.tgz"
   integrity sha512-5X41dGpxgeaHISCRW2oYwcSycZeULZzAunaudXT9ov1KOTj9xwt0CH6hbwqP1/z74ZWF7rYFnDpyYH07XFcZew==
+
+"@tanstack/query-core@5.101.0":
+  version "5.101.0"
+  resolved "https://registry.yarnpkg.com/@tanstack/query-core/-/query-core-5.101.0.tgz#45391ce143c270b7e7a55bd1a6696918f20782d1"
+  integrity sha512-cQetA74EB+seWySv1TTKr828TnP0u39m6LykwDXIo84SNortpDkp30TMEjkqtYCNP9c40uT/iwl6MLiufEt0Ow==
+
+"@tanstack/query-persist-client-core@5.101.0":
+  version "5.101.0"
+  resolved "https://registry.yarnpkg.com/@tanstack/query-persist-client-core/-/query-persist-client-core-5.101.0.tgz#7cafe8b273e3ff68104f47bb5aad6c64767a59a9"
+  integrity sha512-LH99WepGVLwlLfuOcQcPK7f3Xg/Gf+xlMMIj9xWu/8oQ3egnDzjr+a4HvEmi6PGob5SmGXvmDKZaH5+In9dzjw==
+  dependencies:
+    "@tanstack/query-core" "5.101.0"
+
+"@tanstack/react-query-persist-client@^5":
+  version "5.101.0"
+  resolved "https://registry.yarnpkg.com/@tanstack/react-query-persist-client/-/react-query-persist-client-5.101.0.tgz#020d1b2d47f111ed176bfb6dee37b4d877cc71ce"
+  integrity sha512-AUcdBgz8V6sM9axzdqkVmWjYSOETkhr6yAZSBnEFyZT2jo6vkFq3UrpRuxGs6fmhKMWv8FA+ZJGcbaKPaoAElQ==
+  dependencies:
+    "@tanstack/query-persist-client-core" "5.101.0"
 
 "@tanstack/react-query@^5.45.0":
   version "5.100.14"
@@ -3109,6 +3141,11 @@ expo-asset@~12.0.13:
   dependencies:
     "@expo/image-utils" "^0.8.8"
     expo-constants "~18.0.13"
+
+expo-blur@~15.0.8:
+  version "15.0.8"
+  resolved "https://registry.yarnpkg.com/expo-blur/-/expo-blur-15.0.8.tgz#846cea275a6644639c5c338987b4cca54cf93eca"
+  integrity sha512-rWyE1NBRZEu9WD+X+5l7gyPRszw7n12cW3IRNAb5i6KFzaBp8cxqT5oeaphJapqURvcqhkOZn2k5EtBSbsuU7w==
 
 expo-constants@~18.0.13:
   version "18.0.13"

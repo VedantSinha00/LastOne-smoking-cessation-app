@@ -1,5 +1,6 @@
 import React from 'react'
-import { View, Text, Pressable, Switch } from 'react-native'
+import { View, Text, Pressable } from 'react-native'
+import { Toggle } from '../../components/settings/Toggle'
 import { useAuth } from '../../hooks/useAuth'
 import { useProfile } from '../../hooks/useProfile'
 import { useSettings } from '../../hooks/useSettings'
@@ -47,7 +48,7 @@ export default function NotificationSettings() {
       <View className="bg-card border border-border rounded-3xl px-5 py-1">
         <View className="flex-row items-center justify-between py-3">
           <Text className="text-foreground text-base">Notifications</Text>
-          <Switch value={enabled} onValueChange={toggleMaster} trackColor={{ true: '#7FC200' }} />
+          <Toggle on={enabled} onChange={toggleMaster} />
         </View>
       </View>
 

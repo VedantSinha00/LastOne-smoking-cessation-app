@@ -1,4 +1,5 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMemo } from 'react'
+import { useQuery, type QueryClient } from '@tanstack/react-query'
 import { useAuth } from './useAuth'
 import { supabase } from '../lib/supabase'
 import { queryKeys } from '../lib/queryKeys'
@@ -27,50 +28,107 @@ function deriveProfile(
   return 'regular_moderate_heavy'
 }
 
-/**
- * Runs the real SOS selection waterfall (Coping Tools §06) for a given craving.
- * Fetches the full catalogue + the user's scores + stage/dependency, then calls the
- * pure selectSOSTools. `craving` is supplied by the SOS modal (intensity + context
- * gate answer). Returns the 3 chosen tools.
- */
-export function useSosSelection(craving: CravingInput, enabled = true, exclude: string[] = []) {
+/** The raw inputs the waterfall ranks over. The catalogue is effectively static;
+ *  scores/stage/profile change slowly. Fetched once and cached so opening SOS is
+ *  near-instant after the first time — only the (free, in-memory) ranking re-runs
+ *  per craving. */
+// NOTE: every field here must be JSON-serializable — this is persisted to disk by
+// PersistQueryClientProvider. A Map is NOT (it rehydrates as {} → "scores.get is
+// not a function"), so we store scores as a plain array and build the Map in the
+// consumer (useMemo below) instead.
+export interface SosData {
+  tools: CopingTool[]
+  scores: ToolScore[]
+  stage: number
+  profile: SmokerProfile
+}
+
+async function fetchSosData(userId: string): Promise<SosData> {
+  const [{ data: tools }, { data: scores }, { data: streak }, { data: profile }] =
+    await Promise.all([
+      supabase.from('coping_tools').select('*').throwOnError(),
+      supabase.from('user_tool_scores').select('*').eq('user_id', userId).throwOnError(),
+      supabase
+        .from('streak_record')
+        .select('current_stage, dependency_level')
+        .eq('user_id', userId)
+        .maybeSingle(),
+      supabase
+        .from('profiles')
+        .select('cigarettes_per_day')
+        .eq('id', userId)
+        .maybeSingle(),
+    ])
+
+  return {
+    tools: (tools ?? []) as CopingTool[],
+    scores: (scores ?? []) as ToolScore[],
+    stage: streak?.current_stage ?? 0,
+    profile: deriveProfile(streak?.dependency_level, profile?.cigarettes_per_day),
+  }
+}
+
+// Catalogue rarely changes; scores get explicitly invalidated after a tool runs
+// (updateToolScore). A 5-min staleTime keeps repeat SOS opens instant without
+// risking visibly stale rankings within a session.
+const SOS_DATA_STALE = 5 * 60 * 1000
+
+/** Cached fetch of the waterfall inputs. */
+function useSosData(enabled = true) {
   const { user } = useAuth()
   return useQuery({
-    // `exclude` participates in the key so the SOS-1 shuffle re-runs the waterfall
-    // with the current trio dropped, surfacing the next-best valid set.
-    queryKey: ['sos_selection', user?.id ?? '', craving.intensity ?? 'none', craving.context, exclude.join(',')],
-    queryFn: async (): Promise<CopingTool[]> => {
-      const [{ data: tools }, { data: scores }, { data: streak }, { data: profile }] =
-        await Promise.all([
-          supabase.from('coping_tools').select('*').throwOnError(),
-          supabase.from('user_tool_scores').select('*').eq('user_id', user!.id).throwOnError(),
-          supabase
-            .from('streak_record')
-            .select('current_stage, dependency_level')
-            .eq('user_id', user!.id)
-            .maybeSingle(),
-          supabase
-            .from('profiles')
-            .select('cigarettes_per_day')
-            .eq('id', user!.id)
-            .maybeSingle(),
-        ])
-
-      const scoreMap = new Map<string, ToolScore>(
-        (scores ?? []).map((s) => [s.tool_id, s as ToolScore]),
-      )
-      return selectSOSTools({
-        tools: (tools ?? []) as CopingTool[],
-        scores: scoreMap,
-        craving,
-        stage: streak?.current_stage ?? 0,
-        profile: deriveProfile(streak?.dependency_level, profile?.cigarettes_per_day),
-        hasBuddy: false, // Quit Buddy is a V2/Step-18 concept — MIN-03 excluded for now.
-        exclude,
-      })
-    },
+    queryKey: queryKeys.sosData(user?.id ?? ''),
+    queryFn: () => fetchSosData(user!.id),
     enabled: enabled && !!user,
-    staleTime: 0, // always recompute for a fresh craving
-    gcTime: 0,
+    staleTime: SOS_DATA_STALE,
   })
+}
+
+/** Warm the SOS data cache ahead of time (call when the SOS modal mounts, while
+ *  the user is still on the context gate) so the tool list is ready the moment a
+ *  context is picked. No-op if already cached + fresh. */
+export function prefetchSosData(qc: QueryClient, userId: string) {
+  return qc.prefetchQuery({
+    queryKey: queryKeys.sosData(userId),
+    queryFn: () => fetchSosData(userId),
+    staleTime: SOS_DATA_STALE,
+  })
+}
+
+/**
+ * Runs the real SOS selection waterfall (Coping Tools §06) for a given craving.
+ * The data (catalogue + scores + stage/profile) is fetched once and cached; the
+ * pure selectSOSTools ranking recomputes in-memory on every craving/shuffle, so
+ * behaviour is identical to before — only the network cost is removed from the
+ * hot path. `craving` is supplied by the SOS modal (intensity + context gate).
+ * Returns the 3 chosen tools.
+ */
+export function useSosSelection(craving: CravingInput, enabled = true, exclude: string[] = []) {
+  const data = useSosData(enabled)
+
+  const tools = useMemo(() => {
+    if (!data.data) return undefined
+    // Defensive: an old persisted cache entry can lack `scores`/`tools` (shape
+    // changed). Fall back to [] so we never crash on `.map` — a fresh fetch
+    // replaces it shortly after.
+    const rawScores = data.data.scores ?? []
+    const rawTools = data.data.tools ?? []
+    if (!rawTools.length) return undefined // nothing to rank yet → wait for fetch
+    // Build the score Map here (not in the cached data — see SosData note).
+    const scoreMap = new Map<string, ToolScore>(
+      rawScores.map((s) => [s.tool_id, s]),
+    )
+    return selectSOSTools({
+      tools: rawTools,
+      scores: scoreMap,
+      craving,
+      stage: data.data.stage ?? 0,
+      profile: data.data.profile ?? 'regular_moderate_heavy',
+      hasBuddy: false, // Quit Buddy is a V2/Step-18 concept — MIN-03 excluded for now.
+      exclude,
+    })
+    // Recompute when the inputs OR the live craving/exclude change.
+  }, [data.data, craving.intensity, craving.context, exclude.join(',')])
+
+  return { data: tools, isLoading: data.isLoading }
 }

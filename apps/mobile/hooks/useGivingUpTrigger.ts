@@ -18,10 +18,6 @@ interface SlipRow {
 // Once-per-JS-session guard for the dismissed-count increment. A "session" in
 // the spec sense ends when the app process dies; a fresh JS context resets this.
 let dismissalCountedThisSession = false
-/** DEV only — DevPanel resets the session guard between tests. */
-export function resetGuSessionGuard() {
-  dismissalCountedThisSession = false
-}
 
 export interface GivingUpTriggerState {
   /** GU-1 card should render on Home this session. */

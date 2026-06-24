@@ -1,26 +1,45 @@
 import { Slot, useRouter, useSegments } from "expo-router";
 import { useEffect } from "react";
-import { View, ActivityIndicator } from "react-native";
+import { View, ActivityIndicator, InteractionManager } from "react-native";
 import { StatusBar } from "expo-status-bar";
+import * as SplashScreen from "expo-splash-screen";
 import * as Notifications from "expo-notifications";
 import {
   useFonts,
+  SpaceGrotesk_600SemiBold,
   SpaceGrotesk_700Bold,
 } from "@expo-google-fonts/space-grotesk";
 import {
   DMSans_400Regular,
   DMSans_500Medium,
+  DMSans_600SemiBold,
   DMSans_700Bold,
 } from "@expo-google-fonts/dm-sans";
-import { QueryClientProvider, useQuery } from "@tanstack/react-query";
+import {
+  PlayfairDisplay_600SemiBold,
+  PlayfairDisplay_700Bold,
+} from "@expo-google-fonts/playfair-display";
+import { useQuery } from "@tanstack/react-query";
+import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { AuthProvider } from "../lib/auth-context";
+import { LogSheetProvider } from "../hooks/useLogSheet";
+import { ToastProvider } from "../hooks/useToast";
 import { useAuth } from "../hooks/useAuth";
 import { queryClient } from "../lib/queryClient";
+import { persistOptions } from "../lib/queryPersister";
 import { queryKeys } from "../lib/queryKeys";
 import { supabase } from "../lib/supabase";
 import { syncPushTokenIfGranted, reconcileNotifications } from "../lib/notifications";
+import { ensureNotificationChannels } from "../lib/notificationChannels";
 import { handleNotificationResponse } from "../lib/notificationHandler";
 import "../global.css";
+
+// Hold the native splash until fonts + the initial auth restore are both ready,
+// so startup shows a single held splash instead of two sequential JS spinners
+// (and no blank gap between them). Called at module load, before first render.
+SplashScreen.preventAutoHideAsync().catch(() => {
+  // already prevented / unavailable — safe to ignore
+});
 
 // Foreground presentation (Architecture Guide §Step 15). Show the alert + play
 // sound even when the app is open so scheduled milestones/check-ins are visible.
@@ -32,6 +51,11 @@ Notifications.setNotificationHandler({
     shouldSetBadge: false,
   }),
 });
+
+// Create the Android notification channels (Milestones / Check-ins / Re-engagement)
+// once at module load so scheduled notifications post to a named, branded channel
+// instead of the OS default. Idempotent; no-op on iOS.
+ensureNotificationChannels().catch(() => {});
 
 function RootLayoutNav() {
   const { user, loading: authLoading } = useAuth();
@@ -56,11 +80,17 @@ function RootLayoutNav() {
 
   // On launch (authenticated): backfill the push token if already granted, and
   // reconcile the locally-scheduled notification set against current state
-  // (quit date, stage, pause status). Both idempotent + best-effort.
+  // (quit date, stage, pause status). Both idempotent + best-effort. Deferred
+  // until after the first screen's interactions/animations settle so this work
+  // doesn't compete for the JS thread during initial render (faster first paint).
   useEffect(() => {
     if (!user?.id) return;
-    syncPushTokenIfGranted(user.id);
-    reconcileNotifications(user.id);
+    const id = user.id;
+    const task = InteractionManager.runAfterInteractions(() => {
+      syncPushTokenIfGranted(id);
+      reconcileNotifications(id);
+    });
+    return () => task.cancel();
   }, [user?.id]);
 
   // Route to the right screen when a notification is tapped, and mark it opened
@@ -119,27 +149,48 @@ export default function RootLayout() {
   // never flashes in a fallback face. Tokens reference these family names in
   // tailwind.config.js (font-display / font-sans).
   const [fontsLoaded] = useFonts({
+    SpaceGrotesk_600SemiBold,
     SpaceGrotesk_700Bold,
     DMSans_400Regular,
     DMSans_500Medium,
+    DMSans_600SemiBold,
     DMSans_700Bold,
+    PlayfairDisplay_600SemiBold,
+    PlayfairDisplay_700Bold,
   });
 
+  // Hide the native splash once fonts are ready. Keeping it up until this point
+  // means the user sees the held splash instead of a JS spinner flash. (Auth
+  // restore is fast/local; gating on fonts alone keeps the splash from lingering
+  // if auth ever stalls. The brief auth spinner below covers that rare case.)
+  useEffect(() => {
+    if (fontsLoaded) {
+      SplashScreen.hideAsync().catch(() => {});
+    }
+  }, [fontsLoaded]);
+
   if (!fontsLoaded) {
-    return (
-      <View className="flex-1 bg-background items-center justify-center">
-        <ActivityIndicator size="large" color="#7FC200" />
-      </View>
-    );
+    // Splash is still showing natively — render nothing rather than a spinner so
+    // there's no flash between the splash and the first screen.
+    return null;
   }
 
   return (
-    <QueryClientProvider client={queryClient}>
+    <PersistQueryClientProvider client={queryClient} persistOptions={persistOptions}>
       <AuthProvider>
-        {/* Dark status-bar icons for the light theme background */}
-        <StatusBar style="dark" />
-        <RootLayoutNav />
+        {/* Shared open/close state for the Log "+" picker overlay. Mounted at the
+            root so any "+" (tab bar, settings nav bar) can open it; the overlay UI
+            itself is rendered inside each screen tree that shows a bottom bar. */}
+        <LogSheetProvider>
+          {/* Branded in-app toast — any screen calls useToast().show(); the pill
+              renders at root so it floats above all screens. */}
+          <ToastProvider>
+            {/* Dark status-bar icons for the light theme background */}
+            <StatusBar style="dark" />
+            <RootLayoutNav />
+          </ToastProvider>
+        </LogSheetProvider>
       </AuthProvider>
-    </QueryClientProvider>
+    </PersistQueryClientProvider>
   );
 }

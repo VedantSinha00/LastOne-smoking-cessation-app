@@ -4,6 +4,7 @@
     "slug": "lastone",
     "version": "1.0.0",
     "orientation": "portrait",
+    "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
@@ -13,7 +14,11 @@
       }
     },
     "android": {
-      "package": "com.lastone.app"
+      "package": "com.lastone.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#FFFFFF"
+      }
     },
     "plugins": [
       "expo-router",
@@ -24,6 +29,14 @@
         "expo-notifications",
         {
           "color": "#7FC200"
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 200,
+          "backgroundColor": "#FFFFFF"
         }
       ]
     ],
