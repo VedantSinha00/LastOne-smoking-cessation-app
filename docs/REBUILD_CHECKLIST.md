@@ -83,6 +83,28 @@ empty — dev-client builds read the local `.env` via Metro.
   a system face (so those elements may look slightly off, not broken).
 - **After rebuild:** the 600 faces load → semibold renders at the correct weight.
 
+### 5. `expo-updates` — OTA updates + in-app "Update ready" banner
+- **Status:** `expo-updates@29.0.18` installed (SDK 54). `app.json` has
+  `updates.url` (EAS Update endpoint for this project) + `runtimeVersion.policy:
+  "fingerprint"`. `eas.json` build profiles carry a `channel` (`preview` /
+  `production`). `components/UpdateBanner.tsx` checks for a new JS bundle on
+  launch + foreground, downloads it, and shows a one-tap "Restart" banner;
+  mounted at root in `app/_layout.tsx`. No-ops in dev / Expo Go.
+- **Why a rebuild:** `expo-updates` is a native module + native config (the
+  update URL/runtimeVersion are baked into the binary). It is INERT until the
+  **first build that includes it** is installed. Until then, `Updates.isEnabled`
+  is false and the banner never appears — correct, not broken.
+- **After rebuild:** that APK (and all future ones on the same channel) can
+  receive OTA JS updates. Publish one with:
+  ```
+  cd apps/mobile
+  npx eas-cli@latest update --branch preview -m "what changed"
+  ```
+  Existing installs pick it up on next launch/foreground and show the banner.
+- **Hard limit:** OTA ships JS only. Anything in THIS checklist (new native
+  module, app.json native config, SDK bump) still needs a full rebuild +
+  re-distribute, NOT an `eas update`.
+
 ### 4. Android notification channels
 - **Status:** `lib/notificationChannels.ts` creates Milestones / Check-ins /
   Re-engagement channels (brand light colour #7FC200, per-type importance +
