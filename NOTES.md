@@ -85,8 +85,12 @@ GOOGLE_APPLICATION_CREDENTIALS=./firebase-sa.json \
   warning block in `docs/REBUILD_CHECKLIST.md`. (Verified present 2026-06-24.)
 
 ### Config / secrets
-- **Firebase project:** `lastone-498610`. Android App ID
-  `1:51297010652:android:c0b3aaa9f113f5390d0519`. Tester group `demo-group`.
+- **Firebase project:** `lastone-373a5` (NOT `lastone-498610` — that ID was wrong
+  in this file until 2026-08-04 and any `--project lastone-498610` call fails with
+  a confusing `403 The caller does not have permission`; the service account in
+  `firebase-sa.json` is scoped to `lastone-373a5`). Android App ID
+  `1:51297010652:android:c0b3aaa9f113f5390d0519`. Tester group `demo-group`
+  (3 testers); other groups: `first_batch_testing`, `people-from-the-link`.
   These are passed to `firebase-tools appdistribution:distribute` (see §B) — they
   are NOT in `eas.json` (EAS submit doesn't support Firebase).
 - **`eas.json`** only carries EAS Update `channel`s on the build profiles. The
