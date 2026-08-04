@@ -31,7 +31,8 @@ PRs yourself).
 
 ## Picking back up (design pass)
 
-- **Run the app:** from `apps/mobile`, `& ".\node_modules\.bin\expo.cmd" start --dev-client --clear`
+- **Run the app:** from `apps/mobile`, `& "..\..\node_modules\.bin\expo.cmd" start --dev-client --clear`
+  (the binary is hoisted to the repo root by yarn workspaces — it is NOT in `apps/mobile/node_modules`)
   (the `--clear` matters after pulling new files). Then open the LastOne dev build on the phone.
   Do **not** use `npx expo` (Windows path bug).
 - **Typecheck (the only gate — no eslint):** from `apps/mobile`, `node "..\..\node_modules\typescript\bin\tsc" --noEmit`.

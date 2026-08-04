@@ -11,7 +11,7 @@ npx eas-cli@latest build --profile development --platform android --non-interact
 ```
 Then install the new APK from the printed build URL, and restart Metro with:
 ```
-& ".\node_modules\.bin\expo.cmd" start --dev-client --clear
+& "..\..\node_modules\.bin\expo.cmd" start --dev-client --clear
 ```
 
 ---

@@ -54,7 +54,7 @@ export const ReturnGate: React.FC<{ children: React.ReactNode }> = ({ children }
       refreshStreak();
       setResolved(true);
     } catch (e) {
-      console.warn("[DEBUG-7c1e] return-modal resolve failed", {
+      console.warn("Return-modal resolve failed", {
         choice,
         daysMissed: returnModal.daysMissed,
         error: e,
