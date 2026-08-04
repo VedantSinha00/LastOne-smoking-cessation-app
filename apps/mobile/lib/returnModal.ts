@@ -9,10 +9,61 @@ import type { Stk3Choice } from '../components/home/ReturnModalLong'
  * picks an option. All date math uses the user's stored timezone.
  */
 
+/**
+ * [DEBUG-7c1e] Temporary instrumentation for the "return modal option does
+ * nothing" bug. Captures auth/session state and the real Postgrest error at the
+ * moment of the press. Remove once the root cause is confirmed.
+ */
+export async function debugProbe(userId: string, label: string, error?: unknown) {
+  try {
+    const { data: sess } = await supabase.auth.getSession()
+    const s = sess?.session
+    const expiresAt = s?.expires_at ? new Date(s.expires_at * 1000).toISOString() : null
+    console.warn(`[DEBUG-7c1e] ${label}`, JSON.stringify({
+      hasSession: !!s,
+      sessionUserId: s?.user?.id ?? null,
+      argUserId: userId,
+      userIdMatches: s?.user?.id === userId,
+      tokenExpiresAt: expiresAt,
+      tokenExpired: s?.expires_at ? s.expires_at * 1000 < Date.now() : null,
+      now: new Date().toISOString(),
+      error: error
+        ? {
+            name: (error as { name?: string })?.name ?? null,
+            message: (error as { message?: string })?.message ?? String(error),
+            code: (error as { code?: string })?.code ?? null,
+            details: (error as { details?: string })?.details ?? null,
+            hint: (error as { hint?: string })?.hint ?? null,
+            status: (error as { status?: number })?.status ?? null,
+          }
+        : null,
+    }, null, 2))
+  } catch (probeErr) {
+    console.warn('[DEBUG-7c1e] probe itself failed', probeErr)
+  }
+}
+
 async function ctx(userId: string) {
-  const { data: profile } = await supabase.from('profiles').select('timezone').eq('id', userId).maybeSingle()
+  // These selects previously swallowed their errors, so a failed/empty read fell
+  // through to `if (!streak) return` — a no-op that looked like success.
+  const { data: profile, error: profileErr } = await supabase
+    .from('profiles').select('timezone').eq('id', userId).maybeSingle()
+  if (profileErr) {
+    await debugProbe(userId, 'ctx: profiles select failed', profileErr)
+    throw profileErr
+  }
   const tz = profile?.timezone ?? 'Asia/Kolkata'
-  const { data: streak } = await supabase.from('streak_record').select('*').eq('user_id', userId).maybeSingle()
+
+  const { data: streak, error: streakErr } = await supabase
+    .from('streak_record').select('*').eq('user_id', userId).maybeSingle()
+  if (streakErr) {
+    await debugProbe(userId, 'ctx: streak_record select failed', streakErr)
+    throw streakErr
+  }
+  if (!streak) {
+    await debugProbe(userId, 'ctx: NO streak_record row for this user')
+    throw new Error('No streak_record row for user — cannot resolve return modal')
+  }
   return { tz, streak }
 }
 
@@ -25,7 +76,7 @@ async function ctx(userId: string) {
  */
 export async function resolveStk2(userId: string, choice: Stk2Choice, daysMissed: number): Promise<void> {
   const { tz, streak } = await ctx(userId)
-  if (!streak) return
+  await debugProbe(userId, `resolveStk2 start choice=${choice} daysMissed=${daysMissed}`)
   const yesterday = yesterdayKey(tz)
   const today = todayKey(tz)
 
@@ -73,7 +124,7 @@ export async function resolveStk2(userId: string, choice: Stk2Choice, daysMissed
  */
 export async function resolveStk3(userId: string, choice: Stk3Choice, daysMissed: number): Promise<void> {
   const { tz, streak } = await ctx(userId)
-  if (!streak) return
+  await debugProbe(userId, `resolveStk3 start choice=${choice} daysMissed=${daysMissed}`)
   const yesterday = yesterdayKey(tz)
   const today = todayKey(tz)
 

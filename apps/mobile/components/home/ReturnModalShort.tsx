@@ -6,6 +6,8 @@ export type Stk2Choice = 'didnt_smoke' | 'one_or_two' | 'smoked_regularly'
 interface ReturnModalShortProps {
   daysMissed: number
   onResolve: (choice: Stk2Choice) => void
+  /** A resolution write is in flight — block further taps and dim the options. */
+  resolving?: boolean
 }
 
 /**
@@ -23,6 +25,7 @@ const OPTIONS: { key: Stk2Choice; label: string; hint: string }[] = [
 export const ReturnModalShort: React.FC<ReturnModalShortProps> = ({
   daysMissed,
   onResolve,
+  resolving = false,
 }) => {
   return (
     <View className="flex-1 bg-background px-6 justify-center">
@@ -41,6 +44,8 @@ export const ReturnModalShort: React.FC<ReturnModalShortProps> = ({
           <Pressable
             key={o.key}
             onPress={() => onResolve(o.key)}
+            disabled={resolving}
+            style={{ opacity: resolving ? 0.5 : 1 }}
             className="bg-card border border-border rounded-3xl p-5 active:bg-muted"
           >
             <Text className="text-foreground text-base font-sans-bold">{o.label}</Text>

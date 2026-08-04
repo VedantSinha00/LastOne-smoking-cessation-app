@@ -28,6 +28,7 @@ import { SupportSetupPromptCard } from "../../components/home/SupportSetupPrompt
 import { GameStreakNudgeCard } from "../../components/home/GameStreakNudgeCard";
 import { useDailyCheckIn } from "../../hooks/useDailyCheckIn";
 import { useGivingUpTrigger } from "../../hooks/useGivingUpTrigger";
+import { useToast } from "../../hooks/useToast";
 import { ReturnModalShort, type Stk2Choice } from "../../components/home/ReturnModalShort";
 import { ReturnModalLong, type Stk3Choice } from "../../components/home/ReturnModalLong";
 
@@ -39,11 +40,15 @@ export default function Home() {
   const returnModal = useReturnModal();
   const { satisfied: checkInSatisfied, refresh: refreshCheckIn } = useDailyCheckIn();
   const givingUp = useGivingUpTrigger();
+  const toast = useToast();
 
   // Return-modal gate. The option handlers apply the real streak writes
   // (lib/returnModal) then clear the gate so home renders with fresh values.
   const [returnResolved, setReturnResolved] = useState(false);
   const [showStreakHome, setShowStreakHome] = useState(true);
+  // In-flight guard: the options stay tappable during the write, so an impatient
+  // double-tap would otherwise fire the resolution twice.
+  const [resolving, setResolving] = useState(false);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -61,16 +66,50 @@ export default function Home() {
     queryClient.invalidateQueries({ queryKey: ["quit_attempt"] });
   };
 
+  // The write must succeed before the gate lifts, but a rejected write used to
+  // throw straight out of the handler — skipping setReturnResolved(true) with no
+  // catch anywhere in this file. The modal then re-rendered unchanged and the
+  // option read as a dead button. Surface the failure and let the user retry.
   const handleResolveStk2 = async (choice: Stk2Choice) => {
-    if (user) await resolveStk2(user.id, choice, returnModal.daysMissed);
-    refreshStreak();
-    setReturnResolved(true);
+    if (!user || resolving) return;
+    setResolving(true);
+    try {
+      await resolveStk2(user.id, choice, returnModal.daysMissed);
+      refreshStreak();
+      setReturnResolved(true);
+    } catch (e) {
+      console.warn("[DEBUG-7c1e] resolveStk2 failed", {
+        choice,
+        daysMissed: returnModal.daysMissed,
+        error: e,
+      });
+      toast.show("Couldn't save that. Check your connection and try again.", {
+        variant: "error",
+      });
+    } finally {
+      setResolving(false);
+    }
   };
 
   const handleResolveStk3 = async (choice: Stk3Choice) => {
-    if (user) await resolveStk3(user.id, choice, returnModal.daysMissed);
-    refreshStreak();
-    setReturnResolved(true);
+    if (!user || resolving) return;
+    setResolving(true);
+    try {
+      await resolveStk3(user.id, choice, returnModal.daysMissed);
+      refreshStreak();
+      setReturnResolved(true);
+    } catch (e) {
+      console.warn("[DEBUG-7c1e] resolveStk3 failed", {
+        choice,
+        daysMissed: returnModal.daysMissed,
+        error: e,
+      });
+      toast.show("Couldn't save that. Check your connection and try again.", {
+        variant: "error",
+      });
+    } finally {
+      setResolving(false);
+    }
   };
 
   // Freeze-period advance runs once on app open when a quit date is set
@@ -97,12 +136,12 @@ export default function Home() {
   // Fires before home renders. No dismiss, no skip.
   if (!returnResolved && returnModal.type === "stk2") {
     return (
-      <ReturnModalShort daysMissed={returnModal.daysMissed} onResolve={handleResolveStk2} />
+      <ReturnModalShort daysMissed={returnModal.daysMissed} onResolve={handleResolveStk2} resolving={resolving} />
     );
   }
   if (!returnResolved && returnModal.type === "stk3") {
     return (
-      <ReturnModalLong daysMissed={returnModal.daysMissed} onResolve={handleResolveStk3} />
+      <ReturnModalLong daysMissed={returnModal.daysMissed} onResolve={handleResolveStk3} resolving={resolving} />
     );
   }
 
