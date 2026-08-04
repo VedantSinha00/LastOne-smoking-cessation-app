@@ -1,7 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { Animated, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Check, Info } from "lucide-react-native";
+import { Check, Info, AlertTriangle } from "lucide-react-native";
 
 /**
  * Branded in-app toast — replaces the default grey `ToastAndroid` pill with a
@@ -9,7 +9,7 @@ import { Check, Info } from "lucide-react-native";
  * bottom and auto-dismisses. Rendered once at the root so any screen can show one
  * via useToast().show(). Pattern mirrors hooks/useLogSheet.tsx.
  */
-type ToastVariant = "success" | "info";
+type ToastVariant = "success" | "info" | "error";
 type ToastContextValue = {
   show: (message: string, opts?: { variant?: ToastVariant; durationMs?: number }) => void;
 };
@@ -44,7 +44,9 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   useEffect(() => () => { if (hideTimer.current) clearTimeout(hideTimer.current); }, []);
 
-  const Icon = variant === "success" ? Check : Info;
+  const Icon = variant === "success" ? Check : variant === "error" ? AlertTriangle : Info;
+  // Success/info use the lime accent; errors use the app's craving/destructive orange.
+  const iconColor = variant === "error" ? "#F15025" : "#A6E635";
 
   return (
     <ToastContext.Provider value={{ show }}>
@@ -81,7 +83,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               elevation: 8,
             }}
           >
-            <Icon size={18} color="#A6E635" strokeWidth={2.5} />
+            <Icon size={18} color={iconColor} strokeWidth={2.5} />
             <Text className="font-sans-semibold" style={{ color: "#FEFBF8", fontSize: 14, flexShrink: 1 }}>
               {message}
             </Text>

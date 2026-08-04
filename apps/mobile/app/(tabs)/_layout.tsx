@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Home, BarChart3, Heart, Plus, Users, Sparkle } from "lucide-react-native";
 import { SosFab } from "../../components/sos/sos-fab";
 import { LogSheetOverlay } from "../../components/log/LogSheetOverlay";
+import { ReturnGate } from "../../components/home/ReturnGate";
 import { useLogSheet } from "../../hooks/useLogSheet";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 
@@ -133,48 +134,54 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
 
 export default function TabsLayout() {
   return (
-    <View className="flex-1 bg-background">
-      <Tabs
-        tabBar={(props) => <CustomTabBar {...props} />}
-        screenOptions={{
-          headerStyle: {
-            backgroundColor: "#FFFFFF", // card
-            borderBottomColor: "#E9E7E5", // border
-          },
-          headerTintColor: "#15110D", // foreground
-          headerTitleStyle: { fontFamily: "SpaceGrotesk_700Bold" },
-        }}
-      >
-        {/* Home renders the custom Lovable TopBar in-body, so the native header
-            is hidden here (avoids a double header). */}
-        <Tabs.Screen name="index" options={{ title: "Home", headerShown: false }} />
-        {/* Community (V2) — real tab opening a "coming soon" page (design slot 2). */}
-        {/* Community renders its own in-body TabHeader — hide the native one. */}
-        <Tabs.Screen name="community" options={{ title: "Community", headerShown: false }} />
-        {/* Insights renders its own in-body header (hub title / sub-view back). */}
-        <Tabs.Screen name="insights" options={{ title: "Insights", headerShown: false }} />
-        {/* Tools renders its own in-body "All tools" TopBar — hide the native one. */}
-        <Tabs.Screen name="tools" options={{ title: "Tools", headerShown: false }} />
-        {/* Profile — reached via the Home TopBar icon (design nav model), not a
-            tab. Kept as a route with href: null so navigation still resolves.
-            Renders its own in-body LastOne TopBar — hide the native one (else a
-            second "Profile" header stacks above it and pushes it down). */}
-        <Tabs.Screen name="profile" options={{ href: null, title: "Profile", headerShown: false }} />
-        {/* Progress Dashboard (DASH-2) — reachable from Home's counter/health cards
-            via /progress, not a tab (Insights took the slot; surfaces are distinct).
-            Renders its own in-body header (back + title), so the native one is hidden. */}
-        <Tabs.Screen name="progress" options={{ href: null, title: "Progress", headerShown: false }} />
-        {/* No-op slot intercepted by the center Log button; never shown as a tab. */}
-        <Tabs.Screen name="log-dummy" options={{ href: null }} />
-      </Tabs>
+    // ReturnGate wraps the WHOLE tab tree — tab bar, centre "+" Log FAB and the
+    // SOS FAB included. Gating inside the Home screen left all three tappable
+    // beside the modal, which is how a user could bypass it entirely
+    // (Streak Spec §5: "no dismiss, no skip, no back").
+    <ReturnGate>
+      <View className="flex-1 bg-background">
+        <Tabs
+          tabBar={(props) => <CustomTabBar {...props} />}
+          screenOptions={{
+            headerStyle: {
+              backgroundColor: "#FFFFFF", // card
+              borderBottomColor: "#E9E7E5", // border
+            },
+            headerTintColor: "#15110D", // foreground
+            headerTitleStyle: { fontFamily: "SpaceGrotesk_700Bold" },
+          }}
+        >
+          {/* Home renders the custom Lovable TopBar in-body, so the native header
+              is hidden here (avoids a double header). */}
+          <Tabs.Screen name="index" options={{ title: "Home", headerShown: false }} />
+          {/* Community (V2) — real tab opening a "coming soon" page (design slot 2). */}
+          {/* Community renders its own in-body TabHeader — hide the native one. */}
+          <Tabs.Screen name="community" options={{ title: "Community", headerShown: false }} />
+          {/* Insights renders its own in-body header (hub title / sub-view back). */}
+          <Tabs.Screen name="insights" options={{ title: "Insights", headerShown: false }} />
+          {/* Tools renders its own in-body "All tools" TopBar — hide the native one. */}
+          <Tabs.Screen name="tools" options={{ title: "Tools", headerShown: false }} />
+          {/* Profile — reached via the Home TopBar icon (design nav model), not a
+              tab. Kept as a route with href: null so navigation still resolves.
+              Renders its own in-body LastOne TopBar — hide the native one (else a
+              second "Profile" header stacks above it and pushes it down). */}
+          <Tabs.Screen name="profile" options={{ href: null, title: "Profile", headerShown: false }} />
+          {/* Progress Dashboard (DASH-2) — reachable from Home's counter/health cards
+              via /progress, not a tab (Insights took the slot; surfaces are distinct).
+              Renders its own in-body header (back + title), so the native one is hidden. */}
+          <Tabs.Screen name="progress" options={{ href: null, title: "Progress", headerShown: false }} />
+          {/* No-op slot intercepted by the center Log button; never shown as a tab. */}
+          <Tabs.Screen name="log-dummy" options={{ href: null }} />
+        </Tabs>
 
-      {/* SOS — persistent floating FAB on every main screen (Architecture Guide §8.5). */}
-      <SosFab />
+        {/* SOS — persistent floating FAB on every main screen (Architecture Guide §8.5). */}
+        <SosFab />
 
-      {/* Log "+" picker — in-place overlay (NOT a route) so it blurs the live tabs
-          content behind it. Sibling of <Tabs>, so the tab content stays mounted
-          underneath for BlurView to sample. Renders null unless opened. */}
-      <LogSheetOverlay />
-    </View>
+        {/* Log "+" picker — in-place overlay (NOT a route) so it blurs the live tabs
+            content behind it. Sibling of <Tabs>, so the tab content stays mounted
+            underneath for BlurView to sample. Renders null unless opened. */}
+        <LogSheetOverlay />
+      </View>
+    </ReturnGate>
   );
 }

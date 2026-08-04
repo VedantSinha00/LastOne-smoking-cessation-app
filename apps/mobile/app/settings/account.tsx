@@ -1,7 +1,8 @@
 import React, { useState } from 'react'
-import { View, Text, TextInput, Alert } from 'react-native'
+import { View, Text, TextInput } from 'react-native'
 import { useRouter } from 'expo-router'
 import { useAuth } from '../../hooks/useAuth'
+import { useToast } from '../../hooks/useToast'
 import { supabase } from '../../lib/supabase'
 import { EditScreen } from '../../components/settings/EditScreen'
 import { Button } from '../../components/ui/button'
@@ -15,6 +16,7 @@ import { Button } from '../../components/ui/button'
 export default function AccountDetails() {
   const router = useRouter()
   const { user } = useAuth()
+  const toast = useToast()
   const [mode, setMode] = useState<'view' | 'email' | 'password'>('view')
   const [newEmail, setNewEmail] = useState('')
   const [newPassword, setNewPassword] = useState('')
@@ -34,24 +36,24 @@ export default function AccountDetails() {
     setBusy(true)
     const { error } = await supabase.auth.updateUser({ email: newEmail.trim() })
     setBusy(false)
-    if (error) Alert.alert('Could not change email', error.message)
+    if (error) toast.show(error.message, { variant: 'error' })
     else {
-      Alert.alert('Check your inbox', 'Confirm the change from the email we just sent.')
+      toast.show('Check your inbox to confirm the change.')
       setMode('view')
     }
   }
 
   const changePassword = async () => {
     if (newPassword.length < 8) {
-      Alert.alert('Too short', 'Use at least 8 characters.')
+      toast.show('Use at least 8 characters.', { variant: 'error' })
       return
     }
     setBusy(true)
     const { error } = await supabase.auth.updateUser({ password: newPassword })
     setBusy(false)
-    if (error) Alert.alert('Could not change password', error.message)
+    if (error) toast.show(error.message, { variant: 'error' })
     else {
-      Alert.alert('Done', 'Your password has been updated.')
+      toast.show('Your password has been updated.')
       setMode('view')
     }
   }

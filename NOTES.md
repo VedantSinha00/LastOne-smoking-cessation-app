@@ -31,12 +31,70 @@ PRs yourself).
 
 ## Picking back up (design pass)
 
-- **Run the app:** from `apps/mobile`, `& ".\node_modules\.bin\expo.cmd" start --dev-client --clear`
+- **Run the app:** from `apps/mobile`, `& "..\..\node_modules\.bin\expo.cmd" start --dev-client --clear`
+  (the binary is hoisted to the repo root by yarn workspaces — it is NOT in `apps/mobile/node_modules`)
   (the `--clear` matters after pulling new files). Then open the LastOne dev build on the phone.
   Do **not** use `npx expo` (Windows path bug).
 - **Typecheck (the only gate — no eslint):** from `apps/mobile`, `node "..\..\node_modules\typescript\bin\tsc" --noEmit`.
 - The UI is intentionally plain — it's meant to be replaced by the design team's
   (Lovable) screens. The logic/hooks/data layer underneath is what's load-bearing.
+
+## Distributing builds to testers (Firebase + EAS Update)
+
+Set up 2026-06-24. Replaces hand-sharing APKs on WhatsApp. Two channels, by
+change type:
+
+### A. JS-only change (most updates) → EAS Update, no reinstall
+Anything that does NOT touch native code/config (React screens, logic, styles,
+copy). Ships over-the-air; existing installs fetch it on next launch/foreground
+and show the in-app "Update ready · Restart" banner (`components/UpdateBanner.tsx`).
+```
+cd apps/mobile
+npx eas-cli@latest update --branch preview -m "what changed"
+```
+- The installed APK must already contain `expo-updates` (first such build is the
+  one from §B below). Until that build is out, `eas update` reaches nobody.
+- OTA cannot ship native changes — see `docs/REBUILD_CHECKLIST.md`. If your change
+  is in that checklist, you need §B, not this.
+
+### B. Native change OR first install → new APK via Firebase App Distribution
+For a new native module / app.json native config / SDK bump, or onboarding a new
+tester. EAS builds the APK; the Firebase CLI uploads it and notifies testers.
+(NOTE: `eas submit` does NOT support Firebase App Distribution — it's Google Play
+only — so we use the Firebase CLI directly.)
+```
+cd apps/mobile
+# 1. build the APK in the cloud (preview profile, internal APK)
+npx eas-cli@latest build --profile preview --platform android
+#    → when it finishes, download the .apk from the printed build URL
+#      (or: npx eas-cli@latest build:list / build:view to get the artifact URL)
+
+# 2. upload that APK to Firebase App Distribution + notify the demo-group testers
+GOOGLE_APPLICATION_CREDENTIALS=./firebase-sa.json \
+  npx firebase-tools appdistribution:distribute <path-to-downloaded.apk> \
+  --app 1:51297010652:android:c0b3aaa9f113f5390d0519 \
+  --groups demo-group \
+  --release-notes "what changed"
+```
+(On Windows PowerShell, set the credential first: `$env:GOOGLE_APPLICATION_CREDENTIALS=".\firebase-sa.json"` then run the `npx firebase-tools …` line.)
+- Testers get an email/notification, install once via the Firebase tester app,
+  and are auto-notified of every future distribute after that.
+- **Before the FIRST native rebuild:** make sure it includes `expo-updates`
+  (already wired) so all later JS changes can flow via §A.
+- **Env vars:** the preview build needs `EXPO_PUBLIC_SUPABASE_*` on EAS — see the
+  warning block in `docs/REBUILD_CHECKLIST.md`. (Verified present 2026-06-24.)
+
+### Config / secrets
+- **Firebase project:** `lastone-498610`. Android App ID
+  `1:51297010652:android:c0b3aaa9f113f5390d0519`. Tester group `demo-group`.
+  These are passed to `firebase-tools appdistribution:distribute` (see §B) — they
+  are NOT in `eas.json` (EAS submit doesn't support Firebase).
+- **`eas.json`** only carries EAS Update `channel`s on the build profiles. The
+  Firebase upload is a separate Firebase-CLI step, not `eas submit`.
+- **`apps/mobile/firebase-sa.json`** is the Google service-account key the Firebase
+  CLI authenticates with (`GOOGLE_APPLICATION_CREDENTIALS`). **SECRET — gitignored,
+  never commit it.** Not in the repo; each machine that distributes needs its own
+  copy (re-download from Google Cloud console → IAM → service accounts if lost).
 
 ## Dev tools — KEEP THEM (for now)
 
@@ -72,7 +130,9 @@ Neither is required for "the app is built and works".
 
 ## Deliberately skipped (publish-only — not needed for this project)
 
-- App Store / Play Store submission; Apple Developer account; Firebase
+- App Store / Play Store submission; Apple Developer account
+  (Android testers get builds via Firebase App Distribution instead — see
+  "Distributing builds to testers" above)
 - APNs / FCM push credentials → **server-sent** push notifications
   (local notifications already work in-app)
 - `generate-insights` Edge Function + pg_cron + log webhook

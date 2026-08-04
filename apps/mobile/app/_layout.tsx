@@ -24,6 +24,8 @@ import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client
 import { AuthProvider } from "../lib/auth-context";
 import { LogSheetProvider } from "../hooks/useLogSheet";
 import { ToastProvider } from "../hooks/useToast";
+import { ConfirmProvider } from "../hooks/useConfirm";
+import { UpdateBanner } from "../components/UpdateBanner";
 import { useAuth } from "../hooks/useAuth";
 import { queryClient } from "../lib/queryClient";
 import { persistOptions } from "../lib/queryPersister";
@@ -185,9 +187,17 @@ export default function RootLayout() {
           {/* Branded in-app toast — any screen calls useToast().show(); the pill
               renders at root so it floats above all screens. */}
           <ToastProvider>
-            {/* Dark status-bar icons for the light theme background */}
-            <StatusBar style="dark" />
-            <RootLayoutNav />
+            {/* Branded confirmation dialog — any screen calls useConfirm() and
+                awaits the user's choice; the modal renders at root above all
+                screens, replacing native Alert.alert confirms. */}
+            <ConfirmProvider>
+              {/* Dark status-bar icons for the light theme background */}
+              <StatusBar style="dark" />
+              <RootLayoutNav />
+              {/* OTA update prompt — checks for a new JS bundle on launch/foreground
+                  and offers a one-tap restart when one is downloaded. No-ops in dev. */}
+              <UpdateBanner />
+            </ConfirmProvider>
           </ToastProvider>
         </LogSheetProvider>
       </AuthProvider>

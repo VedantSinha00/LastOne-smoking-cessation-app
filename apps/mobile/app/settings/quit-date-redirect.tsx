@@ -1,8 +1,9 @@
 import React, { useState } from 'react'
-import { View, Text, Alert } from 'react-native'
+import { View, Text } from 'react-native'
 import { useRouter } from 'expo-router'
 import { PauseCircle, RotateCcw } from 'lucide-react-native'
 import { useAuth } from '../../hooks/useAuth'
+import { useConfirm } from '../../hooks/useConfirm'
 import { queryClient } from '../../lib/queryClient'
 import { pauseStreak, restartAttempt } from '../../lib/streak'
 import { EditScreen } from '../../components/settings/EditScreen'
@@ -21,6 +22,7 @@ import { Button } from '../../components/ui/button'
 export default function QuitDateRedirect() {
   const router = useRouter()
   const { user } = useAuth()
+  const confirm = useConfirm()
   const [busy, setBusy] = useState<null | 'break' | 'fresh'>(null)
 
   const takeBreak = async () => {
@@ -32,27 +34,20 @@ export default function QuitDateRedirect() {
     router.dismissTo('/(tabs)/profile')
   }
 
-  const startFresh = () => {
-    Alert.alert(
-      'Start fresh?',
-      'This begins a new quit attempt from today. Your history and progress are kept.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Start fresh',
-          style: 'destructive',
-          onPress: async () => {
-            if (!user) return
-            setBusy('fresh')
-            await restartAttempt(user.id)
-            await queryClient.invalidateQueries({ queryKey: ['quit_attempt'] })
-            await queryClient.invalidateQueries({ queryKey: ['streak_record', user.id] })
-            setBusy(null)
-            router.dismissTo('/(tabs)')
-          },
-        },
-      ],
-    )
+  const startFresh = async () => {
+    const ok = await confirm({
+      title: 'Start fresh?',
+      message: 'This begins a new quit attempt from today. Your history and progress are kept.',
+      confirmLabel: 'Start fresh',
+      destructive: true,
+    })
+    if (!ok || !user) return
+    setBusy('fresh')
+    await restartAttempt(user.id)
+    await queryClient.invalidateQueries({ queryKey: ['quit_attempt'] })
+    await queryClient.invalidateQueries({ queryKey: ['streak_record', user.id] })
+    setBusy(null)
+    router.dismissTo('/(tabs)')
   }
 
   return (

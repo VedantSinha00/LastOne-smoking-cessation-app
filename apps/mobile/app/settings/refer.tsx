@@ -1,6 +1,7 @@
 import React from 'react'
-import { View, Text, Pressable, Share, Alert } from 'react-native'
+import { View, Text, Pressable, Share } from 'react-native'
 import { EditScreen } from '../../components/settings/EditScreen'
+import { useToast } from '../../hooks/useToast'
 
 /**
  * Settings → Refer & Invite. Ported from the Lovable ProfileScreen ReferScreen:
@@ -16,11 +17,12 @@ const SHARE_MESSAGE =
   "It's still in development (not published yet), but I'll let you know the moment it's out so we can quit together."
 
 export default function ReferSettings() {
+  const toast = useToast()
   const onShare = async () => {
     try {
       await Share.share({ message: SHARE_MESSAGE })
     } catch (e: any) {
-      Alert.alert("Couldn't share", e?.message ?? 'Please try again.')
+      toast.show(e?.message ?? "Couldn't share. Please try again.", { variant: 'error' })
     }
   }
 

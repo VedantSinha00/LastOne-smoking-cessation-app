@@ -6,6 +6,8 @@ export type Stk3Choice = 'didnt_smoke' | 'treat_as_break' | 'did_smoke'
 interface ReturnModalLongProps {
   daysMissed: number
   onResolve: (choice: Stk3Choice) => void
+  /** A resolution write is in flight — block further taps and dim the options. */
+  resolving?: boolean
 }
 
 /**
@@ -23,6 +25,7 @@ const OPTIONS: { key: Stk3Choice; label: string; hint: string }[] = [
 export const ReturnModalLong: React.FC<ReturnModalLongProps> = ({
   daysMissed,
   onResolve,
+  resolving = false,
 }) => {
   return (
     <View className="flex-1 bg-background px-6 justify-center">
@@ -41,6 +44,8 @@ export const ReturnModalLong: React.FC<ReturnModalLongProps> = ({
           <Pressable
             key={o.key}
             onPress={() => onResolve(o.key)}
+            disabled={resolving}
+            style={{ opacity: resolving ? 0.5 : 1 }}
             className="bg-card border border-border rounded-3xl p-5 active:bg-muted"
           >
             <Text className="text-foreground text-base font-sans-bold">{o.label}</Text>

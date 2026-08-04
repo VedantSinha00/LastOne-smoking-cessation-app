@@ -1,8 +1,9 @@
 import React, { useMemo, useState, useRef } from 'react'
-import { View, Text, ScrollView, Pressable, TextInput, Alert, Animated, PanResponder, StyleSheet } from 'react-native'
+import { View, Text, ScrollView, Pressable, TextInput, Animated, PanResponder, StyleSheet } from 'react-native'
 import { Search, X, Trash2 } from 'lucide-react-native'
 import { ScreenHeader } from '../ui/ScreenHeader'
 import { journalEntries, type LogRow } from '../../lib/insights'
+import { useConfirm } from '../../hooks/useConfirm'
 
 /**
  * Journal — the design's JournalView ported on real data: the user's Quick Note
@@ -158,12 +159,17 @@ function relativeDate(ts: string): string {
 export const JournalView: React.FC<Props> = ({ logs, onBack, onAddNote, onDelete }) => {
   const [filter, setFilter] = useState<Filter>('all')
   const [searchQuery, setSearchQuery] = useState('')
+  const confirm = useConfirm()
 
-  const confirmDelete = (logId: string) =>
-    Alert.alert('Delete note?', 'This note will be permanently removed.', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => onDelete(logId) },
-    ])
+  const confirmDelete = async (logId: string) => {
+    const ok = await confirm({
+      title: 'Delete note?',
+      message: 'This note will be permanently removed.',
+      confirmLabel: 'Delete',
+      destructive: true,
+    })
+    if (ok) onDelete(logId)
+  }
 
   const entries = useMemo(() => journalEntries(logs, filter), [logs, filter])
 

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, ScrollView, Pressable, TextInput, Alert } from "react-native";
+import { View, Text, ScrollView, Pressable, TextInput } from "react-native";
 import Animated, { useSharedValue, useAnimatedStyle, withSequence, withDelay, withTiming, Easing, runOnJS } from "react-native-reanimated";
 import { FADE_IN_MS, FADE_OUT_MS, holdForText } from "../../lib/fadeTiming";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -9,6 +9,7 @@ import { exitToHome } from "../../lib/navigation";
 import { useStage } from "../../hooks/useStage";
 import { useCreateLog } from "../../hooks/useCreateLog";
 import { useDailyCheckIn } from "../../hooks/useDailyCheckIn";
+import { useToast } from "../../hooks/useToast";
 
 const MOODS = [
   { value: 1, emoji: "😞" },
@@ -43,6 +44,7 @@ export default function LogD() {
   const createLog = useCreateLog();
   const { markSatisfied } = useDailyCheckIn();
   const router = useRouter();
+  const toast = useToast();
   const insets = useSafeAreaInsets();
   const { from } = useLocalSearchParams<{ from?: string }>();
 
@@ -82,7 +84,7 @@ export default function LogD() {
       // confirmation for this action (avoid a toast + screen saying the same thing).
       setIsSaved(true);
     } catch (e: any) {
-      Alert.alert("Couldn't save", e.message);
+      toast.show(e.message ?? "Couldn't save. Please try again.", { variant: "error" });
     }
   };
 

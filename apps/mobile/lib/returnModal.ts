@@ -10,9 +10,21 @@ import type { Stk3Choice } from '../components/home/ReturnModalLong'
  */
 
 async function ctx(userId: string) {
-  const { data: profile } = await supabase.from('profiles').select('timezone').eq('id', userId).maybeSingle()
+  // These selects previously swallowed their errors, so a failed/empty read fell
+  // through to `if (!streak) return` — a no-op that resolved successfully while
+  // writing nothing, lifting the gate with the streak still unreconciled. Fail
+  // loudly instead; the caller surfaces it and leaves the options retryable.
+  const { data: profile, error: profileErr } = await supabase
+    .from('profiles').select('timezone').eq('id', userId).maybeSingle()
+  if (profileErr) throw profileErr
   const tz = profile?.timezone ?? 'Asia/Kolkata'
-  const { data: streak } = await supabase.from('streak_record').select('*').eq('user_id', userId).maybeSingle()
+
+  const { data: streak, error: streakErr } = await supabase
+    .from('streak_record').select('*').eq('user_id', userId).maybeSingle()
+  if (streakErr) throw streakErr
+  if (!streak) {
+    throw new Error('No streak_record row for user — cannot resolve return modal')
+  }
   return { tz, streak }
 }
 
@@ -25,7 +37,6 @@ async function ctx(userId: string) {
  */
 export async function resolveStk2(userId: string, choice: Stk2Choice, daysMissed: number): Promise<void> {
   const { tz, streak } = await ctx(userId)
-  if (!streak) return
   const yesterday = yesterdayKey(tz)
   const today = todayKey(tz)
 
@@ -73,7 +84,6 @@ export async function resolveStk2(userId: string, choice: Stk2Choice, daysMissed
  */
 export async function resolveStk3(userId: string, choice: Stk3Choice, daysMissed: number): Promise<void> {
   const { tz, streak } = await ctx(userId)
-  if (!streak) return
   const yesterday = yesterdayKey(tz)
   const today = todayKey(tz)
 

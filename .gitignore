@@ -22,6 +22,12 @@ out/
 .env.test.local
 .env.production.local
 
+# Firebase service-account key (used by EAS to upload builds to App Distribution).
+# SECRET — must never be committed. Each machine keeps its own local copy.
+firebase-sa.json
+**/firebase-sa.json
+google-services.json
+
 # OS Metadata
 .DS_Store
 Thumbs.db

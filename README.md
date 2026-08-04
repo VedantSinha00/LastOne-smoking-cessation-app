@@ -86,7 +86,7 @@ LastOne reframes the whole loop around **non-judgmental relapse handling** and
 From `apps/mobile` (Android dev build):
 
 ```bash
-& ".\node_modules\.bin\expo.cmd" start --dev-client --clear
+& "..\..\node_modules\.bin\expo.cmd" start --dev-client --clear
 ```
 
 Typecheck (the only gate — no eslint), from `apps/mobile`:

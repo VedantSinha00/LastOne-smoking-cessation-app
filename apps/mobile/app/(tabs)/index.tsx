@@ -6,10 +6,8 @@ import { useAuth } from "../../hooks/useAuth";
 import { useProfile } from "../../hooks/useProfile";
 import { useStage } from "../../hooks/useStage";
 import { useStreakRecord } from "../../hooks/useStreakRecord";
-import { useReturnModal } from "../../hooks/useReturnModal";
 import { queryClient } from "../../lib/queryClient";
 import { queryKeys } from "../../lib/queryKeys";
-import { resolveStk2, resolveStk3 } from "../../lib/returnModal";
 import { checkFreezePeriodAdvance } from "../../lib/streak";
 import { TopBar } from "../../components/home/TopBar";
 import { Greeting } from "../../components/home/Greeting";
@@ -28,21 +26,18 @@ import { SupportSetupPromptCard } from "../../components/home/SupportSetupPrompt
 import { GameStreakNudgeCard } from "../../components/home/GameStreakNudgeCard";
 import { useDailyCheckIn } from "../../hooks/useDailyCheckIn";
 import { useGivingUpTrigger } from "../../hooks/useGivingUpTrigger";
-import { ReturnModalShort, type Stk2Choice } from "../../components/home/ReturnModalShort";
-import { ReturnModalLong, type Stk3Choice } from "../../components/home/ReturnModalLong";
 
 export default function Home() {
   const { user } = useAuth();
   const { data: profile } = useProfile();
   const { stage, daysSinceQuit, quitDate, isLoading: stageLoading } = useStage();
   const { data: streak, isLoading: streakLoading } = useStreakRecord();
-  const returnModal = useReturnModal();
   const { satisfied: checkInSatisfied, refresh: refreshCheckIn } = useDailyCheckIn();
   const givingUp = useGivingUpTrigger();
 
-  // Return-modal gate. The option handlers apply the real streak writes
-  // (lib/returnModal) then clear the gate so home renders with fresh values.
-  const [returnResolved, setReturnResolved] = useState(false);
+  // The return-modal gate now lives in app/(tabs)/_layout.tsx (components/home/
+  // ReturnGate), wrapping the whole tab tree — gating it here left the tab bar,
+  // the "+" Log FAB and the SOS FAB tappable alongside the modal.
   const [showStreakHome, setShowStreakHome] = useState(true);
 
   useFocusEffect(
@@ -61,18 +56,6 @@ export default function Home() {
     queryClient.invalidateQueries({ queryKey: ["quit_attempt"] });
   };
 
-  const handleResolveStk2 = async (choice: Stk2Choice) => {
-    if (user) await resolveStk2(user.id, choice, returnModal.daysMissed);
-    refreshStreak();
-    setReturnResolved(true);
-  };
-
-  const handleResolveStk3 = async (choice: Stk3Choice) => {
-    if (user) await resolveStk3(user.id, choice, returnModal.daysMissed);
-    refreshStreak();
-    setReturnResolved(true);
-  };
-
   // Freeze-period advance runs once on app open when a quit date is set
   // (Streak Spec §B2 — Day 15/29/91 boundaries). Idempotent; no-op if not crossed.
   useEffect(() => {
@@ -85,24 +68,11 @@ export default function Home() {
   }, [user?.id, quitDate]);
 
   // ── Loading gate ──────────────────────────────────────────────────────────
-  if (stageLoading || streakLoading || returnModal.isLoading) {
+  if (stageLoading || streakLoading) {
     return (
       <View className="flex-1 bg-background items-center justify-center">
         <ActivityIndicator color="#7FC200" />
       </View>
-    );
-  }
-
-  // ── Return-modal gate (Home Spec §8 / Streak Spec §5) ──────────────────────
-  // Fires before home renders. No dismiss, no skip.
-  if (!returnResolved && returnModal.type === "stk2") {
-    return (
-      <ReturnModalShort daysMissed={returnModal.daysMissed} onResolve={handleResolveStk2} />
-    );
-  }
-  if (!returnResolved && returnModal.type === "stk3") {
-    return (
-      <ReturnModalLong daysMissed={returnModal.daysMissed} onResolve={handleResolveStk3} />
     );
   }
 
